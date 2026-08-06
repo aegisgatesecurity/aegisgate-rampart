@@ -1,0 +1,21 @@
+# ZAP Baseline Rules for AegisGate Rampart
+# =============================================
+# Format: ruleid  action  (IGNORE, WARN, FAIL)
+# Rampart is a local proxy — these rules are adjusted accordingly
+
+# INFO: Content Security Policy is not set (local proxy, not a web app)
+10038	IGNORE
+# INFO: X-Content-Type-Options header missing
+10036	WARN
+# INFO: Feature Policy header not set
+10063	IGNORE
+# INFO: Strict-Transport-Security not set (local proxy)
+10035	IGNORE
+# INFO: Cookie without SameSite attribute (local proxy)
+10032	IGNORE
+# INFO: Application error disclosed (intentional for /stats)
+10031	WARN
+# INFO: Informational responses (intentional /detect responses)
+100015	IGNORE
+# WARN: Absence of Anti-CSRF Tokens (not applicable for API)
+10202	IGNORE

@@ -1,0 +1,123 @@
+package config
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+)
+
+// Config holds all Rampart configuration.
+type Config struct {
+	ProxyPort   int               `json:"proxy_port"`
+	DaemonMode  bool              `json:"daemon_mode"`
+	Verbose     bool              `json:"verbose"`
+	PlatformURL string            `json:"platform_url"`
+	Targets     []TargetConfig    `json:"targets"`
+	Models      ModelConfig       `json:"models"`
+	Privacy     PrivacyConfig     `json:"privacy"`
+}
+
+// TargetConfig defines an AI API endpoint to intercept.
+type TargetConfig struct {
+	Domain      string   `json:"domain"`
+	Paths       []string `json:"paths"`
+	Description string   `json:"description"`
+}
+
+// ModelConfig defines the ML model configuration.
+type ModelConfig struct {
+	Path       string  `json:"path"`
+	Threshold float64 `json:"threshold"`
+	Shadow     bool    `json:"shadow"`
+}
+
+// PrivacyConfig enforces the 12 non-negotiables.
+type PrivacyConfig struct {
+	NoPromptText    bool `json:"no_prompt_text"`
+	NoURLs          bool `json:"no_urls"`
+	NoPageContent   bool `json:"no_page_content"`
+	NoPII           bool `json:"no_pii"`
+	NoCredentials   bool `json:"no_credentials"`
+	NoFingerprinting bool `json:"no_fingerprinting"`
+	NoCrossSite     bool `json:"no_cross_site"`
+	NoProviderMeta  bool `json:"no_provider_meta"`
+	NoKeystroke     bool `json:"no_keystroke"`
+	NoMouse         bool `json:"no_mouse"`
+	NoSessionIDs    bool `json:"no_session_ids"`
+	NoIPAddresses   bool `json:"no_ip_addresses"`
+}
+
+// DefaultConfig returns the production default configuration.
+func DefaultConfig() *Config {
+	return &Config{
+		ProxyPort:   8080,
+		DaemonMode:  false,
+		Verbose:     false,
+		PlatformURL: "",
+		Targets: DefaultTargets(),
+		Models: ModelConfig{
+			Path:       "/opt/aegisgate/models/threat-detection.onnx",
+			Threshold:  0.05,
+			Shadow:     true,
+		},
+		Privacy: PrivacyConfig{
+			NoPromptText:    true,
+			NoURLs:          true,
+			NoPageContent:   true,
+			NoPII:           true,
+			NoCredentials:   true,
+			NoFingerprinting: true,
+			NoCrossSite:     true,
+			NoProviderMeta:  true,
+			NoKeystroke:     true,
+			NoMouse:         true,
+			NoSessionIDs:    true,
+			NoIPAddresses:   true,
+		},
+	}
+}
+
+// DefaultTargets returns the AI API endpoints Rampart intercepts.
+func DefaultTargets() []TargetConfig {
+	return []TargetConfig{
+		{Domain: "api.openai.com", Paths: []string{"/v1/chat/completions", "/v1/completions", "/v1/embeddings"}, Description: "OpenAI API"},
+		{Domain: "chat.openai.com", Paths: []string{"/api/*"}, Description: "ChatGPT Web"},
+		{Domain: "api.anthropic.com", Paths: []string{"/v1/messages", "/v1/complete"}, Description: "Anthropic API"},
+		{Domain: "generativelanguage.googleapis.com", Paths: []string{"/v1/*"}, Description: "Google Gemini API"},
+		{Domain: "api.copilot.microsoft.com", Paths: []string{"/v1/*"}, Description: "Microsoft Copilot"},
+		{Domain: "api.perplexity.ai", Paths: []string{"/chat/completions"}, Description: "Perplexity API"},
+		{Domain: "api.x.ai", Paths: []string{"/v1/chat/completions"}, Description: "Grok API"},
+		{Domain: "codestral.mistral.ai", Paths: []string{"/v1/chat/completions", "/v1/fim/completions"}, Description: "Mistral API"},
+		{Domain: "api.deepseek.com", Paths: []string{"/v1/chat/completions"}, Description: "DeepSeek API"},
+		{Domain: "www.duck.ai", Paths: []string{"/api/*"}, Description: "Duck.ai Web"},
+	}
+}
+
+// Load reads configuration from the given directory, falling back to defaults.
+func Load(dir string) (*Config, error) {
+	cfg := DefaultConfig()
+
+	if dir == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return cfg, nil
+		}
+		dir = filepath.Join(home, ".config", "aegisgate-rampart")
+	}
+
+	configPath := filepath.Join(dir, "config.json")
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return cfg, nil
+		}
+		return nil, fmt.Errorf("reading config: %w", err)
+	}
+
+	if err := json.Unmarshal(data, cfg); err != nil {
+		return nil, fmt.Errorf("parsing config: %w", err)
+	}
+
+	return cfg, nil
+}

@@ -1,0 +1,43 @@
+# AegisGate Rampart - Git Ignore
+
+# Planning directory (local only)
+.plans/
+
+# Working directory (local only)
+.workingdirectory/
+
+# Build artifacts
+bin/
+dist/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Go
+vendor/
+
+# Models (large binary)
+*.onnx
+models/
+
+# Secrets
+*.pem
+*.key
+.env
+.env.*
+
+# Test artifacts
+coverage.out
+coverage.html

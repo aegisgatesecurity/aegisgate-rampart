@@ -1,0 +1,75 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "AegisGate Rampart Detection API",
+    "description": "Local AI security proxy — PII, secrets, XSS, and compliance detection",
+    "version": "0.1.0"
+  },
+  "servers": [
+    { "url": "http://localhost:8080" }
+  ],
+  "paths": {
+    "/detect": {
+      "post": {
+        "summary": "Detect threats in text",
+        "operationId": "detectText",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["text"],
+                "properties": {
+                  "text": { "type": "string", "description": "Text to scan for threats" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Detection results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "total_detections": { "type": "integer" },
+                    "blocked": { "type": "boolean" },
+                    "results": { "type": "array" },
+                    "pii_categories": { "type": "array" },
+                    "secret_types": { "type": "array" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/stats": {
+      "get": {
+        "summary": "Get proxy statistics",
+        "operationId": "getStats",
+        "responses": {
+          "200": {
+            "description": "Proxy statistics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "total_requests": { "type": "integer" },
+                    "detections": { "type": "integer" },
+                    "blocked_requests": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

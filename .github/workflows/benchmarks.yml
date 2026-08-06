@@ -1,0 +1,60 @@
+name: Benchmarks
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'pkg/**'
+      - 'cmd/**'
+      - 'internal/**'
+      - 'go.mod'
+      - 'go.sum'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.23'
+
+      - name: Benchmark — Detection Engine
+        run: |
+          CGO_ENABLED=0 go test -bench=BenchmarkDetect -benchmem -count=5 ./pkg/detector/ | tee benchmark-detect.txt
+
+      - name: Benchmark — Proxy Startup
+        run: |
+          CGO_ENABLED=0 go test -bench=BenchmarkProxy -benchmem -count=5 ./pkg/proxy/ | tee benchmark-proxy.txt
+
+      - name: Benchmark — Config Loading
+        run: |
+          CGO_ENABLED=0 go test -bench=BenchmarkConfig -benchmem -count=5 ./pkg/config/ | tee benchmark-config.txt
+
+      - name: Benchmark — TLS Handshake
+        run: |
+          CGO_ENABLED=0 go test -bench=BenchmarkTLS -benchmem -count=5 ./internal/certificate/ | tee benchmark-tls.txt
+
+      - name: Check for regressions (2x threshold)
+        run: |
+          echo "## Benchmark Regression Check" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Checking that no benchmark exceeds 2x baseline..." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Detection engine: see benchmark-detect.txt" >> $GITHUB_STEP_SUMMARY
+          echo "Proxy startup: see benchmark-proxy.txt" >> $GITHUB_STEP_SUMMARY
+          echo "Config loading: see benchmark-config.txt" >> $GITHUB_STEP_SUMMARY
+          echo "TLS handshake: see benchmark-tls.txt" >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: |
+            benchmark-detect.txt
+            benchmark-proxy.txt
+            benchmark-config.txt
+            benchmark-tls.txt

@@ -1,0 +1,100 @@
+name: Security Comprehensive
+
+on:
+  schedule:
+    - cron: '0 2 * * 0'  # Weekly Sunday 2 AM
+  workflow_dispatch:
+    inputs:
+      run_dast:
+        description: 'Run DAST scans (ZAP)'
+        required: false
+        default: 'true'
+        type: boolean
+      run_pentest:
+        description: 'Run pentest simulations'
+        required: false
+        default: 'false'
+        type: boolean
+
+jobs:
+  # ========================================
+  # Semgrep — multi-language SAST
+  # ========================================
+  semgrep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Semgrep Scan
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: >-
+            p/security-aegisgate
+            p/secrets
+            p/default
+          publishToken: ${{ secrets.SEMGREP_APP_TOKEN }}
+
+  # ========================================
+  # Go Fuzzing — native fuzz targets
+  # ========================================
+  fuzz-config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.23'
+      - name: Fuzz config parser
+        run: |
+          go test -fuzz=FuzzParseConfig -fuzztime=60s ./pkg/config/
+      - name: Fuzz scan request
+        run: |
+          go test -fuzz=FuzzScanRequest -fuzztime=60s ./pkg/detector/
+
+  # ========================================
+  # OWASP ZAP — DAST against Rampart API
+  # ========================================
+  zap-scan:
+    if: ${{ github.event.inputs.run_dast == 'true' || github.event_name == 'schedule' }}
+    runs-on: ubuntu-latest
+    services:
+      rampart:
+        image: aegisgate-rampart:latest
+        ports:
+          - 8080:8080
+        options: >-
+          --health-cmd "wget -qO- http://localhost:8080/stats || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v6
+      - name: ZAP Baseline Scan
+        uses: zaproxy/action-baseline@v0.12.0
+        with:
+          target: 'http://localhost:8080'
+          rules_file: '.zap/rules.tsv'
+          cmd_options: '-a -j'
+          report_title: 'AegisGate Rampart ZAP Scan'
+          fail_action: false
+      - name: ZAP API Scan — /detect
+        uses: zaproxy/action-api-scan@v0.2.0
+        with:
+          target: 'http://localhost:8080'
+          api_file: '.zap/detect-api-openapi.json'
+          report_title: 'AegisGate Rampart API ZAP Scan'
+
+  # ========================================
+  # Security summary
+  # ========================================
+  security-summary:
+    needs: [semgrep, fuzz-config]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Summary
+        run: |
+          echo "## Comprehensive Security Results" >> $GITHUB_STEP_SUMMARY
+          echo "| Scanner | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| semgrep | ${{ needs.semgrep.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| fuzz-config | ${{ needs.fuzz-config.result }} |" >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,162 @@
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 2 * * 0'  # Weekly Sunday 2 AM
+  workflow_dispatch:
+
+jobs:
+  # ========================================
+  # Go vulnerability check
+  # ========================================
+  govulncheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.23'
+      - name: govulncheck
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
+
+  # ========================================
+  # Gosec — Go SAST
+  # ========================================
+  gosec:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Gosec
+        uses: securego/gosec@master
+        with:
+          args: '-no-false-positives -exclude-generated ./...'
+      - name: Upload SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: gosec.sarif
+
+  # ========================================
+  # Trivy — filesystem + container scanning
+  # ========================================
+  trivy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Trivy filesystem scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+      - name: Build Docker image
+        run: docker build -t aegisgate-rampart:latest .
+      - name: Trivy container scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'aegisgate-rampart:latest'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+
+  # ========================================
+  # Gitleaks — secret detection (git history)
+  # ========================================
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+
+  # ========================================
+  # TruffleHog — verified secret detection
+  # ========================================
+  trufflehog:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: TruffleHog
+        uses: trufflesecurity/trufflehog@main
+        with:
+          extra_args: '--only-verified'
+
+  # ========================================
+  # Standard Go tools — go vet, staticcheck, gofmt
+  # ========================================
+  standard-tools:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.23'
+      - name: go vet
+        run: go vet ./...
+      - name: staticcheck
+        run: |
+          go install honnef.co/go/tools/cmd/staticcheck@latest
+          staticcheck ./...
+      - name: gofmt
+        run: |
+          out=$(gofmt -l .)
+          if [ -n "$out" ]; then echo "UNFORMATTED: $out"; exit 1; fi
+
+  # ========================================
+  # SBOM — CycloneDX + SPDX
+  # ========================================
+  sbom:
+    needs: [govulncheck, gosec]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Generate CycloneDX SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          image: aegisgate-rampart:latest
+          format: cyclonedx
+          output-file: sbom-cyclonedx.json
+      - name: Generate SPDX SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          image: aegisgate-rampart:latest
+          format: spdx-json
+          output-file: sbom-spdx.json
+      - name: Upload SBOMs
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: |
+            sbom-cyclonedx.json
+            sbom-spdx.json
+
+  # ========================================
+  # Security summary
+  # ========================================
+  security-summary:
+    needs: [govulncheck, gosec, trivy, gitleaks, trufflehog, standard-tools]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Summary
+        run: |
+          echo "## Security Scan Results" >> $GITHUB_STEP_SUMMARY
+          echo "| Scanner | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| govulncheck | ${{ needs.govulncheck.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| gosec | ${{ needs.gosec.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| trivy | ${{ needs.trivy.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| gitleaks | ${{ needs.gitleaks.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| trufflehog | ${{ needs.trufflehog.result }} |" >> $GITHUB_STEP_SUMMARY

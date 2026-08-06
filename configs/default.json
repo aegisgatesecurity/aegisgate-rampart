@@ -1,0 +1,37 @@
+{
+  "proxy_port": 8080,
+  "daemon_mode": false,
+  "verbose": false,
+  "platform_url": "",
+  "models": {
+    "path": "/opt/aegisgate/models/threat-detection.onnx",
+    "threshold": 0.05,
+    "shadow": true
+  },
+  "targets": [
+    {"domain": "api.openai.com", "paths": ["/v1/chat/completions", "/v1/completions", "/v1/embeddings"], "description": "OpenAI API"},
+    {"domain": "chat.openai.com", "paths": ["/api/*"], "description": "ChatGPT Web"},
+    {"domain": "api.anthropic.com", "paths": ["/v1/messages", "/v1/complete"], "description": "Anthropic API"},
+    {"domain": "generativelanguage.googleapis.com", "paths": ["/v1/*"], "description": "Google Gemini API"},
+    {"domain": "api.copilot.microsoft.com", "paths": ["/v1/*"], "description": "Microsoft Copilot"},
+    {"domain": "api.perplexity.ai", "paths": ["/chat/completions"], "description": "Perplexity API"},
+    {"domain": "api.x.ai", "paths": ["/v1/chat/completions"], "description": "Grok API"},
+    {"domain": "codestral.mistral.ai", "paths": ["/v1/chat/completions", "/v1/fim/completions"], "description": "Mistral API"},
+    {"domain": "api.deepseek.com", "paths": ["/v1/chat/completions"], "description": "DeepSeek API"},
+    {"domain": "www.duck.ai", "paths": ["/api/*"], "description": "Duck.ai Web"}
+  ],
+  "privacy": {
+    "no_prompt_text": true,
+    "no_urls": true,
+    "no_page_content": true,
+    "no_pii": true,
+    "no_credentials": true,
+    "no_fingerprinting": true,
+    "no_cross_site": true,
+    "no_provider_meta": true,
+    "no_keystroke": true,
+    "no_mouse": true,
+    "no_session_ids": true,
+    "no_ip_addresses": true
+  }
+}

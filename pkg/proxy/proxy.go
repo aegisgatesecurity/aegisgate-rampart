@@ -185,6 +185,16 @@ func (p *Proxy) handleRequest(w http.ResponseWriter, r *http.Request) {
 	p.stats.TotalRequests++
 	p.mu.Unlock()
 
+	// API endpoints (for IDE extensions and monitoring)
+	if r.Method == http.MethodPost && r.URL.Path == "/detect" {
+		p.HandleDetectAPI(w, r)
+		return
+	}
+	if r.Method == http.MethodGet && r.URL.Path == "/stats" {
+		p.HandleStatsAPI(w, r)
+		return
+	}
+
 	// CONNECT method = HTTPS proxying
 	if r.Method == http.MethodConnect {
 		p.handleCONNECT(w, r)
@@ -525,6 +535,19 @@ func (p *Proxy) HandleDetectAPI(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, "detection failed", http.StatusInternalServerError)
 		return
+	}
+
+	// Update stats for /detect API calls
+	if result.TotalDetections > 0 {
+		p.mu.Lock()
+		p.stats.Detections++
+		if result.Blocked {
+			p.stats.BlockedRequests++
+		}
+		if result.MLScore > 0 {
+			p.stats.MLDetections++
+		}
+		p.mu.Unlock()
 	}
 
 	w.Header().Set("Content-Type", "application/json")

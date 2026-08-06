@@ -78,19 +78,49 @@ func DefaultConfig() *Config {
 	}
 }
 
-// DefaultTargets returns the AI API endpoints Rampart intercepts.
+// DefaultTargets returns the AI API endpoints and web surfaces Rampart intercepts.
+// Aligned with Lens v0.3.0 providers — covers the same 10 providers,
+// but Rampart intercepts BOTH API endpoints (for API clients) and
+// web surfaces (for desktop apps and browser traffic).
 func DefaultTargets() []TargetConfig {
 	return []TargetConfig{
-		{Domain: "api.openai.com", Paths: []string{"/v1/chat/completions", "/v1/completions", "/v1/embeddings"}, Description: "OpenAI API"},
+		// OpenAI / ChatGPT
+		{Domain: "api.openai.com", Paths: []string{"/v1/chat/completions", "/v1/completions", "/v1/embeddings", "/v1/audio/*", "/v1/images/*", "/v1/models"}, Description: "OpenAI API"},
 		{Domain: "chat.openai.com", Paths: []string{"/api/*"}, Description: "ChatGPT Web"},
+		{Domain: "chatgpt.com", Paths: []string{"/api/*"}, Description: "ChatGPT Web (alt)"},
+		// Anthropic / Claude
 		{Domain: "api.anthropic.com", Paths: []string{"/v1/messages", "/v1/complete"}, Description: "Anthropic API"},
+		{Domain: "claude.ai", Paths: []string{"/api/*"}, Description: "Claude Web"},
+		// Google Gemini
 		{Domain: "generativelanguage.googleapis.com", Paths: []string{"/v1/*"}, Description: "Google Gemini API"},
-		{Domain: "api.copilot.microsoft.com", Paths: []string{"/v1/*"}, Description: "Microsoft Copilot"},
+		{Domain: "gemini.google.com", Paths: []string{"/api/*"}, Description: "Gemini Web"},
+		// Microsoft Copilot
+		{Domain: "api.copilot.microsoft.com", Paths: []string{"/v1/*"}, Description: "Microsoft Copilot API"},
+		{Domain: "copilot.microsoft.com", Paths: []string{"/api/*"}, Description: "Copilot Web"},
+		{Domain: "copilot.cloud.microsoft", Paths: []string{"/api/*"}, Description: "Copilot Web (alt)"},
+		// Perplexity
 		{Domain: "api.perplexity.ai", Paths: []string{"/chat/completions"}, Description: "Perplexity API"},
+		{Domain: "perplexity.ai", Paths: []string{"/api/*"}, Description: "Perplexity Web"},
+		{Domain: "www.perplexity.ai", Paths: []string{"/api/*"}, Description: "Perplexity Web (alt)"},
+		// Grok
 		{Domain: "api.x.ai", Paths: []string{"/v1/chat/completions"}, Description: "Grok API"},
-		{Domain: "codestral.mistral.ai", Paths: []string{"/v1/chat/completions", "/v1/fim/completions"}, Description: "Mistral API"},
+		{Domain: "grok.com", Paths: []string{"/api/*"}, Description: "Grok Web"},
+		{Domain: "www.grok.com", Paths: []string{"/api/*"}, Description: "Grok Web (alt)"},
+		// Mistral
+		{Domain: "codestral.mistral.ai", Paths: []string{"/v1/chat/completions", "/v1/fim/completions"}, Description: "Mistral Codestral API"},
+		{Domain: "api.mistral.ai", Paths: []string{"/v1/chat/completions", "/v1/embeddings", "/v1/models"}, Description: "Mistral API"},
+		{Domain: "chat.mistral.ai", Paths: []string{"/api/*"}, Description: "Mistral Le Chat Web"},
+		{Domain: "le-chat.mistral.ai", Paths: []string{"/api/*"}, Description: "Mistral Le Chat Web (alt)"},
+		// DeepSeek
 		{Domain: "api.deepseek.com", Paths: []string{"/v1/chat/completions"}, Description: "DeepSeek API"},
-		{Domain: "www.duck.ai", Paths: []string{"/api/*"}, Description: "Duck.ai Web"},
+		{Domain: "chat.deepseek.com", Paths: []string{"/api/*"}, Description: "DeepSeek Web"},
+		// Duck.ai
+		{Domain: "api.duck.ai", Paths: []string{"/v1/chat/completions"}, Description: "Duck.ai API"},
+		{Domain: "duck.ai", Paths: []string{"/api/*"}, Description: "Duck.ai Web"},
+		{Domain: "www.duck.ai", Paths: []string{"/api/*"}, Description: "Duck.ai Web (alt)"},
+		// Meta AI
+		{Domain: "meta.ai", Paths: []string{"/api/*"}, Description: "Meta AI Web"},
+		{Domain: "www.meta.ai", Paths: []string{"/api/*"}, Description: "Meta AI Web (alt)"},
 	}
 }
 

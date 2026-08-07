@@ -4,6 +4,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -106,9 +107,10 @@ func TestGetConfigDir_Environment(t *testing.T) {
 	if dir == "" {
 		t.Error("getConfigDir returned empty string")
 	}
-	// Should end with aegisgate-rampart
-	if filepath.Base(dir) != "aegisgate-rampart" {
-		t.Errorf("getConfigDir base = %q, want 'aegisgate-rampart'", filepath.Base(dir))
+	// Should contain aegisgate (case-insensitive for Windows: "AegisGate Rampart")
+	base := filepath.Base(dir)
+	if !strings.Contains(strings.ToLower(base), "aegisgate") {
+		t.Errorf("getConfigDir base = %q, should contain 'aegisgate'", base)
 	}
 }
 

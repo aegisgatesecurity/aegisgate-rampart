@@ -305,9 +305,9 @@ func TestNotifyLinux_WithIcon(t *testing.T) {
 	t.Logf("notifyLinux with icon: %v", err)
 }
 
-// TestNotifyDarwin_Escaping tests that osascript handles special characters.
+// TestNotifyDarwin_Escaping_Coverage tests that osascript handles special characters.
 // Requires RAMPART_INTEGRATION=1 to avoid firing real desktop notifications.
-func TestNotifyDarwin_Escaping(t *testing.T) {
+func TestNotifyDarwin_Escaping_Coverage(t *testing.T) {
 	if runtime.GOOS != "darwin" {
 		t.Skip("macOS-specific test")
 	}

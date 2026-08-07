@@ -5,6 +5,23 @@ All notable changes to AegisGate Rampart are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.2.1] - 2026-08-07
+
+### Added — P0: Audit Log & Platform Forwarding
+
+- Local audit log (`internal/auditlog`): JSONL persistence of detection events
+  - Writes to `~/.local/share/aegisgate-rampart/audit.log` (Linux), `~/Library/Application Support/aegisgate-rampart/audit.log` (macOS), `%AppData%\AegisGate Rampart\audit.log` (Windows)
+  - Size-based rotation (10 MB default) with timestamped backups
+  - Fsync after every write for durability
+  - **No prompt text, no PII values, no credentials** — only metadata (category, rule, severity, host, path)
+- Platform forwarding (`internal/platformforward`): push detection metadata to AegisGate Platform
+  - Opt-in via `platform_url` config field (empty = disabled, air-gap compatible)
+  - Async HTTP POST with 5s timeout
+  - **Same privacy guarantee**: only metadata forwarded, never prompt text or PII values
+  - Non-blocking on error (connection refused, server error → log and continue)
+- Proxy integration: every detection now writes to audit log AND forwards to Platform (if configured)
+- Audit log closed on graceful shutdown
+
 ## [0.2.0] - 2026-08-07
 
 ### Added — Phase 4: Production Hardening

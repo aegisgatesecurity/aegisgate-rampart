@@ -36,9 +36,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/aegisgatesecurity/aegisgate-rampart/internal/auditlog"
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/certificate"
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/certinit"
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/platform"
+	"github.com/aegisgatesecurity/aegisgate-rampart/internal/platformforward"
 	"github.com/aegisgatesecurity/aegisgate-rampart/pkg/config"
 	"github.com/aegisgatesecurity/aegisgate-rampart/pkg/detector"
 	"golang.org/x/time/rate"
@@ -60,6 +62,12 @@ type Proxy struct {
 
 	// Rate limiting
 	rateLimiter *rate.Limiter
+
+	// Audit logging
+	auditLog *auditlog.Logger
+
+	// Platform forwarding
+	forwarder *platformforward.Forwarder
 }
 
 // ProxyStats tracks interception statistics.
@@ -125,6 +133,17 @@ func New(cfg *config.Config) (*Proxy, error) {
 		log.Printf("rampart: warning: could not generate in-memory CA: %v", err)
 	}
 
+	// Initialize audit logger (best-effort, don't fail if audit log can't be created)
+	auditLog, err := auditlog.New()
+	if err != nil {
+		log.Printf("rampart: warning: audit log disabled: %v", err)
+		// Continue without audit logging — detection still works
+	}
+	p.auditLog = auditLog
+
+	// Initialize platform forwarder (opt-in, requires platform_url in config)
+	p.forwarder = platformforward.New(cfg.PlatformURL)
+
 	return p, nil
 }
 
@@ -178,6 +197,12 @@ func (p *Proxy) Start(ctx context.Context) error {
 
 // Shutdown gracefully stops the proxy, draining in-flight connections.
 func (p *Proxy) Shutdown() {
+	// Close audit log first (flush pending entries)
+	if p.auditLog != nil {
+		if err := p.auditLog.Close(); err != nil {
+			log.Printf("rampart: audit log close: %v", err)
+		}
+	}
 	if p.server != nil {
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), p.shutdownTimeout)
 		defer cancel()
@@ -208,6 +233,75 @@ func (p *Proxy) ReloadConfig(cfg *config.Config) {
 	}
 
 	log.Printf("rampart: configuration reloaded — %d target domains", len(cfg.Targets))
+}
+
+// auditLogEntry writes a detection event to the audit log.
+// Only metadata is stored — no prompt text, no PII values, no credentials.
+func (p *Proxy) auditLogEntry(direction, host, path string, result *detector.Summary) {
+	if p.auditLog == nil {
+		return
+	}
+
+	categories := make([]string, 0, len(result.Results))
+	severities := make([]string, 0, len(result.Results))
+	rules := make([]string, 0, len(result.Results))
+	for _, r := range result.Results {
+		categories = append(categories, r.Category)
+		severities = append(severities, r.Severity)
+		rules = append(rules, r.Rule)
+	}
+
+	entry := auditlog.Entry{
+		Direction:     direction,
+		Host:          host,
+		Path:          path,
+		TotalDets:     result.TotalDetections,
+		Blocked:       result.Blocked,
+		PIICategories: result.PIICategories,
+		SecretTypes:   result.SecretTypes,
+		MLScore:       result.MLScore,
+		Categories:    categories,
+		Severities:    severities,
+		Rules:         rules,
+	}
+
+	if err := p.auditLog.Log(entry); err != nil {
+		log.Printf("rampart: audit log write failed: %v", err)
+	}
+}
+
+// forwardEntry sends detection metadata to AegisGate Platform.
+// Only metadata is sent — never prompt text, PII values, or credentials.
+// Forwarding is opt-in (requires platform_url in config).
+func (p *Proxy) forwardEntry(direction, host, path string, result *detector.Summary) {
+	if p.forwarder == nil || !p.forwarder.Enabled() {
+		return
+	}
+
+	categories := make([]string, 0, len(result.Results))
+	severities := make([]string, 0, len(result.Results))
+	rules := make([]string, 0, len(result.Results))
+	for _, r := range result.Results {
+		categories = append(categories, r.Category)
+		severities = append(severities, r.Severity)
+		rules = append(rules, r.Rule)
+	}
+
+	entry := auditlog.Entry{
+		Direction:     direction,
+		Host:          host,
+		Path:          path,
+		TotalDets:     result.TotalDetections,
+		Blocked:       result.Blocked,
+		PIICategories: result.PIICategories,
+		SecretTypes:   result.SecretTypes,
+		MLScore:       result.MLScore,
+		Categories:    categories,
+		Severities:    severities,
+		Rules:         rules,
+	}
+
+	p.forwarder.Forward(entry)
 }
 
 // handleRequest is the main HTTP/HTTPS proxy handler.
@@ -520,6 +614,12 @@ func (p *Proxy) scanAndAlert(direction, host, path string, body []byte) {
 		// Foreground mode: print to terminal
 		p.printDetection(direction, host, path, result)
 	}
+
+	// Write to audit log (best-effort, metadata only, no prompt text)
+	p.auditLogEntry(direction, host, path, result)
+
+	// Forward to Platform (opt-in, metadata only, async)
+	p.forwardEntry(direction, host, path, result)
 }
 
 // ANSI color codes for terminal output.

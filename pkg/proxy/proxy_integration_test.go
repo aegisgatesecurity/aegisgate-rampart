@@ -53,18 +53,18 @@ func makeTestConfig(port int) *config.Config {
 		Verbose:    true,
 		Targets:    config.DefaultTargets(),
 		Privacy: config.PrivacyConfig{
-			NoPromptText:    true,
-			NoURLs:          true,
-			NoPageContent:   true,
-			NoPII:           true,
-			NoCredentials:   true,
+			NoPromptText:     true,
+			NoURLs:           true,
+			NoPageContent:    true,
+			NoPII:            true,
+			NoCredentials:    true,
 			NoFingerprinting: true,
-			NoCrossSite:     true,
-			NoProviderMeta:  true,
-			NoKeystroke:     true,
-			NoMouse:         true,
-			NoSessionIDs:    true,
-			NoIPAddresses:   true,
+			NoCrossSite:      true,
+			NoProviderMeta:   true,
+			NoKeystroke:      true,
+			NoMouse:          true,
+			NoSessionIDs:     true,
+			NoIPAddresses:    true,
 		},
 	}
 }
@@ -149,11 +149,11 @@ func TestDetectAPIEndpoint(t *testing.T) {
 	}
 
 	testCases := []struct {
-		name           string
-		text           string
-		expectPII      bool
-		expectSecrets  bool
-		minDetections  int
+		name          string
+		text          string
+		expectPII     bool
+		expectSecrets bool
+		minDetections int
 	}{
 		{
 			name:          "SSN detection",
@@ -242,9 +242,9 @@ func TestDetectAPIHTTPServer(t *testing.T) {
 
 	// Test /detect endpoint
 	testCases := []struct {
-		name           string
-		payload        string
-		minDetections  int
+		name          string
+		payload       string
+		minDetections int
 	}{
 		{
 			name:          "PII in request",
@@ -578,7 +578,7 @@ func TestFullProxyRoundTrip(t *testing.T) {
 	})
 
 	// Clean up
-	_ = caKey // used by test CA
+	_ = caKey  // used by test CA
 	_ = caCert // used by test CA pool
 }
 

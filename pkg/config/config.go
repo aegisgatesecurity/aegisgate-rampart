@@ -9,13 +9,13 @@ import (
 
 // Config holds all Rampart configuration.
 type Config struct {
-	ProxyPort   int               `json:"proxy_port"`
-	DaemonMode  bool              `json:"daemon_mode"`
-	Verbose     bool              `json:"verbose"`
-	PlatformURL string            `json:"platform_url"`
-	Targets     []TargetConfig    `json:"targets"`
-	Models      ModelConfig       `json:"models"`
-	Privacy     PrivacyConfig     `json:"privacy"`
+	ProxyPort   int            `json:"proxy_port"`
+	DaemonMode  bool           `json:"daemon_mode"`
+	Verbose     bool           `json:"verbose"`
+	PlatformURL string         `json:"platform_url"`
+	Targets     []TargetConfig `json:"targets"`
+	Models      ModelConfig    `json:"models"`
+	Privacy     PrivacyConfig  `json:"privacy"`
 }
 
 // TargetConfig defines an AI API endpoint to intercept.
@@ -27,25 +27,25 @@ type TargetConfig struct {
 
 // ModelConfig defines the ML model configuration.
 type ModelConfig struct {
-	Path       string  `json:"path"`
+	Path      string  `json:"path"`
 	Threshold float64 `json:"threshold"`
-	Shadow     bool    `json:"shadow"`
+	Shadow    bool    `json:"shadow"`
 }
 
 // PrivacyConfig enforces the 12 non-negotiables.
 type PrivacyConfig struct {
-	NoPromptText    bool `json:"no_prompt_text"`
-	NoURLs          bool `json:"no_urls"`
-	NoPageContent   bool `json:"no_page_content"`
-	NoPII           bool `json:"no_pii"`
-	NoCredentials   bool `json:"no_credentials"`
+	NoPromptText     bool `json:"no_prompt_text"`
+	NoURLs           bool `json:"no_urls"`
+	NoPageContent    bool `json:"no_page_content"`
+	NoPII            bool `json:"no_pii"`
+	NoCredentials    bool `json:"no_credentials"`
 	NoFingerprinting bool `json:"no_fingerprinting"`
-	NoCrossSite     bool `json:"no_cross_site"`
-	NoProviderMeta  bool `json:"no_provider_meta"`
-	NoKeystroke     bool `json:"no_keystroke"`
-	NoMouse         bool `json:"no_mouse"`
-	NoSessionIDs    bool `json:"no_session_ids"`
-	NoIPAddresses   bool `json:"no_ip_addresses"`
+	NoCrossSite      bool `json:"no_cross_site"`
+	NoProviderMeta   bool `json:"no_provider_meta"`
+	NoKeystroke      bool `json:"no_keystroke"`
+	NoMouse          bool `json:"no_mouse"`
+	NoSessionIDs     bool `json:"no_session_ids"`
+	NoIPAddresses    bool `json:"no_ip_addresses"`
 }
 
 // DefaultConfig returns the production default configuration.
@@ -55,25 +55,25 @@ func DefaultConfig() *Config {
 		DaemonMode:  false,
 		Verbose:     false,
 		PlatformURL: "",
-		Targets: DefaultTargets(),
+		Targets:     DefaultTargets(),
 		Models: ModelConfig{
-			Path:       "/opt/aegisgate/models/threat-detection.onnx",
-			Threshold:  0.05,
-			Shadow:     true,
+			Path:      "/opt/aegisgate/models/threat-detection.onnx",
+			Threshold: 0.05,
+			Shadow:    true,
 		},
 		Privacy: PrivacyConfig{
-			NoPromptText:    true,
-			NoURLs:          true,
-			NoPageContent:   true,
-			NoPII:           true,
-			NoCredentials:   true,
+			NoPromptText:     true,
+			NoURLs:           true,
+			NoPageContent:    true,
+			NoPII:            true,
+			NoCredentials:    true,
 			NoFingerprinting: true,
-			NoCrossSite:     true,
-			NoProviderMeta:  true,
-			NoKeystroke:     true,
-			NoMouse:         true,
-			NoSessionIDs:    true,
-			NoIPAddresses:   true,
+			NoCrossSite:      true,
+			NoProviderMeta:   true,
+			NoKeystroke:      true,
+			NoMouse:          true,
+			NoSessionIDs:     true,
+			NoIPAddresses:    true,
 		},
 	}
 }

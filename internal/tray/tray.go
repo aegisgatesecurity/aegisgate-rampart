@@ -19,6 +19,7 @@ package tray
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
 	"log"
 	"os"
@@ -26,20 +27,23 @@ import (
 	"fyne.io/systray"
 )
 
+//go:embed rampart-shield-16.png
+var defaultIconData []byte
+
 // Tray represents the system tray interface.
 type Tray struct {
-	port     int
-	targets  int
-	ctx      context.Context
-	cancel   context.CancelFunc
+	port    int
+	targets int
+	ctx     context.Context
+	cancel  context.CancelFunc
 
 	// Menu items
-	mStatus    *systray.MenuItem
+	mStatus     *systray.MenuItem
 	mDetections *systray.MenuItem
-	mStart     *systray.MenuItem
-	mStop      *systray.MenuItem
-	mRestart   *systray.MenuItem
-	mQuit      *systray.MenuItem
+	mStart      *systray.MenuItem
+	mStop       *systray.MenuItem
+	mRestart    *systray.MenuItem
+	mQuit       *systray.MenuItem
 
 	// State
 	detectionCount int64
@@ -177,23 +181,10 @@ func SetIconFromBytes(data []byte) {
 	systray.SetIcon(data)
 }
 
-// GetDefaultIconBytes returns a simple 16x16 shield icon as PNG bytes.
+// GetDefaultIconBytes returns a proper 16x16 green shield icon as PNG bytes.
 // This avoids needing external icon files for initial startup.
 func GetDefaultIconBytes() []byte {
-	// Minimal 16x16 green shield PNG (embedded for zero-config)
-	return []byte{
-		0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
-		0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
-		0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x10,
-		0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xCA,
-		0x49, 0x00, 0x00, 0x00, 0x49, 0x49, 0x44, 0x41,
-		0x54, 0x28, 0x91, 0x63, 0x60, 0xF8, 0xCF, 0xC0,
-		0x00, 0x00, 0x00, 0x06, 0x10, 0x10, 0x10, 0x10,
-		0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0xF0, 0x3F,
-		0x60, 0x62, 0x00, 0x00, 0x78, 0x30, 0xE4, 0xD2,
-		0x20, 0x0D, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45,
-		0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
-	}
+	return defaultIconData
 }
 
 // EnsureRunning is a no-op placeholder for build systems

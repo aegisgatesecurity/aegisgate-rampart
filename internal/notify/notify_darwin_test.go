@@ -4,16 +4,26 @@
 package notify
 
 import (
+	"os"
 	"testing"
 )
 
+func skipUnlessIntegration(t *testing.T) {
+	t.Helper()
+	if os.Getenv("RAMPART_INTEGRATION") != "1" {
+		t.Skip("Skipping integration test (set RAMPART_INTEGRATION=1 to run desktop notifications)")
+	}
+}
+
 func TestNotifyDarwin_Send(t *testing.T) {
+	skipUnlessIntegration(t)
 	n := New("")
 	err := n.Send(Notification{Title: "Test", Body: "Darwin notification"})
 	t.Logf("notifyDarwin: %v", err)
 }
 
 func TestNotifyDarwin_Escaping(t *testing.T) {
+	skipUnlessIntegration(t)
 	n := New("")
 	err := n.notifyDarwin(Notification{
 		Title: `Test "with" quotes`,

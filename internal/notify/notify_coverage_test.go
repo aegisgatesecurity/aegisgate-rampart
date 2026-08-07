@@ -141,7 +141,14 @@ func TestResolveIcon_PerNotificationOverridesDefault(t *testing.T) {
 }
 
 // TestSend_WithPerNotificationIcon tests Send with a per-notification icon.
+// Uses a non-existent PATH to prevent real desktop notifications while
+// still exercising the full Send code path including resolveIcon.
 func TestSend_WithPerNotificationIcon(t *testing.T) {
+	// Prevent notify-send from being found to avoid popups
+	origPath := os.Getenv("PATH")
+	t.Setenv("PATH", "/nonexistent/bin")
+	defer t.Setenv("PATH", origPath)
+
 	tmpDir := t.TempDir()
 	iconFile := filepath.Join(tmpDir, "test-icon.png")
 	if err := os.WriteFile(iconFile, []byte("fake png"), 0644); err != nil {
@@ -149,37 +156,67 @@ func TestSend_WithPerNotificationIcon(t *testing.T) {
 	}
 
 	n := New("")
+	n.Enable()
 	err := n.Send(Notification{
 		Title: "Test with Icon",
 		Body:  "Testing icon resolution",
 		Icon:  iconFile,
 	})
-	// May fail in headless CI, but should not panic
+	// Expected to fail because PATH doesn't include notify-send
 	t.Logf("Send with per-notification icon: %v", err)
 }
 
 // TestSendDetection_EmptyHost tests SendDetection with empty host.
+// Notifier is disabled to avoid firing real desktop notifications during tests.
 func TestSendDetection_EmptyHost(t *testing.T) {
 	n := New("")
+	n.Disable()
 	_ = n.SendDetection("", 0, nil)
 }
 
 // TestSendDetection_MultipleCategories tests SendDetection with many categories.
+// Notifier is disabled to avoid firing real desktop notifications during tests.
 func TestSendDetection_MultipleCategories(t *testing.T) {
 	n := New("")
+	n.Disable()
 	_ = n.SendDetection("api.openai.com", 5, []string{"pii-us-core", "secret", "compliance", "xss"})
 }
 
 // TestSendBlocked_WithReason tests SendBlocked with a reason string.
+// Notifier is disabled to avoid firing real desktop notifications during tests.
 func TestSendBlocked_WithReason(t *testing.T) {
 	n := New("")
+	n.Disable()
 	_ = n.SendBlocked("api.openai.com", "SSN detected in request body")
 }
 
 // TestSendStartup_CustomPort tests SendStartup with a custom port.
+// Notifier is disabled to avoid firing real desktop notifications during tests.
 func TestSendStartup_CustomPort(t *testing.T) {
 	n := New("")
+	n.Disable()
 	_ = n.SendStartup(9090, 27)
+}
+
+// TestSend_EnabledDispatch tests that Send() dispatches to the correct platform
+// function when enabled. Uses a non-existent PATH to prevent real notifications.
+func TestSend_EnabledDispatch(t *testing.T) {
+	// Temporarily ensure notify-send is not found to prevent popups
+	origPath := os.Getenv("PATH")
+	t.Setenv("PATH", "/nonexistent/bin")
+	defer t.Setenv("PATH", origPath)
+
+	n := New("")
+	n.Disable() // Start disabled so ensureDefaultIcon doesn't write to disk during New()
+
+	// Test Send with enabled notifier - will fail because notify-send isn't found,
+	// but exercises the platform dispatch path
+	n.Enable()
+	err := n.Send(Notification{Title: "Test", Body: "Dispatch test"})
+	// On Linux, this should fail because PATH doesn't include notify-send
+	if err != nil {
+		t.Logf("Expected: notify-send not found: %v", err)
+	}
 }
 
 // TestNotifier_EnableDisableCycle tests toggling enable/disable multiple times.
@@ -269,9 +306,13 @@ func TestNotifyLinux_WithIcon(t *testing.T) {
 }
 
 // TestNotifyDarwin_Escaping tests that osascript handles special characters.
+// Requires RAMPART_INTEGRATION=1 to avoid firing real desktop notifications.
 func TestNotifyDarwin_Escaping(t *testing.T) {
 	if runtime.GOOS != "darwin" {
 		t.Skip("macOS-specific test")
+	}
+	if os.Getenv("RAMPART_INTEGRATION") != "1" {
+		t.Skip("Skipping integration test (set RAMPART_INTEGRATION=1 to run desktop notifications)")
 	}
 
 	n := New("")

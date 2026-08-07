@@ -5,6 +5,24 @@ All notable changes to AegisGate Rampart are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.2.0] - 2026-08-07
+
+### Added — Phase 4: Production Hardening
+
+- Graceful shutdown with connection draining (15s timeout via `http.Server.Shutdown`)
+- Rate limiting on `/detect` and `/stats` API endpoints (30 req/s burst, 429 on exceed)
+- Configuration hot-reload on SIGHUP (Unix) — reloads `config.json` without restart
+- `ReloadConfig()` method on Proxy for live target updates
+- `ConfigPath()` helper in config package for reload file watching
+- `reloadSignal()` platform abstraction (SIGHUP on Unix, nil on Windows)
+- Security audit: verified no prompt text in `log.Printf` output — only category/rule names
+- Security audit: `ProxyStats` contains only counts, no sensitive data
+- Security tests: `TestSecurityAudit_NoPromptTextInLogs`, `TestSecurityAudit_RateLimitPreventsAbuse`, `TestSecurityAudit_NoDataRetention`
+- Rate limit tests: method not allowed, 429 response, concurrent burst behavior
+- Graceful shutdown test: context cancellation + drain verification
+- Config reload test: target domain addition/removal verification
+- Signal tests for SIGHUP (Unix) and nil reload (Windows)
+
 ## [0.1.0] - 2026-08-07
 
 ### Added

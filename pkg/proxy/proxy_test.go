@@ -1,6 +1,9 @@
 package proxy
 
 import (
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/aegisgatesecurity/aegisgate-rampart/pkg/config"
@@ -128,6 +131,91 @@ func TestNotifyDesktop(t *testing.T) {
 	p.notifyDesktop("request", "api.openai.com", summary)
 }
 
+func TestSeverityColorAndEmoji(t *testing.T) {
+	tests := []struct {
+		severity  string
+		wantColor string
+		wantEmoji string
+	}{
+		{"critical", colorRed, "🔴"},
+		{"high", colorRed, "🔴"},
+		{"medium", colorYellow, "🟡"},
+		{"low", colorGreen, "🟢"},
+		{"unknown", colorCyan, "⚪"},
+		{"", colorCyan, "⚪"},
+	}
+
+	for _, tt := range tests {
+		gotColor, gotEmoji := severityColorAndEmoji(tt.severity)
+		if gotColor != tt.wantColor {
+			t.Errorf("severityColorAndEmoji(%q) color = %q, want %q", tt.severity, gotColor, tt.wantColor)
+		}
+		if gotEmoji != tt.wantEmoji {
+			t.Errorf("severityColorAndEmoji(%q) emoji = %q, want %q", tt.severity, gotEmoji, tt.wantEmoji)
+		}
+	}
+}
+
+func TestBoolColor(t *testing.T) {
+	if boolColor(true) != colorRed {
+		t.Errorf("boolColor(true) = %q, want %q", boolColor(true), colorRed)
+	}
+	if boolColor(false) != colorGreen {
+		t.Errorf("boolColor(false) = %q, want %q", boolColor(false), colorGreen)
+	}
+}
+
+func TestPrintDetectionForeground(t *testing.T) {
+	cfg := config.DefaultConfig()
+	p, err := New(cfg)
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+
+	// Test with a summary that has detections
+	summary := &detector.Summary{
+		TotalDetections: 3,
+		Blocked:         true,
+		Results: []detector.Result{
+			{Category: "pii", Severity: "high", Text: "SSN detected", Rule: "pii_us_ssn"},
+			{Category: "secrets", Severity: "critical", Text: "AWS key detected", Rule: "aws_access_key"},
+			{Category: "compliance", Severity: "low", Text: "GDPR mention", Rule: "gdpr_reference"},
+		},
+		PIICategories: []string{"pii_us_ssn"},
+		SecretTypes:   []string{"aws_access_key"},
+	}
+
+	// printDetection should not panic
+	p.printDetection("request", "api.openai.com", "/v1/chat/completions", summary)
+
+	// Test with empty summary (no detections)
+	emptySummary := &detector.Summary{
+		TotalDetections: 0,
+		Blocked:         false,
+		Results:         []detector.Result{},
+	}
+	p.printDetection("response", "claude.ai", "/api/conversation", emptySummary)
+}
+
+func TestPrintDetectionWithMLScore(t *testing.T) {
+	cfg := config.DefaultConfig()
+	p, err := New(cfg)
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+
+	summary := &detector.Summary{
+		TotalDetections: 1,
+		Blocked:         false,
+		MLScore:         0.85,
+		Results: []detector.Result{
+			{Category: "ml_threat", Severity: "high", Text: "adversarial prompt", Rule: "char_cnn_bilstm", MLScore: 0.85},
+		},
+	}
+
+	p.printDetection("response", "api.anthropic.com", "/v1/messages", summary)
+}
+
 func TestAll27TargetDomainsPresent(t *testing.T) {
 	cfg := config.DefaultConfig()
 	p, err := New(cfg)
@@ -152,5 +240,274 @@ func TestAll27TargetDomainsPresent(t *testing.T) {
 		if !p.isTargetDomain(domain) {
 			t.Errorf("Expected target domain %s not found", domain)
 		}
+	}
+}
+
+func TestScanAndAlertWithDetection(t *testing.T) {
+	cfg := config.DefaultConfig()
+	p, err := New(cfg)
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+
+	before := p.GetStats()
+
+	// Text containing an SSN should trigger detection
+	p.scanAndAlert("request", "api.openai.com", "/v1/chat/completions", []byte("My SSN is 123-45-6789"))
+
+	after := p.GetStats()
+	if after.Detections <= before.Detections {
+		t.Errorf("Expected Detections to increase, before=%d after=%d", before.Detections, after.Detections)
+	}
+}
+
+func TestScanAndAlertCleanText(t *testing.T) {
+	cfg := config.DefaultConfig()
+	p, err := New(cfg)
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+
+	before := p.GetStats()
+
+	// Clean text should not trigger detection
+	p.scanAndAlert("response", "api.openai.com", "/v1/chat/completions", []byte("The weather is nice today."))
+
+	after := p.GetStats()
+	if after.Detections != before.Detections {
+		t.Errorf("Clean text should not increase detections, before=%d after=%d", before.Detections, after.Detections)
+	}
+}
+
+func TestScanAndAlertEmptyBody(t *testing.T) {
+	cfg := config.DefaultConfig()
+	p, err := New(cfg)
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+
+	before := p.GetStats()
+	p.scanAndAlert("response", "api.openai.com", "/v1/chat/completions", []byte(""))
+
+	after := p.GetStats()
+	if after.Detections != before.Detections {
+		t.Errorf("Empty body should not increase detections, before=%d after=%d", before.Detections, after.Detections)
+	}
+}
+
+func TestPrintDetectionBlocked(t *testing.T) {
+	cfg := config.DefaultConfig()
+	p, err := New(cfg)
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+
+	summary := &detector.Summary{
+		TotalDetections: 1,
+		Blocked:         true,
+		BlockReason:     "pii_detected",
+		Results: []detector.Result{
+			{Category: "pii", Severity: "critical", Text: "SSN detected", Rule: "pii_us_ssn"},
+		},
+	}
+	// Should not panic
+	p.printDetection("request", "api.openai.com", "/v1/chat/completions", summary)
+}
+
+func TestPrintDetectionMinimal(t *testing.T) {
+	cfg := config.DefaultConfig()
+	p, err := New(cfg)
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+
+	// Minimal summary with no optional fields
+	summary := &detector.Summary{
+		TotalDetections: 1,
+		Blocked:         false,
+		Results: []detector.Result{
+			{Category: "compliance", Severity: "low", Text: "GDPR mention"},
+		},
+	}
+	p.printDetection("response", "claude.ai", "", summary)
+}
+
+func TestNotifyDesktopWithResults(t *testing.T) {
+	cfg := config.DefaultConfig()
+	p, err := New(cfg)
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+
+	summary := &detector.Summary{
+		TotalDetections: 2,
+		Blocked:         false,
+		Results: []detector.Result{
+			{Category: "pii", Severity: "medium", Text: "email detected"},
+			{Category: "secrets", Severity: "high", Text: "AWS key detected"},
+		},
+	}
+	// Should not panic — daemon mode notification
+	p.notifyDesktop("request", "api.openai.com", summary)
+}
+
+func TestColorConstants(t *testing.T) {
+	// Verify color constants are defined and non-empty
+	colors := []string{colorReset, colorRed, colorYellow, colorGreen, colorCyan, colorBold, colorDim}
+	for i, c := range colors {
+		if c == "" {
+			t.Errorf("Color constant at index %d is empty", i)
+		}
+	}
+}
+
+func TestIsTargetDomainEmptyHost(t *testing.T) {
+	cfg := config.DefaultConfig()
+	p, err := New(cfg)
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+
+	if p.isTargetDomain("") {
+		t.Error("Empty host should not be a target domain")
+	}
+}
+
+func TestIsTargetDomainSubdomain(t *testing.T) {
+	cfg := config.DefaultConfig()
+	p, err := New(cfg)
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+
+	// api.openai.com should match openai.com target
+	if !p.isTargetDomain("api.openai.com") {
+		t.Error("api.openai.com should match openai.com target")
+	}
+
+	// v1.api.openai.com should also match
+	if !p.isTargetDomain("v1.api.openai.com") {
+		t.Error("v1.api.openai.com should match openai.com target")
+	}
+
+	// Subdomain of non-target should not match
+	if p.isTargetDomain("api.example.com") {
+		t.Error("api.example.com should not match any target")
+	}
+}
+
+func TestHandleHTTPWithTargetDomain(t *testing.T) {
+	cfg := config.DefaultConfig()
+	p, err := New(cfg)
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+
+	// Start a backend server that returns a response
+	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("Hello from AI API"))
+	}))
+	defer backend.Close()
+
+	// Extract host from backend URL
+	backendURL := backend.URL
+	req := httptest.NewRequest(http.MethodGet, backendURL, nil)
+
+	w := httptest.NewRecorder()
+	p.handleHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("handleHTTP status = %d, want %d", w.Code, http.StatusOK)
+	}
+}
+
+func TestHandleHTTPWithNonTargetDomain(t *testing.T) {
+	cfg := config.DefaultConfig()
+	p, err := New(cfg)
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+
+	// Start a backend server
+	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("OK"))
+	}))
+	defer backend.Close()
+
+	req := httptest.NewRequest(http.MethodGet, backend.URL, nil)
+	w := httptest.NewRecorder()
+
+	p.handleHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("handleHTTP status = %d, want %d", w.Code, http.StatusOK)
+	}
+}
+
+func TestHandleRequestRoutes(t *testing.T) {
+	cfg := config.DefaultConfig()
+	p, err := New(cfg)
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+
+	// Test /detect route
+	body := `{"text": "Hello"}`
+	req := httptest.NewRequest(http.MethodPost, "/detect", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	p.handleRequest(w, req)
+	if w.Code != http.StatusOK {
+		t.Errorf("/detect route: expected 200, got %d", w.Code)
+	}
+
+	// Test /stats route
+	req = httptest.NewRequest(http.MethodGet, "/stats", nil)
+	w = httptest.NewRecorder()
+	p.handleRequest(w, req)
+	if w.Code != http.StatusOK {
+		t.Errorf("/stats route: expected 200, got %d", w.Code)
+	}
+}
+
+func TestScanAndAlertMultipleTypes(t *testing.T) {
+	cfg := config.DefaultConfig()
+	p, err := New(cfg)
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+
+	// Text with multiple detection types: PII + secrets
+	text := "SSN: 263-78-1234 and AWS key: AKIAIOSFODNN7EXAMPLE"
+	p.scanAndAlert("request", "api.openai.com", "/v1/chat/completions", []byte(text))
+
+	stats := p.GetStats()
+	if stats.Detections < 1 {
+		t.Errorf("Expected at least 1 detection, got %d", stats.Detections)
+	}
+}
+
+func TestScanAndAlertXSS(t *testing.T) {
+	cfg := config.DefaultConfig()
+	p, err := New(cfg)
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+
+	xssPayload := `<script>alert("xss")</script>`
+	p.scanAndAlert("response", "api.anthropic.com", "/v1/messages", []byte(xssPayload))
+
+	stats := p.GetStats()
+	if stats.Detections < 1 {
+		t.Errorf("Expected XSS detection, got %d detections", stats.Detections)
+	}
+}
+
+func TestProxyDefaultPort(t *testing.T) {
+	cfg := config.DefaultConfig()
+	if cfg.ProxyPort != 8080 {
+		t.Errorf("Default proxy port = %d, want 8080", cfg.ProxyPort)
 	}
 }

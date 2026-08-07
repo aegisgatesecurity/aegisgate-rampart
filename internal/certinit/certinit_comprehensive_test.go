@@ -644,7 +644,7 @@ func TestCheckExistingCertsExpiredCACert(t *testing.T) {
 		CACertFile:   "ca.crt",
 		CAKeyFile:    "ca.key",
 	}
-	_ = EnsureCerts(cfg) /* #nosec */ 
+	_, _ = EnsureCerts(cfg) /* #nosec */ 
 
 	// Overwrite CA cert with invalid PEM
 	caCertPath := filepath.Join(cfg.CertDir, cfg.CACertFile)
@@ -697,7 +697,7 @@ func TestValidateCertsInvalidServerKey(t *testing.T) {
 		CACertFile:   "ca.crt",
 		CAKeyFile:    "ca.key",
 	}
-	_ = EnsureCerts(cfg) /* #nosec */ 
+	_, _ = EnsureCerts(cfg) /* #nosec */ 
 
 	// Overwrite server key with invalid data
 	serverKeyPath := filepath.Join(cfg.CertDir, cfg.KeyFile)
@@ -725,7 +725,7 @@ func TestValidateCertsInvalidCAKey(t *testing.T) {
 		CACertFile:   "ca.crt",
 		CAKeyFile:    "ca.key",
 	}
-	_ = EnsureCerts(cfg) /* #nosec */ 
+	_, _ = EnsureCerts(cfg) /* #nosec */ 
 
 	// Overwrite CA key with invalid data
 	caKeyPath := filepath.Join(cfg.CertDir, cfg.CAKeyFile)

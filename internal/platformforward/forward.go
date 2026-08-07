@@ -24,7 +24,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"sync"
 	"time"
 
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/auditlog"
@@ -34,7 +33,6 @@ import (
 type Forwarder struct {
 	url     string
 	client  *http.Client
-	mu      sync.Mutex
 	enabled bool
 
 	// For testing

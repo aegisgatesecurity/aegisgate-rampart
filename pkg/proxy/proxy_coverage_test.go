@@ -23,7 +23,7 @@ func TestHandleHTTP_NonTargetHost(t *testing.T) {
 	// Start a simple HTTP server to forward to
 	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("Hello from backend"))
+		_, _ = w.Write([]byte("Hello from backend"))
 	}))
 	defer backend.Close()
 
@@ -51,7 +51,7 @@ func TestHandleHTTP_TargetHostWithBody(t *testing.T) {
 	// Start a backend server for api.openai.com
 	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("AI response"))
+		_, _ = w.Write([]byte("AI response"))
 	}))
 	defer backend.Close()
 
@@ -258,7 +258,7 @@ func TestHandleDetectAPI_XSSDetection(t *testing.T) {
 	p.HandleDetectAPI(w, req)
 
 	var result map[string]interface{}
-	json.Unmarshal(w.Body.Bytes(), &result)
+	_ = json.Unmarshal(w.Body.Bytes(), &result)
 
 	if result["total_detections"].(float64) < 1 {
 		t.Error("XSS content should be detected")

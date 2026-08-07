@@ -126,6 +126,11 @@ func DefaultTargets() []TargetConfig {
 	}
 }
 
+// ConfigPath returns the default path to the configuration file.
+func ConfigPath() string {
+	return filepath.Join(platform.ConfigDir(), "config.json")
+}
+
 // Load reads configuration from the given directory, falling back to defaults.
 func Load(dir string) (*Config, error) {
 	cfg := DefaultConfig()

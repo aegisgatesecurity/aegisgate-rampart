@@ -13,3 +13,9 @@ import (
 func shutdownSignals() []os.Signal {
 	return []os.Signal{syscall.SIGINT, syscall.SIGTERM}
 }
+
+// reloadSignal returns the OS signal that triggers configuration hot-reload.
+// On Unix systems, SIGHUP is used for reload.
+func reloadSignal() os.Signal {
+	return syscall.SIGHUP
+}

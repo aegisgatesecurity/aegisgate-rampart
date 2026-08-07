@@ -95,11 +95,33 @@ func runForeground(ctx context.Context, cancel context.CancelFunc, cfg *config.C
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, shutdownSignals()...)
+
+	// SIGHUP: hot-reload configuration
+	reloadSig := reloadSignal()
+	reloadChan := make(chan os.Signal, 1)
+	if reloadSig != nil {
+		signal.Notify(reloadChan, reloadSig)
+	}
+
 	go func() {
-		<-sigChan
-		fmt.Println("\nShutting down...")
-		cancel()
-		p.Shutdown()
+		for {
+			select {
+			case <-sigChan:
+				fmt.Println("\nShutting down...")
+				cancel()
+				p.Shutdown()
+				return
+			case <-reloadChan:
+				fmt.Println("SIGHUP received, reloading configuration...")
+				configPath := config.ConfigPath()
+				newCfg, err := config.Load(configPath)
+				if err != nil {
+					log.Printf("rampart: reload failed: %v", err)
+					continue
+				}
+				p.ReloadConfig(newCfg)
+			}
+		}
 	}()
 
 	fmt.Printf("aegisgate-rampart starting on :%d\n", cfg.ProxyPort)

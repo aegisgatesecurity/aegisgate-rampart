@@ -41,6 +41,7 @@ import (
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/platform"
 	"github.com/aegisgatesecurity/aegisgate-rampart/pkg/config"
 	"github.com/aegisgatesecurity/aegisgate-rampart/pkg/detector"
+	"golang.org/x/time/rate"
 )
 
 // Proxy is the local HTTPS interception proxy.
@@ -53,6 +54,12 @@ type Proxy struct {
 	targets  map[string]bool // domain → intercept?
 	mu       sync.RWMutex
 	stats    ProxyStats
+
+	// Graceful shutdown
+	shutdownTimeout time.Duration
+
+	// Rate limiting
+	rateLimiter *rate.Limiter
 }
 
 // ProxyStats tracks interception statistics.
@@ -69,8 +76,10 @@ type ProxyStats struct {
 // New creates a new Proxy with the given configuration.
 func New(cfg *config.Config) (*Proxy, error) {
 	p := &Proxy{
-		cfg:     cfg,
-		targets: make(map[string]bool),
+		cfg:             cfg,
+		targets:         make(map[string]bool),
+		shutdownTimeout: 15 * time.Second,
+		rateLimiter:     rate.NewLimiter(rate.Every(time.Second), 30), // 30 req/s burst
 	}
 
 	// Build target domain map
@@ -147,10 +156,17 @@ func (p *Proxy) Start(ctx context.Context) error {
 	fmt.Printf("rampart: Intercepting %d AI API endpoints\n", len(p.cfg.Targets))
 	fmt.Printf("rampart: Detection engine ready (153 regex patterns + ML)\n")
 
-	// Graceful shutdown
+	// Graceful shutdown: drain in-flight connections, then close
 	go func() {
 		<-ctx.Done()
-		p.server.Close()
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), p.shutdownTimeout)
+		defer cancel()
+		log.Printf("rampart: shutting down, draining connections for up to %v...", p.shutdownTimeout)
+		if err := p.server.Shutdown(shutdownCtx); err != nil {
+			log.Printf("rampart: shutdown error: %v", err)
+			p.server.Close()
+		}
+		log.Printf("rampart: shutdown complete")
 	}()
 
 	if err := p.server.Serve(listener); err != nil && err != http.ErrServerClosed {
@@ -160,10 +176,15 @@ func (p *Proxy) Start(ctx context.Context) error {
 	return nil
 }
 
-// Shutdown gracefully stops the proxy.
+// Shutdown gracefully stops the proxy, draining in-flight connections.
 func (p *Proxy) Shutdown() {
 	if p.server != nil {
-		p.server.Close()
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), p.shutdownTimeout)
+		defer cancel()
+		if err := p.server.Shutdown(shutdownCtx); err != nil {
+			log.Printf("rampart: forced shutdown: %v", err)
+			p.server.Close()
+		}
 	}
 }
 
@@ -172,6 +193,21 @@ func (p *Proxy) GetStats() ProxyStats {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 	return p.stats
+}
+
+// ReloadConfig reloads the configuration from disk and updates the proxy.
+// Called on SIGHUP for hot-reload without restarting.
+func (p *Proxy) ReloadConfig(cfg *config.Config) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	p.cfg = cfg
+	p.targets = make(map[string]bool)
+	for _, t := range cfg.Targets {
+		p.targets[t.Domain] = true
+	}
+
+	log.Printf("rampart: configuration reloaded — %d target domains", len(cfg.Targets))
 }
 
 // handleRequest is the main HTTP/HTTPS proxy handler.
@@ -589,6 +625,12 @@ func (p *Proxy) HandleDetectAPI(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Rate limit: protect against abuse from IDE extensions
+	if !p.rateLimiter.Allow() {
+		http.Error(w, "rate limit exceeded", http.StatusTooManyRequests)
+		return
+	}
+
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "read body failed", http.StatusBadRequest)
@@ -630,6 +672,12 @@ func (p *Proxy) HandleDetectAPI(w http.ResponseWriter, r *http.Request) {
 // HandleStatsAPI serves the /stats HTTP endpoint.
 // GET /stats → proxy statistics
 func (p *Proxy) HandleStatsAPI(w http.ResponseWriter, r *http.Request) {
+	// Rate limit: protect against polling abuse
+	if !p.rateLimiter.Allow() {
+		http.Error(w, "rate limit exceeded", http.StatusTooManyRequests)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(p.GetStats())
 }

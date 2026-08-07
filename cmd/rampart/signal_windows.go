@@ -12,3 +12,9 @@ import (
 func shutdownSignals() []os.Signal {
 	return []os.Signal{os.Interrupt}
 }
+
+// reloadSignal returns the signal that triggers configuration hot-reload.
+// Windows doesn't have SIGHUP; reload must be triggered via the API.
+func reloadSignal() os.Signal {
+	return nil // No SIGHUP on Windows
+}

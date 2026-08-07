@@ -679,7 +679,7 @@ func TestParseKeyFileUnsupportedFormat(t *testing.T) {
 func TestParseKeyFileNoPEMBlock(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "nopem.key")
-	os.WriteFile(path, []byte("not a pem file at all"), 0600)
+	_ = os.WriteFile(path, []byte("not a pem file at all"), 0600)
 
 	_, err := parseKeyFile(path)
 	if err == nil {
@@ -701,7 +701,7 @@ func TestValidateCertsInvalidServerKey(t *testing.T) {
 
 	// Overwrite server key with invalid data
 	serverKeyPath := filepath.Join(cfg.CertDir, cfg.KeyFile)
-	os.WriteFile(serverKeyPath, []byte("-----BEGIN RSA PRIVATE KEY-----\nINVALID\n-----END RSA PRIVATE KEY-----"), 0600)
+	_ = os.WriteFile(serverKeyPath, []byte("-----BEGIN RSA PRIVATE KEY-----\nINVALID\n-----END RSA PRIVATE KEY-----"), 0600)
 
 	v, err := ValidateCerts(cfg)
 	if err != nil {
@@ -729,7 +729,7 @@ func TestValidateCertsInvalidCAKey(t *testing.T) {
 
 	// Overwrite CA key with invalid data
 	caKeyPath := filepath.Join(cfg.CertDir, cfg.CAKeyFile)
-	os.WriteFile(caKeyPath, []byte("-----BEGIN RSA PRIVATE KEY-----\nINVALID\n-----END RSA PRIVATE KEY-----"), 0600)
+	_ = os.WriteFile(caKeyPath, []byte("-----BEGIN RSA PRIVATE KEY-----\nINVALID\n-----END RSA PRIVATE KEY-----"), 0600)
 
 	v, err := ValidateCerts(cfg)
 	if err != nil {

@@ -6,6 +6,7 @@ package platform
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 )
 
 // ConfigDir returns the platform-appropriate configuration directory.
@@ -26,13 +27,22 @@ func ConfigDir() string {
 }
 
 // DataDir returns the platform-appropriate data directory.
-// On Linux/macOS: ~/.local/share/aegisgate-rampart
+// On Linux: ~/.local/share/aegisgate-rampart
+// On macOS: ~/Library/Application Support/aegisgate-rampart (same as ConfigDir)
 // On Windows: %AppData%\AegisGate Rampart\data (see paths_windows.go)
 func DataDir() string {
-	// os.UserCacheDir() returns ~/.cache on Linux, ~/Library/Caches on macOS
-	// We use a data dir instead, so construct it manually
-	cfg := ConfigDir()
-	return filepath.Join(filepath.Dir(cfg), "aegisgate-rampart")
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ConfigDir()
+	}
+	switch runtime.GOOS {
+	case "darwin":
+		// macOS: data lives alongside config in ~/Library/Application Support
+		return filepath.Join(home, "Library", "Application Support", "aegisgate-rampart")
+	default:
+		// Linux: data in ~/.local/share, config in ~/.config
+		return filepath.Join(home, ".local", "share", "aegisgate-rampart")
+	}
 }
 
 // CacheDir returns the platform-appropriate cache directory.

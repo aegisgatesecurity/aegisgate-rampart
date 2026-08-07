@@ -13,9 +13,9 @@ on:
 
 jobs:
   # ========================================
-  # Build binaries — Linux, macOS, Windows
+  # Build binaries — Linux, Windows (CGO_ENABLED=0)
   # ========================================
-  build-binary:
+  build-static:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -26,12 +26,6 @@ jobs:
           - goos: linux
             goarch: arm64
             suffix: -arm64
-          - goos: darwin
-            goarch: amd64
-            suffix: -macos-amd64
-          - goos: darwin
-            goarch: arm64
-            suffix: -macos-arm64
           - goos: windows
             goarch: amd64
             suffix: -windows.exe
@@ -56,10 +50,43 @@ jobs:
           path: rampart${{ matrix.suffix }}
 
   # ========================================
+  # Build binaries — macOS (CGO_ENABLED=1, needs Xcode)
+  # fyne.io/systray uses Objective-C on macOS, requiring CGO.
+  # ========================================
+  build-macos:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        include:
+          - goarch: amd64
+            suffix: -macos-amd64
+          - goarch: arm64
+            suffix: -macos-arm64
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+      - name: Build
+        env:
+          GOOS: darwin
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 1
+        run: |
+          VERSION=${{ github.event.inputs.version || github.ref_name }}
+          go build -ldflags "-s -w -X main.versionFlag=$VERSION" \
+            -o rampart${{ matrix.suffix }} ./cmd/rampart/
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: rampart-darwin-${{ matrix.goarch }}
+          path: rampart${{ matrix.suffix }}
+
+  # ========================================
   # Keyless signing — Sigstore/Cosign
   # ========================================
   sign-binary:
-    needs: build-binary
+    needs: [build-static, build-macos]
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -97,7 +124,7 @@ jobs:
   # SBOM — CycloneDX + SPDX (Syft)
   # ========================================
   sbom-attest:
-    needs: build-binary
+    needs: [build-static, build-macos]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -123,7 +150,7 @@ jobs:
   # Docker build + push
   # ========================================
   build-container:
-    needs: [build-binary, sign-binary]
+    needs: [build-static, sign-binary]
     runs-on: ubuntu-latest
     permissions:
       packages: write
@@ -167,7 +194,7 @@ jobs:
   # GitHub Release
   # ========================================
   create-release:
-    needs: [build-binary, sign-binary, sbom-attest, build-container]
+    needs: [build-static, build-macos, sign-binary, sbom-attest, build-container]
     runs-on: ubuntu-latest
     permissions:
       contents: write

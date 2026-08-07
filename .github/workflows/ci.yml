@@ -173,6 +173,7 @@ jobs:
   macos:
     needs: dco
     runs-on: macos-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -195,13 +196,14 @@ jobs:
   windows:
     needs: dco
     runs-on: windows-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version: '1.25'
       - name: Run tests (CGO_ENABLED=0)
-        run: go test -race ./...
+        run: go test ./...
       - name: go vet
         run: go vet ./...
       - name: Build binary

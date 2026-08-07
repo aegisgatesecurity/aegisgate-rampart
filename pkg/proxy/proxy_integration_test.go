@@ -328,7 +328,7 @@ func TestProxyPassthrough(t *testing.T) {
 	// Create a simple HTTP server that ISN'T a target domain
 	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		_ = w.Write([]byte("hello from example.com"))
+		_, _ = w.Write([]byte("hello from example.com"))
 	}))
 	defer backend.Close()
 

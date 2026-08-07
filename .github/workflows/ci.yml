@@ -22,16 +22,20 @@ jobs:
         run: |
           echo "## DCO Verification" >> $GITHUB_STEP_SUMMARY
           MISSING=0
-          # Check all commits in the push
-          while IFS= read -r commit; do
-            SUBJECT=$(echo "$commit" | cut -d' ' -f2-)
-            if ! echo "$commit" | grep -q "Signed-off-by:"; then
+          # Check all commits in the push (get full commit message with body)
+          while IFS= read -r hash; do
+            # Get full commit message including body
+            FULL_MSG=$(git log --format="%B" -1 $hash)
+            SUBJECT=$(git log --format="%s" -1 $hash)
+            if ! echo "$FULL_MSG" | grep -q "Signed-off-by:"; then
               echo "❌ Missing Signed-off-by: $SUBJECT" >> $GITHUB_STEP_SUMMARY
               MISSING=$((MISSING + 1))
             else
+              SIGNOFF=$(echo "$FULL_MSG" | grep "Signed-off-by:" | head -1)
               echo "✅ Signed-off: $SUBJECT" >> $GITHUB_STEP_SUMMARY
+              echo "   $SIGNOFF" >> $GITHUB_STEP_SUMMARY
             fi
-          done < <(git log --format="%H %s" HEAD^..HEAD 2>/dev/null || git log --format="%H %s" -1)
+          done < <(git log --format="%H" HEAD^..HEAD 2>/dev/null || git log --format="%H" -1)
           if [ $MISSING -gt 0 ]; then
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "**$MISSING commit(s) missing Signed-off-by**" >> $GITHUB_STEP_SUMMARY

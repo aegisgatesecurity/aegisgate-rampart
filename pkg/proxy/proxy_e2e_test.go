@@ -345,7 +345,6 @@ func TestE2E_FullTLSRoundTrip(t *testing.T) {
 					}
 					// For TLS connections to e2e-test.local, do TLS handshake
 					// trusting the proxy's CA
-					host, _, _ = net.SplitHostPort(addr)
 					tlsConn := tls.Client(conn, &tls.Config{
 						RootCAs:    proxyCACertPool,
 						MinVersion: tls.VersionTLS12,

@@ -50,7 +50,7 @@ jobs:
           go build -ldflags "-s -w -X main.versionFlag=$VERSION" \
             -o rampart${{ matrix.suffix }} ./cmd/rampart/
       - name: Upload binary
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: rampart-${{ matrix.goos }}-${{ matrix.goarch }}
           path: rampart${{ matrix.suffix }}
@@ -86,7 +86,7 @@ jobs:
             --certificate rampart.cert \
             --signature rampart.sig
       - name: Upload signature
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: rampart-${{ matrix.goos }}-${{ matrix.goarch }}-sig
           path: |
@@ -112,7 +112,7 @@ jobs:
           format: spdx-json
           output-file: sbom-spdx.json
       - name: Upload SBOMs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sbom
           path: |

@@ -9,10 +9,10 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime"
-	"syscall"
 
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/autostart"
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/catrust"
+	"github.com/aegisgatesecurity/aegisgate-rampart/internal/platform"
 	"github.com/aegisgatesecurity/aegisgate-rampart/pkg/config"
 	"github.com/aegisgatesecurity/aegisgate-rampart/pkg/proxy"
 )
@@ -94,7 +94,7 @@ func runForeground(ctx context.Context, cancel context.CancelFunc, cfg *config.C
 	}
 
 	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(sigChan, shutdownSignals()...)
 	go func() {
 		<-sigChan
 		fmt.Println("\nShutting down...")
@@ -126,7 +126,7 @@ func runDaemon(ctx context.Context, cancel context.CancelFunc, cfg *config.Confi
 
 	go func() {
 		sigChan := make(chan os.Signal, 1)
-		signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+		signal.Notify(sigChan, shutdownSignals()...)
 		<-sigChan
 		log.Printf("rampart: Received shutdown signal")
 		cancel()
@@ -139,13 +139,9 @@ func runDaemon(ctx context.Context, cancel context.CancelFunc, cfg *config.Confi
 	}
 }
 
-// getConfigDir returns the configuration directory path.
+// getConfigDir returns the platform-appropriate configuration directory path.
 func getConfigDir() string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "."
-	}
-	return filepath.Join(home, ".config", "aegisgate-rampart")
+	return platform.ConfigDir()
 }
 
 // handleTrust handles the --trust flag: install CA cert into system trust store.
@@ -186,8 +182,7 @@ func handleAutoStart(enable bool) {
 		}
 		fmt.Printf("✅ Auto-start enabled on %s\n", runtime.GOOS)
 		if runtime.GOOS == "windows" {
-			home, _ := os.UserHomeDir()
-			fmt.Printf("   Import the .reg file at %s/.config/aegisgate-rampart/rampart-autostart.reg\n", home)
+			fmt.Printf("   Registry entry created at HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\n")
 		}
 	} else {
 		if err := mgr.Disable(); err != nil {
@@ -209,8 +204,7 @@ func handleStatus() {
 	fmt.Printf("CA Trusted: %v\n", trustStatus.Trusted)
 	fmt.Printf("Platform: %s\n", trustStatus.Platform)
 
-	home, _ := os.UserHomeDir()
-	pidFile := filepath.Join(home, ".config", "aegisgate-rampart", "rampart.pid")
+	pidFile := filepath.Join(getConfigDir(), "rampart.pid")
 	if running, pid := IsRunning(pidFile); running {
 		fmt.Printf("Daemon: running (PID %d)\n", pid)
 	} else {

@@ -24,6 +24,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"github.com/aegisgatesecurity/aegisgate-rampart/internal/platform"
 )
 
 // Status represents the trust status of the CA certificate.
@@ -238,9 +240,5 @@ func setupTrustWindows(certPath string) SetupResult {
 
 // DefaultCACertPath returns the default CA certificate path for the current platform.
 func DefaultCACertPath() string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return ""
-	}
-	return filepath.Join(home, ".config", "aegisgate-rampart", "ca.crt")
+	return filepath.Join(platform.ConfigDir(), "ca.crt")
 }

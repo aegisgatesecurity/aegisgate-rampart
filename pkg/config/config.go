@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/aegisgatesecurity/aegisgate-rampart/internal/platform"
 )
 
 // Config holds all Rampart configuration.
@@ -129,11 +131,7 @@ func Load(dir string) (*Config, error) {
 	cfg := DefaultConfig()
 
 	if dir == "" {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return cfg, nil
-		}
-		dir = filepath.Join(home, ".config", "aegisgate-rampart")
+		dir = platform.ConfigDir()
 	}
 
 	configPath := filepath.Join(dir, "config.json")

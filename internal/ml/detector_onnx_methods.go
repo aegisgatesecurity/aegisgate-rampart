@@ -32,9 +32,11 @@ func newOnnxFields() *onnxFields {
 // Searched in order; first match wins. Overridden by ONNXRuntimeLibPath config
 // or ONNXRUNTIME_SHARED_LIBRARY_PATH env var.
 var onnxRuntimeSearchPaths = []string{
-	"/usr/local/lib/libonnxruntime.so",            // Docker container (v4.0.0+)
-	"/usr/lib/libonnxruntime.so",                  // Alpine package
-	"/usr/lib/x86_64-linux-gnu/libonnxruntime.so", // Debian/Ubuntu
+	"/usr/local/lib/libonnxruntime.so",             // Docker container (v4.0.0+)
+	"/usr/lib/libonnxruntime.so",                   // Alpine package
+	"/usr/lib/x86_64-linux-gnu/libonnxruntime.so",  // Debian/Ubuntu
+	`C:\Program Files\onnxruntime\onnxruntime.dll`, // Windows install
+	`C:\onnxruntime\onnxruntime.dll`,               // Windows alt
 }
 
 // discoverONNXRuntimeLib finds the onnxruntime shared library by searching:
@@ -59,12 +61,14 @@ func discoverONNXRuntimeLib(configPath string) string {
 		}
 	}
 
-	// 3. Common venv paths relative to home directory
+	// 3. Common venv paths relative to home directory (platform-aware)
 	homeDir, _ := os.UserHomeDir()
 	if homeDir != "" {
 		venvPaths := []string{
 			filepath.Join(homeDir, "Desktop", "AegisGate", ".venv", "lib", "python3.12", "site-packages", "onnxruntime", "capi", "libonnxruntime.so.1.27.0"),
 			filepath.Join(homeDir, ".local", "lib", "onnxruntime", "libonnxruntime.so"),
+			filepath.Join(homeDir, "Desktop", "AegisGate", ".venv", "Lib", "site-packages", "onnxruntime", "capi", "onnxruntime.dll"),
+			filepath.Join(homeDir, "AppData", "Local", "onnxruntime", "onnxruntime.dll"),
 		}
 		for _, p := range venvPaths {
 			if _, err := os.Stat(p); err == nil {

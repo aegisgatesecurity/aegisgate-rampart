@@ -23,10 +23,19 @@ jobs:
           echo "## DCO Verification" >> $GITHUB_STEP_SUMMARY
           MISSING=0
           # Check all commits in the push (get full commit message with body)
+          # Skip commits from known bots (Dependabot, GitHub Actions, etc.)
           while IFS= read -r hash; do
             # Get full commit message including body
             FULL_MSG=$(git log --format="%B" -1 $hash)
             SUBJECT=$(git log --format="%s" -1 $hash)
+            AUTHOR=$(git log --format="%an" -1 $hash)
+            
+            # Skip commits from known bots
+            if echo "$AUTHOR" | grep -qiE "(dependabot|github-actions|renovate)"; then
+              echo "⏭️  Skipped (bot): $SUBJECT" >> $GITHUB_STEP_SUMMARY
+              continue
+            fi
+            
             if ! echo "$FULL_MSG" | grep -q "Signed-off-by:"; then
               echo "❌ Missing Signed-off-by: $SUBJECT" >> $GITHUB_STEP_SUMMARY
               MISSING=$((MISSING + 1))

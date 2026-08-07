@@ -6,11 +6,24 @@ Rampart is a **local HTTPS proxy** that intercepts traffic to AI API services, r
 
 **Same detection engine as AegisGate Platform v4.0.0** — 154 regex patterns + Char CNN-BiLSTM neural network.
 
+## Platform Support
+
+| Platform | Config Directory | Auto-Start | Notifications | CA Trust | System Tray |
+|----------|-----------------|-------------|-------------|----------|-------------|
+| **Linux** | `~/.config/aegisgate-rampart/` | systemd | notify-send | update-ca-certificates | fyne/systray (CGO) |
+| **macOS** | `~/Library/Application Support/aegisgate-rampart/` | launchd | osascript | security add-trusted-cert | fyne/systray (CGO) |
+| **Windows** | `%AppData%\AegisGate Rampart\` | Registry Run key | beeep (Win32 toast) | certutil -addstore | fyne/systray |
+
+**Build requirements**: Linux and Windows build with `CGO_ENABLED=0`. macOS requires `CGO_ENABLED=1` (systray uses Objective-C).
+
 ## Quick Start
 
 ```bash
-# Build
-go build -o bin/rampart ./cmd/rampart
+# Build (Linux/Windows — no CGO needed)
+CGO_ENABLED=0 go build -o bin/rampart ./cmd/rampart
+
+# Build (macOS — CGO required for system tray)
+CGO_ENABLED=1 go build -o bin/rampart ./cmd/rampart
 
 # Foreground mode (terminal output)
 ./bin/rampart
@@ -26,6 +39,19 @@ go build -o bin/rampart ./cmd/rampart
 
 # Auto-start on boot
 ./bin/rampart --autostart
+```
+
+### Cross-Compilation
+
+```bash
+# Linux ARM64 (Raspberry Pi, ARM servers)
+CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o bin/rampart-arm64 ./cmd/rampart
+
+# Windows amd64
+CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -o bin/rampart.exe ./cmd/rampart
+
+# macOS (requires CGO — build on macOS or use CI)
+# See .github/workflows/release.yml for macOS build instructions
 ```
 
 ## What It Does
@@ -184,6 +210,12 @@ RAMPART_INTEGRATION=1 CGO_ENABLED=0 go test -v ./pkg/proxy/
 go test -fuzz=FuzzParseConfig -fuzztime=60s ./pkg/config/
 go test -fuzz=FuzzScanRequest -fuzztime=60s ./pkg/detector/
 
+# Cross-compile for Windows
+CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -o bin/rampart.exe ./cmd/rampart/
+
+# Cross-compile for Linux ARM64
+CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o bin/rampart-arm64 ./cmd/rampart/
+
 # Lint
 golangci-lint run ./...
 ```
@@ -207,11 +239,12 @@ aegisgate-rampart/
 │   ├── logging/           # Minimal stderr shim
 │   ├── ml/                # Char CNN-BiLSTM (ONNX + heuristic)
 │   ├── notify/            # Desktop notifications (3 platforms)
+│   ├── platform/          # Platform-aware paths (ConfigDir, DataDir, CacheDir)
 │   ├── response/          # PII scanner, secret detector, guard
 │   └── tray/              # System tray (fyne.io/systray)
 ├── configs/default.json   # Default configuration
 ├── Dockerfile             # Multi-stage scratch container
-└── .github/workflows/     # 5 CI/CD workflows
+└── .github/workflows/     # CI/CD workflows
 ```
 
 ## License

@@ -42,3 +42,4 @@ models/
 coverage.out
 coverage.html
 rampart
+rampart-lsp

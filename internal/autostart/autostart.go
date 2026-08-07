@@ -17,6 +17,8 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+
+	"github.com/aegisgatesecurity/aegisgate-rampart/internal/platform"
 )
 
 const (
@@ -103,11 +105,11 @@ func (m *Manager) enableDarwin() error {
     <key>KeepAlive</key>
     <true/>
     <key>StandardOutPath</key>
-    <string>%s/.config/aegisgate-rampart/rampart.log</string>
+    <string>%s/rampart.log</string>
     <key>StandardErrorPath</key>
-    <string>%s/.config/aegisgate-rampart/rampart.log</string>
+    <string>%s/rampart.log</string>
 </dict>
-</plist>`, plistName, m.binPath, os.Getenv("HOME"), os.Getenv("HOME"))
+</plist>`, plistName, m.binPath, platform.ConfigDir(), platform.ConfigDir())
 
 	return os.WriteFile(m.plistPath(), []byte(plist), 0644)
 }
@@ -162,17 +164,18 @@ func (m *Manager) isEnabledLinux() bool {
 // --- Windows (Registry) ---
 
 func (m *Manager) enableWindows() error {
-	// Windows auto-start uses the Registry Run key.
-	// This requires the `golang.org/x/sys/windows` package for direct registry access.
-	// For now, we output a .reg file the user can import.
+	// Try direct registry write first (seamless, no user action needed)
+	if err := enableWindowsRegistry(m.binPath + " --daemon"); err == nil {
+		return nil
+	}
+	// Fallback: generate .reg file for manual import
 	regContent := fmt.Sprintf(`Windows Registry Editor Version 5.00
 
 [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run]
 "%s"="%s --daemon"
 `, regKeyName, m.binPath)
 
-	home, _ := os.UserHomeDir()
-	regPath := filepath.Join(home, ".config", "aegisgate-rampart", "rampart-autostart.reg")
+	regPath := filepath.Join(platform.ConfigDir(), "rampart-autostart.reg")
 	if err := os.MkdirAll(filepath.Dir(regPath), 0755); err != nil {
 		return err
 	}
@@ -180,14 +183,20 @@ func (m *Manager) enableWindows() error {
 }
 
 func (m *Manager) disableWindows() error {
-	home, _ := os.UserHomeDir()
-	regPath := filepath.Join(home, ".config", "aegisgate-rampart", "rampart-autostart.reg")
-	return os.Remove(regPath)
+	// Try direct registry removal first
+	_ = disableWindowsRegistry()
+	// Also remove .reg file if it exists
+	regPath := filepath.Join(platform.ConfigDir(), "rampart-autostart.reg")
+	os.Remove(regPath)
+	return nil
 }
 
 func (m *Manager) isEnabledWindows() bool {
-	home, _ := os.UserHomeDir()
-	regPath := filepath.Join(home, ".config", "aegisgate-rampart", "rampart-autostart.reg")
+	// Check registry first, then fall back to .reg file
+	if isEnabledWindowsRegistry() {
+		return true
+	}
+	regPath := filepath.Join(platform.ConfigDir(), "rampart-autostart.reg")
 	_, err := os.Stat(regPath)
 	return err == nil
 }

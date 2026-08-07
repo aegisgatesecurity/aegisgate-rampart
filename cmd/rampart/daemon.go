@@ -17,7 +17,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"syscall"
 	"time"
 
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/notify"
@@ -134,14 +133,8 @@ func IsRunning(pidFile string) (bool, int) {
 	if err != nil {
 		return false, 0
 	}
-	// Check if process is alive
-	process, err := os.FindProcess(pid)
-	if err != nil {
-		return false, 0
+	if processExists(pid) {
+		return true, pid
 	}
-	// Signal 0 checks if process exists without sending a signal
-	if err := process.Signal(syscall.Signal(0)); err != nil {
-		return false, 0
-	}
-	return true, pid
+	return false, 0
 }

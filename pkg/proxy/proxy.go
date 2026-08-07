@@ -32,14 +32,13 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/certificate"
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/certinit"
+	"github.com/aegisgatesecurity/aegisgate-rampart/internal/platform"
 	"github.com/aegisgatesecurity/aegisgate-rampart/pkg/config"
 	"github.com/aegisgatesecurity/aegisgate-rampart/pkg/detector"
 )
@@ -122,11 +121,7 @@ func New(cfg *config.Config) (*Proxy, error) {
 
 // certDir returns the directory for storing certificates.
 func certDir() string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "./certs"
-	}
-	return filepath.Join(home, ".config", "aegisgate-rampart")
+	return platform.ConfigDir()
 }
 
 // Start begins listening for HTTPS connections.

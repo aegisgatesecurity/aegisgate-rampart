@@ -271,8 +271,8 @@ func (p *Proxy) tunnel(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Bidirectional copy
-	go func() { io.Copy(destConn, hijackedConn) }()
-	go func() { io.Copy(hijackedConn, destConn) }()
+	go func() { _, _ = io.Copy(destConn, hijackedConn) }()
+	go func() { _, _ = io.Copy(hijackedConn, destConn) }()
 }
 
 // interceptHTTPS performs MITM on target domain traffic:
@@ -385,7 +385,7 @@ func (p *Proxy) interceptHTTPS(w http.ResponseWriter, r *http.Request) {
 
 	// Write the response back to the client through the TLS connection
 	resp.Body = io.NopCloser(strings.NewReader(string(respBody)))
-	resp.Write(tlsConn)
+	_ = resp.Write(tlsConn)
 }
 
 // handleHTTP handles plain HTTP requests (rare for AI APIs).
@@ -437,7 +437,7 @@ func (p *Proxy) handleHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	w.WriteHeader(resp.StatusCode)
-	w.Write(respBody)
+	_, _ = w.Write(respBody)
 }
 
 // scanAndAlert runs detection on a body and alerts the user.
@@ -551,12 +551,12 @@ func (p *Proxy) HandleDetectAPI(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(result)
+	_ = json.NewEncoder(w).Encode(result)
 }
 
 // HandleStatsAPI serves the /stats HTTP endpoint.
 // GET /stats → proxy statistics
 func (p *Proxy) HandleStatsAPI(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(p.GetStats())
+	_ = json.NewEncoder(w).Encode(p.GetStats())
 }

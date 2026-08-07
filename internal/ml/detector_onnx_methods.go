@@ -113,7 +113,7 @@ func (td *ThreatDetector) loadModelONNX(path string) error {
 	outputData := make([]float32, 1)
 	outputTensor, err := onnxruntime.NewTensor[float32](outputShape, outputData)
 	if err != nil {
-		inputTensor.Destroy()
+		_ = inputTensor.Destroy()
 		return fmt.Errorf("create output tensor: %w", err)
 	}
 
@@ -126,13 +126,13 @@ func (td *ThreatDetector) loadModelONNX(path string) error {
 		nil,
 	)
 	if err != nil {
-		inputTensor.Destroy()
-		outputTensor.Destroy()
+		_ = inputTensor.Destroy()
+		_ = outputTensor.Destroy()
 		return fmt.Errorf("create ONNX session: %w", err)
 	}
 
 	// Clean up previous session
-	td.closeONNX()
+	_ = td.closeONNX()
 
 	td.onnx.session = session
 	td.onnx.inputTensor = inputTensor

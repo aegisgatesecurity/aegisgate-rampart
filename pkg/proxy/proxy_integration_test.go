@@ -220,7 +220,7 @@ func TestDetectAPIHTTPServer(t *testing.T) {
 
 	// Use a temp cert directory to avoid conflicting with real certs
 	tmpDir := t.TempDir()
-	os.MkdirAll(tmpDir+"/certs", 0755) /* #nosec */
+	_ = os.MkdirAll(tmpDir+"/certs", 0755)
 
 	proxy, err := New(cfg)
 	if err != nil {
@@ -552,7 +552,7 @@ func TestFullProxyRoundTrip(t *testing.T) {
 		time.Sleep(500 * time.Millisecond)
 
 		// Send a detect request
-		http.Post(
+		_, _ = http.Post(
 			fmt.Sprintf("http://localhost:%d/detect", port),
 			"application/json",
 			bytes.NewBufferString(`{"text": "SSN: 123-45-6789"}`),

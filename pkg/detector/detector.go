@@ -218,6 +218,9 @@ func (d *Detector) DetectWithContext(ctx context.Context, text string) (*Summary
 		summary.Results = append(summary.Results, r)
 	}
 
+	// Update total detections count to include all-detector results
+	summary.TotalDetections = len(summary.Results)
+
 	return summary, nil
 }
 

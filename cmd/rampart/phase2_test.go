@@ -70,7 +70,7 @@ func TestHandleStatus_NoDaemonRunning(t *testing.T) {
 	os.Stdout = old
 
 	var buf bytes.Buffer
-	buf.ReadFrom(r)
+	_, _ = buf.ReadFrom(r)
 	output := buf.String()
 
 	if !bytes.Contains([]byte(output), []byte("AegisGate Rampart Status")) {

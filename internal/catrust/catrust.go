@@ -28,10 +28,10 @@ import (
 
 // Status represents the trust status of the CA certificate.
 type Status struct {
-	Trusted   bool   `json:"trusted"`
-	Platform  string `json:"platform"`
-	CertPath  string `json:"cert_path"`
-	Message   string `json:"message"`
+	Trusted  bool   `json:"trusted"`
+	Platform string `json:"platform"`
+	CertPath string `json:"cert_path"`
+	Message  string `json:"message"`
 }
 
 // SetupResult contains the result of a trust setup operation.

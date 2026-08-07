@@ -15,35 +15,94 @@
 package notify
 
 import (
+	_ "embed"
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 
 	beeep "github.com/gen2brain/beeep"
 )
 
+//go:embed rampart-shield-64.png
+var defaultIconData []byte
+
 // Notification represents a desktop notification.
 type Notification struct {
 	Title   string
 	Body    string
-	Icon    string // Path to icon file (optional)
+	Icon    string   // Path to icon file (optional)
 	Actions []string // Actions for Linux notify-send (optional)
 }
 
 // Notifier sends desktop notifications.
 type Notifier struct {
-	enabled bool
-	icon    string
+	enabled  bool
+	icon     string // Explicitly provided icon path (highest priority)
+	iconPath string // Resolved icon file path (written from embedded data)
 }
 
 // New creates a new desktop notifier.
 // iconPath is the path to the tray icon for notifications.
+// If iconPath is empty, the embedded default icon is used.
 func New(iconPath string) *Notifier {
-	return &Notifier{
+	n := &Notifier{
 		enabled: true,
 		icon:    iconPath,
 	}
+	// Resolve icon: if no path provided, use embedded default
+	if iconPath == "" {
+		n.iconPath = n.ensureDefaultIcon()
+	} else {
+		n.iconPath = iconPath
+	}
+	return n
+}
+
+// ensureDefaultIcon writes the embedded icon to a temp file and returns its path.
+func (n *Notifier) ensureDefaultIcon() string {
+	iconDir := filepath.Join(os.TempDir(), "aegisgate-rampart")
+	iconFile := filepath.Join(iconDir, "rampart-shield-64.png")
+
+	if _, err := os.Stat(iconFile); err == nil {
+		return iconFile
+	}
+
+	if err := os.MkdirAll(iconDir, 0755); err != nil {
+		return ""
+	}
+	if err := os.WriteFile(iconFile, defaultIconData, 0644); err != nil {
+		return ""
+	}
+	return iconFile
+}
+
+// resolveIcon picks the best available icon:
+// 1. Per-notification icon (if the file exists on disk)
+// 2. Notifier default icon (if the file exists on disk)
+// 3. Embedded default icon (written to disk)
+// 4. Empty string (no icon — let the OS decide)
+func (n *Notifier) resolveIcon(notifIcon string) string {
+	// Prefer per-notification icon if it resolves to a real file
+	if notifIcon != "" {
+		if abs, err := filepath.Abs(notifIcon); err == nil {
+			if _, err := os.Stat(abs); err == nil {
+				return abs
+			}
+		}
+	}
+	// Fall back to notifier default icon
+	if n.iconPath != "" {
+		if abs, err := filepath.Abs(n.iconPath); err == nil {
+			if _, err := os.Stat(abs); err == nil {
+				return abs
+			}
+		}
+	}
+	// Last resort: ensure embedded default is written to disk
+	return n.ensureDefaultIcon()
 }
 
 // Send delivers a desktop notification.
@@ -52,10 +111,7 @@ func (n *Notifier) Send(notif Notification) error {
 		return nil
 	}
 
-	icon := n.icon
-	if notif.Icon != "" {
-		icon = notif.Icon
-	}
+	icon := n.resolveIcon(notif.Icon)
 
 	switch runtime.GOOS {
 	case "linux":

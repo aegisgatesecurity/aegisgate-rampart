@@ -28,11 +28,11 @@ import (
 
 // Daemon manages the background proxy service.
 type Daemon struct {
-	cfg      *config.Config
-	proxy    *proxy.Proxy
-	notify   *notify.Notifier
-	tray     *tray.Tray
-	pidFile  string
+	cfg     *config.Config
+	proxy   *proxy.Proxy
+	notify  *notify.Notifier
+	tray    *tray.Tray
+	pidFile string
 }
 
 // NewDaemon creates a new daemon instance.
@@ -145,4 +145,3 @@ func IsRunning(pidFile string) (bool, int) {
 	}
 	return true, pid
 }
-

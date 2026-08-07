@@ -20,10 +20,10 @@ import (
 )
 
 const (
-	plistName    = "com.aegisgate.rampart"
-	unitName     = "rampart.service"
-	regKeyName   = "AegisGateRampart"
-	regKeyPath   = `Software\Microsoft\Windows\CurrentVersion\Run`
+	plistName  = "com.aegisgate.rampart"
+	unitName   = "rampart.service"
+	regKeyName = "AegisGateRampart"
+	regKeyPath = `Software\Microsoft\Windows\CurrentVersion\Run`
 )
 
 // Manager handles auto-start configuration.

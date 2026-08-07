@@ -18,16 +18,16 @@ import (
 )
 
 var (
-	versionFlag    = "dev"
-	daemonFlag     = flag.Bool("daemon", false, "Run as background daemon with system tray notifications")
-	portFlag       = flag.Int("port", 8080, "Local proxy port")
-	configDirFlag  = flag.String("config", "", "Configuration directory path")
-	platformFlag   = flag.String("platform-url", "", "Optional Platform backend URL for telemetry")
-	verboseFlag    = flag.Bool("v", false, "Verbose output")
-	trustFlag      = flag.Bool("trust", false, "Install CA certificate into system trust store")
-	autostartFlag  = flag.Bool("autostart", false, "Configure auto-start on boot")
+	versionFlag     = "dev"
+	daemonFlag      = flag.Bool("daemon", false, "Run as background daemon with system tray notifications")
+	portFlag        = flag.Int("port", 8080, "Local proxy port")
+	configDirFlag   = flag.String("config", "", "Configuration directory path")
+	platformFlag    = flag.String("platform-url", "", "Optional Platform backend URL for telemetry")
+	verboseFlag     = flag.Bool("v", false, "Verbose output")
+	trustFlag       = flag.Bool("trust", false, "Install CA certificate into system trust store")
+	autostartFlag   = flag.Bool("autostart", false, "Configure auto-start on boot")
 	noAutostartFlag = flag.Bool("no-autostart", false, "Remove auto-start configuration")
-	statusFlag     = flag.Bool("status", false, "Show current status and exit")
+	statusFlag      = flag.Bool("status", false, "Show current status and exit")
 )
 
 func main() {

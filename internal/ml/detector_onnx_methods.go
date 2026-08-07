@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"time"
 
 	onnxruntime "github.com/yalue/onnxruntime_go"
 )
@@ -33,8 +32,8 @@ func newOnnxFields() *onnxFields {
 // Searched in order; first match wins. Overridden by ONNXRuntimeLibPath config
 // or ONNXRUNTIME_SHARED_LIBRARY_PATH env var.
 var onnxRuntimeSearchPaths = []string{
-	"/usr/local/lib/libonnxruntime.so",   // Docker container (v4.0.0+)
-	"/usr/lib/libonnxruntime.so",          // Alpine package
+	"/usr/local/lib/libonnxruntime.so",            // Docker container (v4.0.0+)
+	"/usr/lib/libonnxruntime.so",                  // Alpine package
 	"/usr/lib/x86_64-linux-gnu/libonnxruntime.so", // Debian/Ubuntu
 }
 
@@ -206,13 +205,4 @@ func computeFileHash(path string) (string, error) {
 	}
 	hash := sha256.Sum256(data)
 	return "sha256:" + hex.EncodeToString(hash[:]), nil
-}
-
-// measureInferenceLatency measures inference duration in ms.
-func measureInferenceLatency(td *ThreatDetector) (float64, error) {
-	encoded := td.normalizer.Encode("What is the weather today?")
-	start := time.Now()
-	td.inference(encoded)
-	elapsed := time.Since(start)
-	return float64(elapsed.Microseconds()) / 1000.0, nil
 }

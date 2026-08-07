@@ -79,7 +79,7 @@ func TestLinux_UnitFileContent(t *testing.T) {
 	if err != nil {
 		t.Skipf("Enable() failed: %v", err)
 	}
-	defer mgr.Disable()
+	defer func() { _ = mgr.Disable() }()
 
 	unitPath := mgr.unitPath()
 	data, err := os.ReadFile(unitPath)

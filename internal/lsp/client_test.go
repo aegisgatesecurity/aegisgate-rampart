@@ -66,7 +66,7 @@ func TestDetectSuccess(t *testing.T) {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(summary)
+		_ = json.NewEncoder(w).Encode(summary)
 	}))
 	defer server.Close()
 
@@ -93,7 +93,7 @@ func TestDetectSuccess(t *testing.T) {
 func TestDetectError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("internal error"))
+		_, _ = w.Write([]byte("internal error"))
 	}))
 	defer server.Close()
 
@@ -132,7 +132,7 @@ func TestDetectEmptyText(t *testing.T) {
 	// Even empty text should make it to the server (the server returns empty results)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(DetectSummary{})
+		_ = json.NewEncoder(w).Encode(DetectSummary{})
 	}))
 	defer server.Close()
 
@@ -149,7 +149,7 @@ func TestDetectEmptyText(t *testing.T) {
 func TestDetectInvalidJSON(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{invalid json`))
+		_, _ = w.Write([]byte(`{invalid json`))
 	}))
 	defer server.Close()
 

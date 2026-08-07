@@ -26,7 +26,7 @@ func TestServerInitialize(t *testing.T) {
 	summary := &DetectSummary{TotalDetections: 0}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(summary)
+		_ = json.NewEncoder(w).Encode(summary)
 	}))
 	defer server.Close()
 
@@ -227,7 +227,7 @@ func TestPublishDiagnostics(t *testing.T) {
 	}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(summary)
+		_ = json.NewEncoder(w).Encode(summary)
 	}))
 	defer server.Close()
 
@@ -274,7 +274,7 @@ func TestRoundTrip(t *testing.T) {
 	summary := &DetectSummary{TotalDetections: 0}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(summary)
+		_ = json.NewEncoder(w).Encode(summary)
 	}))
 	defer server.Close()
 

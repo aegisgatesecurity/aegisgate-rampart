@@ -20,7 +20,7 @@ func newTestHandler(t *testing.T, summary *DetectSummary) (*Handler, *httptest.S
 	t.Helper()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(summary)
+		_ = json.NewEncoder(w).Encode(summary)
 	}))
 	client := NewRampartClient(server.URL)
 	handler := NewHandler(client, 50, ThresholdMedium) // 50ms debounce for tests
@@ -320,7 +320,7 @@ func TestDetectAndPublish(t *testing.T) {
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(summary)
+		_ = json.NewEncoder(w).Encode(summary)
 	}))
 	defer server.Close()
 
@@ -393,7 +393,7 @@ func TestConcurrentDocumentAccess(t *testing.T) {
 	summary := &DetectSummary{TotalDetections: 0}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(summary)
+		_ = json.NewEncoder(w).Encode(summary)
 	}))
 	defer server.Close()
 
@@ -432,7 +432,7 @@ func TestDebounceTimer(t *testing.T) {
 	summary := &DetectSummary{TotalDetections: 0}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(summary)
+		_ = json.NewEncoder(w).Encode(summary)
 	}))
 	defer server.Close()
 
@@ -478,7 +478,7 @@ func TestContextCancellation(t *testing.T) {
 		// Simulate slow server
 		time.Sleep(5 * time.Second)
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(DetectSummary{})
+		_ = json.NewEncoder(w).Encode(DetectSummary{})
 	}))
 	defer server.Close()
 

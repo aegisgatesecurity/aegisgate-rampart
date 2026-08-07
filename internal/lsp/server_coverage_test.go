@@ -51,7 +51,7 @@ func TestRunInitializeAndExit(t *testing.T) {
 	summary := &DetectSummary{TotalDetections: 0}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(summary)
+		_ = json.NewEncoder(w).Encode(summary)
 	}))
 	defer server.Close()
 
@@ -108,7 +108,7 @@ func TestServerHandleDidOpenSync(t *testing.T) {
 	}
 	hs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(summary)
+		_ = json.NewEncoder(w).Encode(summary)
 	}))
 	defer hs.Close()
 
@@ -148,7 +148,7 @@ func TestServerHandleDidChangeSync(t *testing.T) {
 	}
 	hs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(summary)
+		_ = json.NewEncoder(w).Encode(summary)
 	}))
 	defer hs.Close()
 
@@ -243,7 +243,7 @@ func TestPublishDiagnosticsDebouncedSync(t *testing.T) {
 	}
 	hs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(summary)
+		_ = json.NewEncoder(w).Encode(summary)
 	}))
 	defer hs.Close()
 
@@ -339,7 +339,7 @@ func TestDispatchFullFlow(t *testing.T) {
 	summary := &DetectSummary{TotalDetections: 0}
 	hs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(summary)
+		_ = json.NewEncoder(w).Encode(summary)
 	}))
 	defer hs.Close()
 
@@ -423,7 +423,7 @@ func TestPublishDiagnosticsDirect(t *testing.T) {
 	}
 	hs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(summary)
+		_ = json.NewEncoder(w).Encode(summary)
 	}))
 	defer hs.Close()
 
@@ -478,7 +478,7 @@ func TestRunFullPipeline(t *testing.T) {
 	}
 	hs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(summary)
+		_ = json.NewEncoder(w).Encode(summary)
 	}))
 	defer hs.Close()
 

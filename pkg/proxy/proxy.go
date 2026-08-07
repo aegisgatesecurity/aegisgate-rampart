@@ -46,25 +46,25 @@ import (
 
 // Proxy is the local HTTPS interception proxy.
 type Proxy struct {
-	cfg       *config.Config
-	detector  *detector.Detector
-	server    *http.Server
+	cfg      *config.Config
+	detector *detector.Detector
+	server   *http.Server
 	certMgr  *certificate.Manager
 	certInit *certinit.Result
-	targets   map[string]bool // domain → intercept?
-	mu        sync.RWMutex
-	stats     ProxyStats
+	targets  map[string]bool // domain → intercept?
+	mu       sync.RWMutex
+	stats    ProxyStats
 }
 
 // ProxyStats tracks interception statistics.
 type ProxyStats struct {
-	TotalRequests    int64 `json:"total_requests"`
-	Intercepted      int64 `json:"intercepted"`
-	PassedThrough    int64 `json:"passed_through"`
-	Detections       int64 `json:"detections"`
-	BlockedRequests  int64 `json:"blocked_requests"`
-	MLDetections     int64 `json:"ml_detections"`
-	StartTime        time.Time `json:"start_time"`
+	TotalRequests   int64     `json:"total_requests"`
+	Intercepted     int64     `json:"intercepted"`
+	PassedThrough   int64     `json:"passed_through"`
+	Detections      int64     `json:"detections"`
+	BlockedRequests int64     `json:"blocked_requests"`
+	MLDetections    int64     `json:"ml_detections"`
+	StartTime       time.Time `json:"start_time"`
 }
 
 // New creates a new Proxy with the given configuration.
@@ -312,7 +312,7 @@ func (p *Proxy) interceptHTTPS(w http.ResponseWriter, r *http.Request) {
 	case *ecdsa.PrivateKey:
 		tlsCert = tls.Certificate{
 			Certificate: [][]byte{mitmCert.Certificate.Raw},
-			PrivateKey:   key,
+			PrivateKey:  key,
 		}
 	default:
 		// Fallback: use PEM bytes directly

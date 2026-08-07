@@ -1,0 +1,47 @@
+rules:
+  - id: go-hardcoded-secret
+    patterns:
+      - pattern: |
+          $VAR = "..."
+      - metavariable-regex:
+          metavariable: $VAR
+          regex: '(?i)(password|secret|api_key|token|credential|auth_key)'
+      - pattern-not: |
+          $VAR = "" 
+    message: "Hardcoded secret or credential detected"
+    severity: WARNING
+    languages: [go]
+
+  - id: go-sql-injection-format
+    patterns:
+      - pattern: |
+          fmt.Sprintf("...SELECT...", $VAR)
+    message: "Potential SQL injection via fmt.Sprintf"
+    severity: ERROR
+    languages: [go]
+
+  - id: go-command-injection
+    patterns:
+      - pattern: |
+          exec.Command($CMD, $ARG...)
+      - pattern-not: |
+          exec.Command("...", "...")
+    message: "Potential command injection — exec.Command with variable arguments"
+    severity: WARNING
+    languages: [go]
+
+  - id: go-path-traversal
+    patterns:
+      - pattern: |
+          filepath.Join($BASE, $USER_INPUT)
+    message: "Potential path traversal with user-controlled input"
+    severity: WARNING
+    languages: [go]
+
+  - id: go-insecure-tls
+    patterns:
+      - pattern: |
+          tls.Config{InsecureSkipVerify: true}
+    message: "Insecure TLS configuration — InsecureSkipVerify: true"
+    severity: ERROR
+    languages: [go]

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"sync"
 
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/detectors"
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/ml"
@@ -16,7 +15,6 @@ import (
 type Detector struct {
 	guard   *response.ResponseGuard
 	ml      *ml.ThreatDetector
-	mu      sync.RWMutex
 	mlReady bool
 }
 
@@ -53,15 +51,15 @@ type Config struct {
 // DefaultConfig returns production defaults.
 func DefaultConfig() *Config {
 	return &Config{
-		EnablePII:         true,
-		EnableSecrets:     true,
-		EnableXSS:         true,
-		EnableCompliance:  true,
-		EnableML:          true,
-		ModelPath:         "/opt/aegisgate-rampart/models/threat_cnn_bilstm.onnx",
-		MLThreshold:       0.7,
-		ShadowMode:        true,
-		StrictMode:        false,
+		EnablePII:        true,
+		EnableSecrets:    true,
+		EnableXSS:        true,
+		EnableCompliance: true,
+		EnableML:         true,
+		ModelPath:        "/opt/aegisgate-rampart/models/threat_cnn_bilstm.onnx",
+		MLThreshold:      0.7,
+		ShadowMode:       true,
+		StrictMode:       false,
 	}
 }
 
@@ -111,28 +109,28 @@ func New(cfg *Config) (*Detector, error) {
 
 // Result represents a detection event.
 type Result struct {
-	Category   string  `json:"category"`
-	Severity   string  `json:"severity"`
-	Confidence float64 `json:"confidence"`
-	Text       string  `json:"text,omitempty"`
-	Rule       string  `json:"rule"`
-	IsThreat   bool    `json:"is_threat"`
-	Blocked    bool    `json:"blocked"`
-	BlockReason string `json:"block_reason,omitempty"`
-	MLScore    float64 `json:"ml_score,omitempty"`
+	Category    string  `json:"category"`
+	Severity    string  `json:"severity"`
+	Confidence  float64 `json:"confidence"`
+	Text        string  `json:"text,omitempty"`
+	Rule        string  `json:"rule"`
+	IsThreat    bool    `json:"is_threat"`
+	Blocked     bool    `json:"blocked"`
+	BlockReason string  `json:"block_reason,omitempty"`
+	MLScore     float64 `json:"ml_score,omitempty"`
 }
 
 // Summary holds aggregated detection results.
 type Summary struct {
-	TotalDetections int               `json:"total_detections"`
-	Blocked         bool              `json:"blocked"`
-	BlockReason     string            `json:"block_reason,omitempty"`
-	Results         []Result          `json:"results"`
-	PIICategories   []string          `json:"pii_categories,omitempty"`
-	SecretTypes     []string          `json:"secret_types,omitempty"`
-	Compliance      map[string]bool   `json:"compliance,omitempty"`
-	MLScore         float64           `json:"ml_score,omitempty"`
-	LatencyMs       int64             `json:"latency_ms"`
+	TotalDetections int             `json:"total_detections"`
+	Blocked         bool            `json:"blocked"`
+	BlockReason     string          `json:"block_reason,omitempty"`
+	Results         []Result        `json:"results"`
+	PIICategories   []string        `json:"pii_categories,omitempty"`
+	SecretTypes     []string        `json:"secret_types,omitempty"`
+	Compliance      map[string]bool `json:"compliance,omitempty"`
+	MLScore         float64         `json:"ml_score,omitempty"`
+	LatencyMs       int64           `json:"latency_ms"`
 }
 
 // Detect scans input text for PII, secrets, prompt injection, XSS, and compliance violations.

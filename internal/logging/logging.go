@@ -26,12 +26,12 @@ const (
 // Event represents a security or log event.
 // Subset of Platform's logging.Event — only fields used by Rampart's response guard.
 type Event struct {
-	Time      time.Time `json:"time,omitempty"`
-	Type      string    `json:"type"`
-	Severity  Severity  `json:"severity"`
-	Message   string    `json:"message"`
-	ThreatType string   `json:"threatType,omitempty"`
-	Pattern   string    `json:"pattern,omitempty"`
+	Time       time.Time `json:"time,omitempty"`
+	Type       string    `json:"type"`
+	Severity   Severity  `json:"severity"`
+	Message    string    `json:"message"`
+	ThreatType string    `json:"threatType,omitempty"`
+	Pattern    string    `json:"pattern,omitempty"`
 }
 
 // Record logs an event. In Rampart's air-gap mode, this writes to stderr.

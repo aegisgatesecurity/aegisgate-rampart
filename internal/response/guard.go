@@ -17,8 +17,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aegisgatesecurity/aegisgate-rampart/internal/logging"
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/detectors"
+	"github.com/aegisgatesecurity/aegisgate-rampart/internal/logging"
 )
 
 // ============================================================================

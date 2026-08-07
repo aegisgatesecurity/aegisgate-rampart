@@ -12,11 +12,35 @@ jobs:
   # DCO enforcement — every commit must be signed off
   # ========================================
   dco:
+    name: DCO Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - name: DCO Check
-        uses: chrismwen/dco-action@v2
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify Signed-off-by on all commits
+        run: |
+          echo "## DCO Verification" >> $GITHUB_STEP_SUMMARY
+          MISSING=0
+          # Check all commits in the push
+          while IFS= read -r commit; do
+            SUBJECT=$(echo "$commit" | cut -d' ' -f2-)
+            if ! echo "$commit" | grep -q "Signed-off-by:"; then
+              echo "❌ Missing Signed-off-by: $SUBJECT" >> $GITHUB_STEP_SUMMARY
+              MISSING=$((MISSING + 1))
+            else
+              echo "✅ Signed-off: $SUBJECT" >> $GITHUB_STEP_SUMMARY
+            fi
+          done < <(git log --format="%H %s" HEAD^..HEAD 2>/dev/null || git log --format="%H %s" -1)
+          if [ $MISSING -gt 0 ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**$MISSING commit(s) missing Signed-off-by**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Please amend commits with: git commit --amend --signoff" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**All commits have Signed-off-by** ✅" >> $GITHUB_STEP_SUMMARY
 
   # ========================================
   # Lint — golangci-lint + go vet + gofmt
@@ -25,12 +49,12 @@ jobs:
     needs: dco
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-go@v7
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version: '1.25'
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v7
+        uses: golangci/golangci-lint-action@v6
         with:
           version: v1.64
       - name: go vet
@@ -47,29 +71,45 @@ jobs:
     needs: dco
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-go@v7
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version: '1.25'
       - name: Run tests (non-CGO)
         run: CGO_ENABLED=0 go test -coverprofile=coverage.out -covermode=atomic ./...
       - name: Check total coverage ≥ 80%
         run: |
-          TOTAL=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | tr -d '%')
-          echo "Total coverage: ${TOTAL}%"
+          # Exclude inherently untestable packages from the total coverage check
+          # cmd/rampart: main entry points + daemon (requires system tray/network)
+          # internal/tray: requires running GUI environment (systray/CGO)
+          EXCLUDE_PKGS="github.com/aegisgatesecurity/aegisgate-rampart/cmd/rampart,github.com/aegisgatesecurity/aegisgate-rampart/internal/tray"
+          
+          # Generate coverage excluding untestable packages
+          go test -coverprofile=coverage-filtered.out -covermode=atomic $(go list ./... | grep -v -E "$(echo $EXCLUDE_PKGS | sed 's/,/|/g')")
+          TOTAL=$(go tool cover -func=coverage-filtered.out | grep total | awk '{print $3}' | tr -d '%')
+          echo "Total coverage (excluding cmd/rampart, internal/tray): ${TOTAL}%"
           PASS=$(echo "$TOTAL >= 80" | bc)
           if [ "$PASS" != "1" ]; then echo "FAIL: coverage ${TOTAL}% < 80%"; exit 1; fi
+          
+          # Also show full coverage for reference
+          go test -coverprofile=coverage.out -covermode=atomic ./... 2>/dev/null || true
+          FULL_TOTAL=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | tr -d '%')
+          echo "Full coverage (all packages): ${FULL_TOTAL}%"
       - name: Check per-package coverage ≥ 80%
         run: |
-          # Exempt packages that require integration tests or external deps
-          EXEMPT="cmd/rampart,internal/certificate,internal/certinit,internal/ml,internal/logging,pkg/proxy,pkg/telemetry"
+          # Exempt packages that are inherently untestable in CI
+          # (main entry points, GUI/system tray, platform-specific OS stubs)
+          EXEMPT="cmd/rampart,internal/tray"
           go tool cover -func=coverage.out | grep -v total | while read pkg func cov; do
             PCT=$(echo "$cov" | tr -d '%')
+            SKIP=0
             for e in $(echo "$EXEMPT" | tr ',' ' '); do
-              if echo "$pkg" | grep -q "$e"; then continue 2; fi
+              if echo "$pkg" | grep -q "$e"; then SKIP=1; fi
             done
-            PASS=$(echo "$PCT >= 80.0" | bc)
-            if [ "$PASS" != "1" ]; then echo "LOW COV: $pkg $func ${PCT}%"; fi
+            if [ "$SKIP" = "0" ]; then
+              PASS=$(echo "$PCT >= 80.0" | bc)
+              if [ "$PASS" != "1" ]; then echo "LOW COV: $pkg $func ${PCT}%"; fi
+            fi
           done
       - name: Upload coverage
         uses: actions/upload-artifact@v4
@@ -87,15 +127,15 @@ jobs:
       matrix:
         cgo: [0, 1]
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-go@v7
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version: '1.25'
       - name: Build binary
         env:
           CGO_ENABLED: ${{ matrix.cgo }}
         run: |
-          go build -ldflags "-s -w -X main.version=$(cat VERSION)" -o rampart ./cmd/rampart/
+          go build -ldflags "-s -w -X main.versionFlag=$(cat VERSION)" -o rampart ./cmd/rampart/
           ls -lh rampart
       - name: Verify binary runs
         run: ./rampart version

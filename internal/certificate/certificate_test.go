@@ -133,8 +133,8 @@ func TestAutoGenerateToggle(t *testing.T) {
 
 func TestClearCache(t *testing.T) {
 	mgr := NewManager()
-	mgr.GenerateSelfSigned()                        /* #nosec */
-	mgr.GenerateProxyCertificate("api.openai.com")  /* #nosec */
+	_, _ = mgr.GenerateSelfSigned()
+	_, _ = mgr.GenerateProxyCertificate("api.openai.com")
 	_ = mgr.CacheCertificate("api.openai.com", nil) /* #nosec */ // won't cache nil but no panic
 
 	count := mgr.GetCertificateCount()

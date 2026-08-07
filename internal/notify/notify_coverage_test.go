@@ -224,7 +224,12 @@ func TestSend_DisabledIsNoOp(t *testing.T) {
 }
 
 // TestSend_PlatformSpecific tests the platform-specific notification function directly.
+// Requires RAMPART_INTEGRATION=1 to avoid firing real desktop notifications.
 func TestSend_PlatformSpecific(t *testing.T) {
+	if os.Getenv("RAMPART_INTEGRATION") != "1" {
+		t.Skip("Skipping integration test (set RAMPART_INTEGRATION=1 to run desktop notifications)")
+	}
+
 	n := New("")
 
 	switch runtime.GOOS {
@@ -243,9 +248,13 @@ func TestSend_PlatformSpecific(t *testing.T) {
 }
 
 // TestNotifyLinux_WithIcon tests notifyLinux with an icon parameter.
+// Requires RAMPART_INTEGRATION=1 to avoid firing real desktop notifications.
 func TestNotifyLinux_WithIcon(t *testing.T) {
 	if runtime.GOOS != "linux" {
 		t.Skip("Linux-specific test")
+	}
+	if os.Getenv("RAMPART_INTEGRATION") != "1" {
+		t.Skip("Skipping integration test (set RAMPART_INTEGRATION=1 to run desktop notifications)")
 	}
 
 	tmpDir := t.TempDir()

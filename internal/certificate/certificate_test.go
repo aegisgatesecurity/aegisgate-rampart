@@ -17,7 +17,7 @@ func TestNewManager(t *testing.T) {
 
 func TestGenerateSelfSigned(t *testing.T) {
 	mgr := NewManager()
-	cert, err := mgr.GenerateSelfSigned() /* #nosec */ 
+	cert, err := mgr.GenerateSelfSigned() /* #nosec */
 	if err != nil {
 		t.Fatalf("GenerateSelfSigned failed: %v", err)
 	}
@@ -43,12 +43,12 @@ func TestGenerateSelfSigned(t *testing.T) {
 
 func TestGenerateProxyCertificate(t *testing.T) {
 	mgr := NewManager()
-	_, err := mgr.GenerateSelfSigned() /* #nosec */ 
+	_, err := mgr.GenerateSelfSigned() /* #nosec */
 	if err != nil {
 		t.Fatalf("GenerateSelfSigned failed: %v", err)
 	}
 
-	proxyCert, err := mgr.GenerateProxyCertificate("api.openai.com") /* #nosec */ 
+	proxyCert, err := mgr.GenerateProxyCertificate("api.openai.com") /* #nosec */
 	if err != nil {
 		t.Fatalf("GenerateProxyCertificate failed: %v", err)
 	}
@@ -62,7 +62,7 @@ func TestGenerateProxyCertificate(t *testing.T) {
 
 func TestGenerateProxyCertificateMultipleHosts(t *testing.T) {
 	mgr := NewManager()
-	_, err := mgr.GenerateSelfSigned() /* #nosec */ 
+	_, err := mgr.GenerateSelfSigned() /* #nosec */
 	if err != nil {
 		t.Fatalf("GenerateSelfSigned failed: %v", err)
 	}
@@ -82,8 +82,8 @@ func TestGenerateProxyCertificateMultipleHosts(t *testing.T) {
 
 func TestCertificateCache(t *testing.T) {
 	mgr := NewManager()
-	caCert, _ := mgr.GenerateSelfSigned() /* #nosec */ 
-	cert, _ := mgr.GenerateProxyCertificate("api.openai.com") /* #nosec */ 
+	caCert, _ := mgr.GenerateSelfSigned()                     /* #nosec */
+	cert, _ := mgr.GenerateProxyCertificate("api.openai.com") /* #nosec */
 
 	err := mgr.CacheCertificate("api.openai.com", cert)
 	if err != nil {
@@ -102,7 +102,7 @@ func TestCertificateCache(t *testing.T) {
 
 func TestGetCACertificate(t *testing.T) {
 	mgr := NewManager()
-	_, err := mgr.GenerateSelfSigned() /* #nosec */ 
+	_, err := mgr.GenerateSelfSigned() /* #nosec */
 	if err != nil {
 		t.Fatalf("GenerateSelfSigned failed: %v", err)
 	}
@@ -133,9 +133,9 @@ func TestAutoGenerateToggle(t *testing.T) {
 
 func TestClearCache(t *testing.T) {
 	mgr := NewManager()
-	mgr.GenerateSelfSigned() /* #nosec */ 
-	mgr.GenerateProxyCertificate("api.openai.com") /* #nosec */ 
-	mgr.CacheCertificate("api.openai.com", nil) /* #nosec */  // won't cache nil but no panic
+	mgr.GenerateSelfSigned()                        /* #nosec */
+	mgr.GenerateProxyCertificate("api.openai.com")  /* #nosec */
+	_ = mgr.CacheCertificate("api.openai.com", nil) /* #nosec */ // won't cache nil but no panic
 
 	count := mgr.GetCertificateCount()
 	_ = count // may be 0 if nil wasn't cached
@@ -147,7 +147,7 @@ func TestClearCache(t *testing.T) {
 
 func TestSave(t *testing.T) {
 	mgr := NewManager()
-	cert, err := mgr.GenerateSelfSigned() /* #nosec */ 
+	cert, err := mgr.GenerateSelfSigned() /* #nosec */
 	if err != nil {
 		t.Fatalf("GenerateSelfSigned failed: %v", err)
 	}

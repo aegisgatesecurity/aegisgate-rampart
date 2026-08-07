@@ -232,7 +232,7 @@ func TestDetectAPIHTTPServer(t *testing.T) {
 	defer cancel()
 
 	go func() {
-		if err := _ = proxy.Start(ctx); err != nil {
+		if err := proxy.Start(ctx); err != nil {
 			t.Logf("Proxy stopped: %v", err)
 		}
 	}()

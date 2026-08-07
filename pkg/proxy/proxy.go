@@ -263,24 +263,35 @@ func (p *Proxy) tunnel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Send HTTP 200 Connection Established to client before hijacking
 	w.WriteHeader(http.StatusOK)
+
 	hijackedConn, _, err := hijacker.Hijack()
 	if err != nil {
-		http.Error(w, "hijack failed", http.StatusInternalServerError)
+		destConn.Close()
 		return
 	}
 
-	// Bidirectional copy
-	go func() { _, _ = io.Copy(destConn, hijackedConn) }()
-	go func() { _, _ = io.Copy(hijackedConn, destConn) }()
+	// Bidirectional copy — close both sides when done
+	go func() {
+		defer hijackedConn.Close()
+		defer destConn.Close()
+		_, _ = io.Copy(destConn, hijackedConn)
+	}()
+	go func() {
+		_, _ = io.Copy(hijackedConn, destConn)
+	}()
 }
 
 // interceptHTTPS performs MITM on target domain traffic:
-// 1. Terminate TLS with our generated cert
-// 2. Read the decrypted request body
-// 3. Run detection
-// 4. If clean: forward to real server
-// 5. If threat detected: alert user (in foreground mode, print; in daemon mode, notify)
+// 1. Send 200 Connection Established to the client CONNECT request
+// 2. Hijack the connection
+// 3. Wrap with TLS using our generated per-domain certificate
+// 4. Read the decrypted HTTP request
+// 5. Run detection on request body
+// 6. Forward to the real server
+// 7. Run detection on response body
+// 8. Write response back to client through TLS
 func (p *Proxy) interceptHTTPS(w http.ResponseWriter, r *http.Request) {
 	host := r.URL.Hostname()
 
@@ -295,13 +306,17 @@ func (p *Proxy) interceptHTTPS(w http.ResponseWriter, r *http.Request) {
 	// Hijack the connection
 	hijacker, ok := w.(http.Hijacker)
 	if !ok {
+		log.Printf("rampart: hijacking not supported, falling back to tunnel for %s", host)
 		p.tunnel(w, r) // Fall back to pass-through
 		return
 	}
 
+	// Send 200 Connection Established before hijacking
 	w.WriteHeader(http.StatusOK)
+
 	hijackedConn, _, err := hijacker.Hijack()
 	if err != nil {
+		log.Printf("rampart: hijack failed for %s: %v", host, err)
 		p.tunnel(w, r) // Fall back to pass-through
 		return
 	}
@@ -319,9 +334,10 @@ func (p *Proxy) interceptHTTPS(w http.ResponseWriter, r *http.Request) {
 		tlsCert, _ = tls.X509KeyPair(mitmCert.CertBytes, mitmCert.KeyBytes)
 	}
 
-	// Wrap the hijacked connection with TLS using our MITM cert
+	// Wrap the hijacked connection with TLS (we act as TLS server to the client)
 	tlsConfig := &tls.Config{
 		Certificates: []tls.Certificate{tlsCert},
+		MinVersion:   tls.VersionTLS12,
 	}
 
 	tlsConn := tls.Server(hijackedConn, tlsConfig)
@@ -332,11 +348,11 @@ func (p *Proxy) interceptHTTPS(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tlsConn.Close()
 
-	// Read the client's request through the TLS connection
+	// Read the client's HTTP request through the TLS connection
 	reader := bufio.NewReader(tlsConn)
 	clientReq, err := http.ReadRequest(reader)
 	if err != nil {
-		// Client closed connection or invalid request — not an error
+		// Client closed connection or sent invalid request — not a fatal error
 		return
 	}
 
@@ -352,7 +368,7 @@ func (p *Proxy) interceptHTTPS(w http.ResponseWriter, r *http.Request) {
 		p.scanAndAlert("request", host, clientReq.URL.Path, bodyBytes)
 	}
 
-	// Forward the request to the real server
+	// Reconstruct the request body for forwarding
 	clientReq.Body = io.NopCloser(strings.NewReader(string(bodyBytes)))
 	clientReq.URL.Scheme = "https"
 	clientReq.URL.Host = host
@@ -360,8 +376,11 @@ func (p *Proxy) interceptHTTPS(w http.ResponseWriter, r *http.Request) {
 		clientReq.Host = host
 	}
 
+	// Forward the request to the real AI server
 	transport := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: false},
+		TLSClientConfig: &tls.Config{
+			MinVersion: tls.VersionTLS12,
+		},
 	}
 	defer transport.CloseIdleConnections()
 
@@ -472,32 +491,91 @@ func (p *Proxy) scanAndAlert(direction, host, path string, body []byte) {
 	}
 }
 
+// ANSI color codes for terminal output.
+const (
+	colorReset  = "\033[0m"
+	colorRed    = "\033[31m"
+	colorYellow = "\033[33m"
+	colorGreen  = "\033[32m"
+	colorCyan   = "\033[36m"
+	colorBold   = "\033[1m"
+	colorDim    = "\033[2m"
+)
+
 // printDetection formats and prints detection results to the terminal.
+// Uses color-coded output: red=critical/high, yellow=medium, green=low.
 func (p *Proxy) printDetection(direction, host, path string, result *detector.Summary) {
-	fmt.Printf("\n⚠️  DETECTION: %s %s%s\n", direction, host, path)
-	fmt.Printf("   Detections: %d | Blocked: %v", result.TotalDetections, result.Blocked)
+	// Header with severity-appropriate coloring
+	severityColor := colorRed
+	severityIcon := "⚠️"
+	if result.Blocked {
+		severityColor = colorRed
+		severityIcon = "🚫"
+	} else if result.TotalDetections == 1 {
+		severityColor = colorYellow
+		severityIcon = "⚠️"
+	}
+
+	fmt.Printf("\n%s%s %sDEECTION: %s %s%s%s\n",
+		severityColor, severityIcon, colorBold,
+		direction, colorCyan, host, colorReset)
+
+	if path != "" && path != "/" {
+		fmt.Printf("   %s%s%s\n", colorDim, path, colorReset)
+	}
+
+	// Summary line
+	fmt.Printf("   Detections: %s%d%s | Blocked: %s%v%s",
+		colorBold, result.TotalDetections, colorReset,
+		boolColor(result.Blocked), result.Blocked, colorReset)
 
 	if len(result.PIICategories) > 0 {
-		fmt.Printf(" | PII: %v", result.PIICategories)
+		fmt.Printf(" | PII: %s%v%s", colorYellow, result.PIICategories, colorReset)
 	}
 	if len(result.SecretTypes) > 0 {
-		fmt.Printf(" | Secrets: %v", result.SecretTypes)
+		fmt.Printf(" | Secrets: %s%v%s", colorRed, result.SecretTypes, colorReset)
 	}
 	if result.MLScore > 0 {
-		fmt.Printf(" | ML score: %.3f", result.MLScore)
+		mlColor := colorGreen
+		if result.MLScore >= 0.7 {
+			mlColor = colorRed
+		} else if result.MLScore >= 0.4 {
+			mlColor = colorYellow
+		}
+		fmt.Printf(" | ML: %s%.3f%s", mlColor, result.MLScore, colorReset)
 	}
 	fmt.Println()
 
+	// Individual detection results
 	for _, r := range result.Results {
-		emoji := "🔴"
-		if r.Severity == "medium" {
-			emoji = "🟡"
-		} else if r.Severity == "low" {
-			emoji = "🟢"
-		}
-		fmt.Printf("   %s [%s] %s: %s\n", emoji, r.Severity, r.Category, r.Text)
+		dColor, emoji := severityColorAndEmoji(r.Severity)
+		fmt.Printf("   %s %s[%s]%s %s: %s\n", emoji, dColor, r.Severity, colorReset, r.Category, r.Text)
 	}
 	fmt.Println()
+}
+
+// severityColorAndEmoji returns the ANSI color and emoji for a severity level.
+func severityColorAndEmoji(severity string) (string, string) {
+	switch severity {
+	case "critical":
+		return colorRed, "🔴"
+	case "high":
+		return colorRed, "🔴"
+	case "medium":
+		return colorYellow, "🟡"
+	case "low":
+		return colorGreen, "🟢"
+	default:
+		return colorCyan, "⚪"
+	}
+}
+
+// boolColor returns a color string for boolean values.
+func boolColor(b bool) string {
+	if b {
+		return colorRed
+	}
+	return colorGreen
 }
 
 // notifyDesktop sends a desktop notification (daemon mode).

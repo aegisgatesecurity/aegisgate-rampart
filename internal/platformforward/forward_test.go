@@ -48,7 +48,11 @@ func TestForward_Enabled_SendsEvent(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
 		mu.Lock()
-		json.Unmarshal(body, &received)
+		if err := json.Unmarshal(body, &received); err != nil {
+			mu.Unlock()
+			t.Errorf("failed to unmarshal: %v", err)
+			return
+		}
 		mu.Unlock()
 		w.WriteHeader(http.StatusOK)
 		done <- struct{}{}

@@ -14,6 +14,7 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 )
@@ -462,6 +463,9 @@ func TestParseKeyFileNoPEMBlockContent(t *testing.T) {
 // --- EnsureCerts coverage tests ---
 
 func TestEnsureCertsMkdirFailure(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Unix-specific /proc path trick doesn't work on Windows")
+	}
 	cfg := Config{
 		CertDir:      "/proc/nonexistent/certs", // cannot create dirs under /proc
 		AutoGenerate: true,

@@ -5,6 +5,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -29,6 +30,9 @@ func TestLoadUnreadableConfigDir(t *testing.T) {
 // TestLoadPermDeniedConfigFile exercises the non-IsNotExist read error path
 // by creating a config file with no read permissions.
 func TestLoadPermDeniedConfigFile(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Unix-style permission bits don't work on Windows")
+	}
 	// Skip on platforms where permission bits may not be honored (e.g., root).
 	if os.Getuid() == 0 {
 		t.Skip("skipping: running as root, permission denial unreliable")

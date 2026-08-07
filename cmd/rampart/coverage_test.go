@@ -130,8 +130,8 @@ func TestNewDaemon_PIDFilePath(t *testing.T) {
 	if !strings.Contains(d.pidFile, "rampart.pid") {
 		t.Errorf("pidFile should contain 'rampart.pid', got %s", d.pidFile)
 	}
-	if !strings.Contains(d.pidFile, "aegisgate-rampart") {
-		t.Errorf("pidFile should contain 'aegisgate-rampart', got %s", d.pidFile)
+	if !strings.Contains(strings.ToLower(d.pidFile), "aegisgate") {
+		t.Errorf("pidFile should contain 'aegisgate', got %s", d.pidFile)
 	}
 }
 

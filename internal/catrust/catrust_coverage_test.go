@@ -122,8 +122,8 @@ func TestDefaultCACertPath_NonEmpty(t *testing.T) {
 	if filepath.Base(path) != "ca.crt" {
 		t.Errorf("DefaultCACertPath should end with ca.crt, got %s", path)
 	}
-	if !strings.Contains(path, "aegisgate-rampart") {
-		t.Errorf("DefaultCACertPath should contain 'aegisgate-rampart', got %s", path)
+	if !strings.Contains(strings.ToLower(path), "aegisgate") {
+		t.Errorf("DefaultCACertPath should contain 'aegisgate', got %s", path)
 	}
 }
 

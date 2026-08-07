@@ -43,7 +43,7 @@ func TestLoadPermDeniedConfigFile(t *testing.T) {
 	if err := os.Chmod(configPath, 0000); err != nil {
 		t.Fatal(err)
 	}
-	defer os.Chmod(configPath, 0644) // restore for cleanup
+	defer func() { _ = os.Chmod(configPath, 0644) }() // restore for cleanup
 
 	_, err := Load(tmpDir)
 	if err == nil {

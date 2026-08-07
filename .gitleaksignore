@@ -1,0 +1,14 @@
+# Test files with fake secrets
+# These are intentionally fake patterns for testing
+
+# Stripe test keys (fake)
+**/response_comprehensive_test.go
+
+# Private keys in test fixtures
+**/*_test.go
+configs/*.key
+internal/certificate/testdata/*
+internal/certinit/testdata/*
+
+# Embedded test data
+internal/ml/testdata/*

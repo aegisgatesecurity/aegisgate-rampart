@@ -86,8 +86,12 @@ func TestAllDirs_AreDistinct(t *testing.T) {
 	cfg := ConfigDir()
 	data := DataDir()
 	cache := CacheDir()
-	if cfg == data {
-		t.Error("ConfigDir and DataDir should be distinct")
+	// On macOS, ConfigDir and DataDir are the same (~/Library/Application Support)
+	// which is the correct platform convention. Only verify they differ from cache.
+	if runtime.GOOS != "darwin" {
+		if cfg == data {
+			t.Error("ConfigDir and DataDir should be distinct on this platform")
+		}
 	}
 	if cfg == cache {
 		t.Error("ConfigDir and CacheDir should be distinct")

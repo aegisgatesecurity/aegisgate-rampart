@@ -138,6 +138,11 @@ func GetInstructions(certPath string) string {
 
 func checkTrustDarwin(certPath string) Status {
 	status := Status{Trusted: false, Platform: "darwin", CertPath: certPath}
+	// If the cert file doesn't exist, it can't be trusted
+	if _, err := os.Stat(certPath); err != nil {
+		status.Message = fmt.Sprintf("CA certificate not found: %s", certPath)
+		return status
+	}
 	// Check if cert is in the System keychain
 	cmd := exec.Command("security", "find-certificate", "-c", "AegisGate CA", "/Library/Keychains/System.keychain")
 	if cmd.Run() == nil {
@@ -211,6 +216,11 @@ func setupTrustLinux(certPath string) SetupResult {
 
 func checkTrustWindows(certPath string) Status {
 	status := Status{Trusted: false, Platform: "windows", CertPath: certPath}
+	// If the cert file doesn't exist, it can't be trusted
+	if _, err := os.Stat(certPath); err != nil {
+		status.Message = fmt.Sprintf("CA certificate not found: %s", certPath)
+		return status
+	}
 	cmd := exec.Command("certutil", "-store", "-user", "Root", "AegisGate CA")
 	if cmd.Run() == nil {
 		status.Trusted = true

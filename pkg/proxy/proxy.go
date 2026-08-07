@@ -516,7 +516,7 @@ func (p *Proxy) printDetection(direction, host, path string, result *detector.Su
 		severityIcon = "⚠️"
 	}
 
-	fmt.Printf("\n%s%s %sDEECTION: %s %s%s%s\n",
+	fmt.Printf("\n%s%s %sDETECTION: %s %s%s%s\n",
 		severityColor, severityIcon, colorBold,
 		direction, colorCyan, host, colorReset)
 

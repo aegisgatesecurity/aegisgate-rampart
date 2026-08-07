@@ -5,6 +5,38 @@ All notable changes to AegisGate Rampart are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.3.0] - 2026-08-07
+
+### Added — Phase 5: IDE Coverage Expansion
+
+- JetBrains IDE plugin (`aegisgate-rampart-jetbrains/`): IntelliJ, PyCharm, WebStorm, etc.
+  - RampartClient: HTTP client to localhost /detect + /stats (zero-dep JSON parser)
+  - RampartAnnotator + RampartExternalAnnotator: inline highlights with severity icons
+  - RampartAutoScan: debounced document-change listener (300ms)
+  - RampartStatusBar: live connection status (30s refresh)
+  - RampartSettings: persistent IDE settings (URL, auto-scan, min severity)
+  - RampartActions: Scan Current File, Check Connection, Open Settings
+  - 18 unit tests, 1.6MB plugin ZIP
+  - Requires IntelliJ Platform 2023.2+ (JDK 17)
+  - Zero external runtime dependencies beyond IntelliJ SDK
+- LSP server (`cmd/rampart-lsp/` + `internal/lsp/`): any-editor coverage
+  - JSON-RPC 2.0 over stdio — works with Neovim, Emacs, Helix, Sublime, etc.
+  - Debounced scanning (300ms default, configurable)
+  - Severity threshold filtering (critical/high/medium/low)
+  - Category icons in diagnostic messages (🔐💳⚔️🔑🧠📋)
+  - Configurable: --rampart-url, --debounce-ms, --min-severity
+  - Zero external dependencies (Go stdlib only)
+  - 91.5% test coverage, all passing with -race
+
+### Added — CI and Repositories
+
+- VS Code extension pushed to `github.com/aegisgatesecurity/aegisgate-rampart-ext`
+- JetBrains plugin CI workflow (Gradle build + test + artifact upload)
+- LSP server coverage raised from 67.4% to 91.5% (22 new tests)
+- Fixed IntelliJ Platform API compatibility issues (6 fixes)
+- Fixed JSON parser false key matches in JetBrains plugin
+- Fixed errcheck lint failures in LSP test files
+
 ## [0.2.1] - 2026-08-07
 
 ### Added — P0: Audit Log & Platform Forwarding

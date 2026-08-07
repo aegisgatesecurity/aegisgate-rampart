@@ -32,20 +32,29 @@ type Server struct {
 
 // NewServer creates a new LSP server with the given handler.
 func NewServer(handler *Handler) *Server {
-	return &Server{
+	s := &Server{
 		handler: handler,
 		out:     os.Stdout,
 		in:      bufio.NewReader(os.Stdin),
 	}
+	handler.OnDiagnostics = func(uri string, version int, diagnostics []Diagnostic) {
+		s.sendDiagnostics(uri, version, diagnostics)
+	}
+	return s
 }
 
 // NewServerWithIO creates a new LSP server with custom IO (for testing).
 func NewServerWithIO(handler *Handler, in io.Reader, out io.Writer) *Server {
-	return &Server{
+	s := &Server{
 		handler: handler,
 		out:     out,
 		in:      bufio.NewReader(in),
 	}
+	// Wire handler's OnDiagnostics callback to send diagnostics to the client.
+	handler.OnDiagnostics = func(uri string, version int, diagnostics []Diagnostic) {
+		s.sendDiagnostics(uri, version, diagnostics)
+	}
+	return s
 }
 
 // Run starts the LSP server's read-dispatch-write loop.

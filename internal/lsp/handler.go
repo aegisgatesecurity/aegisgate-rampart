@@ -92,6 +92,10 @@ type Handler struct {
 	mu             sync.Mutex
 	documents      map[string]string // uri → full text
 	debounceTimers map[string]*time.Timer
+
+	// OnDiagnostics is invoked after debounce completes with diagnostics.
+	// The server sets this to publish diagnostics to the LSP client.
+	OnDiagnostics func(uri string, version int, diagnostics []Diagnostic)
 }
 
 // NewHandler creates a new LSP handler.
@@ -143,7 +147,10 @@ func (h *Handler) scheduleDetect(uri string, version int) {
 		timer.Stop()
 	}
 	h.debounceTimers[uri] = time.AfterFunc(time.Duration(h.debounceMs)*time.Millisecond, func() {
-		h.detectAndPublish(uri, version)
+		diagnostics := h.detectAndPublish(uri, version)
+		if h.OnDiagnostics != nil {
+			h.OnDiagnostics(uri, version, diagnostics)
+		}
 	})
 	h.mu.Unlock()
 }

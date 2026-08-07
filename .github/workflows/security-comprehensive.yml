@@ -16,6 +16,11 @@ on:
         default: 'false'
         type: boolean
 
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
 jobs:
   # ========================================
   # Semgrep — multi-language SAST

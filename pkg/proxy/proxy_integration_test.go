@@ -220,7 +220,7 @@ func TestDetectAPIHTTPServer(t *testing.T) {
 
 	// Use a temp cert directory to avoid conflicting with real certs
 	tmpDir := t.TempDir()
-	os.MkdirAll(tmpDir+"/certs", 0755) /* #nosec */ 
+	os.MkdirAll(tmpDir+"/certs", 0755) /* #nosec */
 
 	proxy, err := New(cfg)
 	if err != nil {
@@ -328,7 +328,7 @@ func TestProxyPassthrough(t *testing.T) {
 	// Create a simple HTTP server that ISN'T a target domain
 	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("hello from example.com"))
+		_ = w.Write([]byte("hello from example.com"))
 	}))
 	defer backend.Close()
 
@@ -418,7 +418,7 @@ func TestFullProxyRoundTrip(t *testing.T) {
 			// Simulate an AI API response containing PII
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"id":"chatcmpl-123","choices":[{"message":{"content":"Sure, the SSN is 123-45-6789 and the AWS key is AKIAIOSFODNN7EXAMPLE"}}]}`))
+			_, _ = w.Write([]byte(`{"id":"chatcmpl-123","choices":[{"message":{"content":"Sure, the SSN is 123-45-6789 and the AWS key is AKIAIOSFODNN7EXAMPLE"}}]}`))
 		}),
 	}
 

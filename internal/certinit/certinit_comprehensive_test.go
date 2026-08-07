@@ -473,7 +473,7 @@ func TestCheckExistingCertsPartialFiles(t *testing.T) {
 	dir := t.TempDir()
 	// Only CA cert exists, not server cert/key
 	caPath := filepath.Join(dir, "ca.crt")
-	os.WriteFile(caPath, []byte("placeholder"), 0644)
+	os.WriteFile(caPath, []byte("placeholder"), 0644) /* #nosec */ 
 
 	existing, warnings := checkExistingCerts(
 		filepath.Join(dir, "server.crt"),
@@ -579,7 +579,7 @@ func TestParseKeyFileNonexistent(t *testing.T) {
 func TestParseCertificateFileInvalidPEM(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "bad.crt")
-	os.WriteFile(path, []byte("not a pem file"), 0644)
+	os.WriteFile(path, []byte("not a pem file"), 0644) /* #nosec */ 
 	_, err := parseCertificateFile(path)
 	if err == nil {
 		t.Error("expected error for invalid PEM")
@@ -589,7 +589,7 @@ func TestParseCertificateFileInvalidPEM(t *testing.T) {
 func TestParseKeyFileInvalidPEM(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "bad.key")
-	os.WriteFile(path, []byte("not a key file"), 0644)
+	os.WriteFile(path, []byte("not a key file"), 0644) /* #nosec */ 
 	_, err := parseKeyFile(path)
 	if err == nil {
 		t.Error("expected error for invalid key")
@@ -644,7 +644,7 @@ func TestCheckExistingCertsExpiredCACert(t *testing.T) {
 		CACertFile:   "ca.crt",
 		CAKeyFile:    "ca.key",
 	}
-	EnsureCerts(cfg)
+	_ = EnsureCerts(cfg) /* #nosec */ 
 
 	// Overwrite CA cert with invalid PEM
 	caCertPath := filepath.Join(cfg.CertDir, cfg.CACertFile)
@@ -697,7 +697,7 @@ func TestValidateCertsInvalidServerKey(t *testing.T) {
 		CACertFile:   "ca.crt",
 		CAKeyFile:    "ca.key",
 	}
-	EnsureCerts(cfg)
+	_ = EnsureCerts(cfg) /* #nosec */ 
 
 	// Overwrite server key with invalid data
 	serverKeyPath := filepath.Join(cfg.CertDir, cfg.KeyFile)
@@ -725,7 +725,7 @@ func TestValidateCertsInvalidCAKey(t *testing.T) {
 		CACertFile:   "ca.crt",
 		CAKeyFile:    "ca.key",
 	}
-	EnsureCerts(cfg)
+	_ = EnsureCerts(cfg) /* #nosec */ 
 
 	// Overwrite CA key with invalid data
 	caKeyPath := filepath.Join(cfg.CertDir, cfg.CAKeyFile)

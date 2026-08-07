@@ -69,7 +69,7 @@ func (d *Daemon) Run(ctx context.Context, cancel context.CancelFunc) error {
 	}()
 
 	// Send startup notification
-	d.notify.SendStartup(d.cfg.ProxyPort, len(d.cfg.Targets))
+	_ = d.notify.SendStartup(d.cfg.ProxyPort, len(d.cfg.Targets))
 
 	// Hook detection events into tray/notifications
 	go d.watchDetections(ctx)
@@ -101,7 +101,7 @@ func (d *Daemon) watchDetections(ctx context.Context) {
 			if stats.Detections > lastCount {
 				newDetections := stats.Detections - lastCount
 				if newDetections > 0 {
-					d.notify.SendDetection("AI API", int(newDetections), nil)
+					_ = d.notify.SendDetection("AI API", int(newDetections), nil)
 					d.tray.UpdateDetections(stats.Detections)
 				}
 				lastCount = stats.Detections

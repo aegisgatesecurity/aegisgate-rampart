@@ -220,7 +220,7 @@ func TestDetectAPIHTTPServer(t *testing.T) {
 
 	// Use a temp cert directory to avoid conflicting with real certs
 	tmpDir := t.TempDir()
-	os.MkdirAll(tmpDir+"/certs", 0755)
+	os.MkdirAll(tmpDir+"/certs", 0755) /* #nosec */ 
 
 	proxy, err := New(cfg)
 	if err != nil {
@@ -232,7 +232,7 @@ func TestDetectAPIHTTPServer(t *testing.T) {
 	defer cancel()
 
 	go func() {
-		if err := proxy.Start(ctx); err != nil {
+		if err := _ = proxy.Start(ctx); err != nil {
 			t.Logf("Proxy stopped: %v", err)
 		}
 	}()
@@ -429,7 +429,7 @@ func TestFullProxyRoundTrip(t *testing.T) {
 	backendPort := backendListener.Addr().(*net.TCPAddr).Port
 
 	tlsListener := tls.NewListener(backendListener, backendTLSConfig)
-	go backendServer.Serve(tlsListener)
+	go func() { _ = backendServer.Serve(tlsListener) }()
 	defer backendServer.Close()
 
 	t.Logf("Mock AI API server on 127.0.0.1:%d", backendPort)
@@ -504,7 +504,7 @@ func TestFullProxyRoundTrip(t *testing.T) {
 		defer cancel()
 
 		go func() {
-			proxy.Start(ctx)
+			_ = proxy.Start(ctx)
 		}()
 
 		time.Sleep(500 * time.Millisecond)
@@ -546,7 +546,7 @@ func TestFullProxyRoundTrip(t *testing.T) {
 		defer cancel()
 
 		go func() {
-			proxy.Start(ctx)
+			_ = proxy.Start(ctx)
 		}()
 
 		time.Sleep(500 * time.Millisecond)

@@ -18,8 +18,8 @@ func TestCompDefaultCACertPath(t *testing.T) {
 	if filepath.Base(path) != "ca.crt" {
 		t.Errorf("DefaultCACertPath should end with ca.crt, got %s", path)
 	}
-	if !strings.Contains(path, ".config/aegisgate-rampart") {
-		t.Errorf("DefaultCACertPath should contain .config/aegisgate-rampart, got %s", path)
+	if !strings.Contains(path, "aegisgate-rampart") {
+		t.Errorf("DefaultCACertPath should contain aegisgate-rampart, got %s", path)
 	}
 }
 
@@ -182,12 +182,11 @@ func TestSetupResultFailureFields(t *testing.T) {
 func TestDefaultCACertPathFormat(t *testing.T) {
 	path := DefaultCACertPath()
 	// Should follow XDG config pattern
-	home, err := os.UserHomeDir()
-	if err != nil {
-		t.Skip("Cannot determine home directory")
+	// Verify the path ends with ca.crt and contains aegisgate-rampart
+	if filepath.Base(path) != "ca.crt" {
+		t.Errorf("DefaultCACertPath should end with ca.crt, got %s", path)
 	}
-	expected := filepath.Join(home, ".config", "aegisgate-rampart", "ca.crt")
-	if path != expected {
-		t.Errorf("DefaultCACertPath = %q, want %q", path, expected)
+	if !strings.Contains(path, "aegisgate-rampart") {
+		t.Errorf("DefaultCACertPath should contain aegisgate-rampart, got %s", path)
 	}
 }

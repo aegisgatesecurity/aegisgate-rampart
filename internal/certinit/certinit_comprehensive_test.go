@@ -617,7 +617,7 @@ func TestCheckExistingCertsExpiredServerCert(t *testing.T) {
 
 	// Now overwrite server cert with invalid PEM
 	serverCertPath := filepath.Join(cfg.CertDir, cfg.CertFile)
-	os.WriteFile(serverCertPath, []byte("-----BEGIN CERTIFICATE-----\nINVALIDBASE64\n-----END CERTIFICATE-----"), 0644)
+	_ = os.WriteFile(serverCertPath, []byte("-----BEGIN CERTIFICATE-----\nINVALIDBASE64\n-----END CERTIFICATE-----"), 0644)
 
 	// checkExistingCerts should return false with warnings
 	existing, warnings := checkExistingCerts(
@@ -648,7 +648,7 @@ func TestCheckExistingCertsExpiredCACert(t *testing.T) {
 
 	// Overwrite CA cert with invalid PEM
 	caCertPath := filepath.Join(cfg.CertDir, cfg.CACertFile)
-	os.WriteFile(caCertPath, []byte("-----BEGIN CERTIFICATE-----\nINVALIDBASE64CA\n-----END CERTIFICATE-----"), 0644)
+	_ = os.WriteFile(caCertPath, []byte("-----BEGIN CERTIFICATE-----\nINVALIDBASE64CA\n-----END CERTIFICATE-----"), 0644)
 
 	existing, warnings := checkExistingCerts(
 		filepath.Join(cfg.CertDir, cfg.CertFile),
@@ -668,7 +668,7 @@ func TestParseKeyFileUnsupportedFormat(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "unsupported.key")
 	// Write PEM block with unsupported key type
-	os.WriteFile(path, []byte("-----BEGIN OTHER KEY TYPE-----\nSOMEDATA\n-----END OTHER KEY TYPE-----"), 0600)
+	_ = os.WriteFile(path, []byte("-----BEGIN OTHER KEY TYPE-----\nSOMEDATA\n-----END OTHER KEY TYPE-----"), 0600)
 
 	_, err := parseKeyFile(path)
 	if err == nil {

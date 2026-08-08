@@ -49,6 +49,18 @@ type DetectSummary struct {
 	LatencyMs       int64           `json:"latency_ms"`
 }
 
+// ProxyStats represents the response from the Rampart /stats endpoint.
+type ProxyStats struct {
+	TotalRequests   int64  `json:"total_requests"`
+	Intercepted     int64  `json:"intercepted"`
+	PassedThrough   int64  `json:"passed_through"`
+	Detections      int64  `json:"detections"`
+	BlockedRequests int64  `json:"blocked_requests"`
+	MLDetections    int64  `json:"ml_detections"`
+	StartTime       string `json:"start_time"`
+	Mode            string `json:"mode"`
+}
+
 // RampartClient calls the Rampart local HTTP /detect endpoint.
 type RampartClient struct {
 	url        string
@@ -63,6 +75,32 @@ func NewRampartClient(url string) *RampartClient {
 			Timeout: 10 * time.Second,
 		},
 	}
+}
+
+// GetStats calls the Rampart /stats endpoint and returns proxy statistics.
+func (c *RampartClient) GetStats(ctx context.Context) (*ProxyStats, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.url+"/stats", nil)
+	if err != nil {
+		return nil, fmt.Errorf("create stats request: %w", err)
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("stats request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("stats returned status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var stats ProxyStats
+	if err := json.NewDecoder(resp.Body).Decode(&stats); err != nil {
+		return nil, fmt.Errorf("decode stats response: %w", err)
+	}
+
+	return &stats, nil
 }
 
 // Detect sends text to the Rampart /detect endpoint and returns the summary.

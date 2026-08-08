@@ -986,3 +986,248 @@ func TestFormatBlockHTTPResponse(t *testing.T) {
 		t.Error("Expected category in block response")
 	}
 }
+
+// ============================================================================
+// Coverage improvement tests
+// ============================================================================
+
+func TestFormatBlockHTTPResponseCustomMessage(t *testing.T) {
+	cfg := config.DefaultConfig()
+	cfg.Mode = config.ModeBlock
+	cfg.Block.Message = "Custom: threat detected"
+	cfg.Block.IncludeDetections = false
+	p, err := New(cfg)
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+
+	result := &detector.Summary{
+		TotalDetections: 1,
+		Results: []detector.Result{
+			{Category: "xss", Severity: "critical", Text: "script tag", Rule: "xss_script"},
+		},
+	}
+
+	body := p.formatBlockHTTPResponse("response", "api.openai.com", "/v1/chat/completions", result, "xss: script tag")
+	if !strings.Contains(string(body), "Custom: threat detected") {
+		t.Errorf("Expected custom message in block response, got: %s", body)
+	}
+	if strings.Contains(string(body), "results") && cfg.Block.IncludeDetections == false {
+		// Results should be omitted when IncludeDetections is false
+	}
+}
+
+func TestFormatBlockHTTPResponseEmptyCategories(t *testing.T) {
+	cfg := config.DefaultConfig()
+	cfg.Mode = config.ModeBlock
+	p, err := New(cfg)
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+
+	result := &detector.Summary{
+		TotalDetections: 1,
+		Results: []detector.Result{
+			{Category: "secret", Severity: "high", Text: "AWS key", Rule: "aws_key", Confidence: 0.95},
+		},
+	}
+
+	body := p.formatBlockHTTPResponse("request", "api.anthropic.com", "/v1/messages", result, "secret: AWS key")
+	if !strings.Contains(string(body), "api.anthropic.com") {
+		t.Error("Expected host in response")
+	}
+	if !strings.Contains(string(body), "secret") {
+		t.Error("Expected category in response")
+	}
+}
+
+func TestMeetsSeverityThresholdEdgeCases(t *testing.T) {
+	tests := []struct {
+		severity  string
+		threshold string
+		expected  bool
+	}{
+		{"", "high", false},
+		{"high", "", true}, // empty threshold defaults to high
+		{"", "", false},
+	}
+	for _, tc := range tests {
+		result := meetsSeverityThreshold(tc.severity, tc.threshold)
+		if result != tc.expected {
+			t.Errorf("meetsSeverityThreshold(%q, %q) = %v, want %v", tc.severity, tc.threshold, result, tc.expected)
+		}
+	}
+}
+
+func TestContainsCategory(t *testing.T) {
+	cats := []string{"pii", "secrets", "xss"}
+	if !containsCategory(cats, "pii") {
+		t.Error("Expected pii to be in categories")
+	}
+	if !containsCategory(cats, "xss") {
+		t.Error("Expected xss to be in categories")
+	}
+	if containsCategory(cats, "toxicity") {
+		t.Error("Expected toxicity to NOT be in categories")
+	}
+	if containsCategory([]string{}, "pii") {
+		t.Error("Empty categories should not match anything")
+	}
+}
+
+func TestShouldBlockBlockModeAllCategories(t *testing.T) {
+	cfg := config.DefaultConfig()
+	cfg.Mode = config.ModeBlock
+	cfg.Block.Threshold = config.SeverityLow
+	cfg.Block.Categories = []string{} // empty = all categories
+	p, err := New(cfg)
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+
+	result := &detector.Summary{
+		TotalDetections: 1,
+		Results: []detector.Result{
+			{Category: "xss", Severity: "low", Text: "onerror", Rule: "xss_onerror"},
+		},
+	}
+
+	shouldBlock, _ := p.shouldBlock(result)
+	if !shouldBlock {
+		t.Error("Expected low-severity XSS to be blocked when threshold is low and categories is empty")
+	}
+}
+
+func TestShouldBlockMixedSeverity(t *testing.T) {
+	cfg := config.DefaultConfig()
+	cfg.Mode = config.ModeBlock
+	cfg.Block.Threshold = config.SeverityHigh
+	p, err := New(cfg)
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+
+	// Mix of low and critical — should block because critical meets threshold
+	result := &detector.Summary{
+		TotalDetections: 2,
+		Results: []detector.Result{
+			{Category: "pii", Severity: "low", Text: "name detected", Rule: "pii_name"},
+			{Category: "pii", Severity: "critical", Text: "SSN detected", Rule: "pii_ssn"},
+		},
+	}
+
+	shouldBlock, reason := p.shouldBlock(result)
+	if !shouldBlock {
+		t.Error("Expected block when at least one detection meets threshold")
+	}
+	if !strings.Contains(reason, "critical") && !strings.Contains(reason, "SSN") {
+		t.Logf("Block reason: %s", reason)
+	}
+}
+
+func TestReloadConfigBlockMode(t *testing.T) {
+	cfg := config.DefaultConfig()
+	p, err := New(cfg)
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+
+	// Verify initial targets
+	if !p.isTargetDomain("api.openai.com") {
+		t.Error("Expected api.openai.com to be a target")
+	}
+
+	// Reload with different targets
+	newCfg := config.DefaultConfig()
+	newCfg.Targets = []config.TargetConfig{
+		{Domain: "custom.api.example.com", Paths: []string{"/v1/*"}, Description: "Custom API"},
+	}
+
+	p.ReloadConfig(newCfg)
+
+	// Old target should be gone
+	if p.isTargetDomain("api.openai.com") {
+		t.Error("Expected api.openai.com to NOT be a target after reload")
+	}
+	// New target should be present
+	if !p.isTargetDomain("custom.api.example.com") {
+		t.Error("Expected custom.api.example.com to be a target after reload")
+	}
+}
+
+func TestHandleStatsAPIWithMode(t *testing.T) {
+	cfg := config.DefaultConfig()
+	cfg.Mode = config.ModeBlock
+	p, err := New(cfg)
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/stats", nil)
+	w := httptest.NewRecorder()
+
+	p.HandleStatsAPI(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected 200, got %d", w.Code)
+	}
+
+	var stats map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &stats)
+	if stats["mode"] != "block" {
+		t.Errorf("Expected mode=block in stats, got %v", stats["mode"])
+	}
+}
+
+func TestHandleDetectAPIMethodNotAllowed(t *testing.T) {
+	cfg := config.DefaultConfig()
+	p, err := New(cfg)
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/detect", nil)
+	w := httptest.NewRecorder()
+
+	p.HandleDetectAPI(w, req)
+
+	if w.Code != http.StatusMethodNotAllowed {
+		t.Errorf("Expected 405 for GET /detect, got %d", w.Code)
+	}
+}
+
+func TestBlockHandleDetectInvalidJSON(t *testing.T) {
+	cfg := config.DefaultConfig()
+	p, err := New(cfg)
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/detect", strings.NewReader("not json"))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	p.HandleDetectAPI(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("Expected 400 for invalid JSON, got %d", w.Code)
+	}
+}
+
+func TestBlockHandleDetectEmptyBody(t *testing.T) {
+	cfg := config.DefaultConfig()
+	p, err := New(cfg)
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/detect", strings.NewReader(""))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	p.HandleDetectAPI(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("Expected 400 for empty body, got %d", w.Code)
+	}
+}

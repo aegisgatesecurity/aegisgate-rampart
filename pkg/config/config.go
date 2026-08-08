@@ -11,14 +11,14 @@ import (
 
 // Config holds all Rampart configuration.
 type Config struct {
-	ProxyPort       int            `json:"proxy_port"`
-	DaemonMode      bool           `json:"daemon_mode"`
-	Verbose         bool           `json:"verbose"`
-	PlatformURL     string         `json:"platform_url"`
-	RateLimitRPS    int            `json:"rate_limit_rps"`
-	Targets         []TargetConfig `json:"targets"`
-	Models          ModelConfig    `json:"models"`
-	Privacy         PrivacyConfig  `json:"privacy"`
+	ProxyPort    int            `json:"proxy_port"`
+	DaemonMode   bool           `json:"daemon_mode"`
+	Verbose      bool           `json:"verbose"`
+	PlatformURL  string         `json:"platform_url"`
+	RateLimitRPS int            `json:"rate_limit_rps"`
+	Targets      []TargetConfig `json:"targets"`
+	Models       ModelConfig    `json:"models"`
+	Privacy      PrivacyConfig  `json:"privacy"`
 }
 
 // TargetConfig defines an AI API endpoint to intercept.

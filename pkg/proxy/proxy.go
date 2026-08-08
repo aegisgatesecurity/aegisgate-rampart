@@ -83,11 +83,17 @@ type ProxyStats struct {
 
 // New creates a new Proxy with the given configuration.
 func New(cfg *config.Config) (*Proxy, error) {
+	// Rate limiter from config (default 10000 for perf testing)
+	rateLimit := cfg.RateLimitRPS
+	if rateLimit <= 0 {
+		rateLimit = 30 // safe default
+	}
+
 	p := &Proxy{
 		cfg:             cfg,
 		targets:         make(map[string]bool),
 		shutdownTimeout: 15 * time.Second,
-		rateLimiter:     rate.NewLimiter(rate.Every(time.Second), 30), // 30 req/s burst
+		rateLimiter:     rate.NewLimiter(rate.Limit(rateLimit), rateLimit),
 	}
 
 	// Build target domain map

@@ -28,6 +28,7 @@ var (
 	autostartFlag   = flag.Bool("autostart", false, "Configure auto-start on boot")
 	noAutostartFlag = flag.Bool("no-autostart", false, "Remove auto-start configuration")
 	statusFlag      = flag.Bool("status", false, "Show current status and exit")
+	rateLimitFlag   = flag.Int("rate-limit", 0, "Rate limit (requests/second, 0=default)")
 )
 
 func main() {
@@ -67,6 +68,9 @@ func main() {
 	}
 	if *platformFlag != "" {
 		cfg.PlatformURL = *platformFlag
+	}
+	if *rateLimitFlag > 0 {
+		cfg.RateLimitRPS = *rateLimitFlag
 	}
 	if *daemonFlag {
 		cfg.DaemonMode = true

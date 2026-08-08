@@ -29,6 +29,8 @@ var (
 	noAutostartFlag = flag.Bool("no-autostart", false, "Remove auto-start configuration")
 	statusFlag      = flag.Bool("status", false, "Show current status and exit")
 	rateLimitFlag   = flag.Int("rate-limit", 0, "Rate limit (requests/second, 0=default)")
+	blockFlag       = flag.Bool("block", false, "Enable block mode (actively block detected threats)")
+	modeFlag        = flag.String("mode", "", "Operating mode: monitor (log only) or block (active blocking)")
 )
 
 func main() {
@@ -77,6 +79,19 @@ func main() {
 	}
 	if *verboseFlag {
 		cfg.Verbose = true
+	}
+
+	// Block mode: --block is a shorthand for --mode=block
+	if *blockFlag {
+		cfg.Mode = config.ModeBlock
+	}
+	if *modeFlag != "" {
+		cfg.Mode = *modeFlag
+	}
+	// Validate mode
+	if cfg.Mode != config.ModeMonitor && cfg.Mode != config.ModeBlock {
+		fmt.Fprintf(os.Stderr, "error: invalid mode %q (use \"monitor\" or \"block\")\n", cfg.Mode)
+		os.Exit(1)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -129,6 +144,11 @@ func runForeground(ctx context.Context, cancel context.CancelFunc, cfg *config.C
 	}()
 
 	fmt.Printf("aegisgate-rampart starting on :%d\n", cfg.ProxyPort)
+	modeLabel := "MONITOR"
+	if cfg.Mode == config.ModeBlock {
+		modeLabel = "BLOCK"
+	}
+	fmt.Printf("Mode: %s (detections %s)\n", modeLabel, map[bool]string{true: "will be blocked", false: "logged only"}[cfg.Mode == config.ModeBlock])
 	fmt.Println("Press Ctrl+C to stop")
 
 	if err := p.Start(ctx); err != nil {

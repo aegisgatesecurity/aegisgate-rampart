@@ -32,6 +32,7 @@ import (
 // Forwarder pushes detection events to AegisGate Platform.
 type Forwarder struct {
 	url     string
+	apiKey  string
 	client  *http.Client
 	enabled bool
 
@@ -75,6 +76,24 @@ func New(url string) *Forwarder {
 	}
 }
 
+// NewWithAPIKey creates a Platform forwarder with API key authentication.
+func NewWithAPIKey(url, apiKey string) *Forwarder {
+	enabled := url != ""
+	if enabled {
+		log.Printf("rampart: platform forwarding enabled → %s (with API key)", url)
+	} else {
+		log.Printf("rampart: platform forwarding disabled (no platform_url configured)")
+	}
+
+	return &Forwarder{
+		url:     url,
+		apiKey:  apiKey,
+		client:  &http.Client{Timeout: 5 * time.Second},
+		enabled: enabled,
+		nowFunc: time.Now,
+	}
+}
+
 // Forward sends a detection event to Platform. Non-blocking on error.
 func (f *Forwarder) Forward(entry auditlog.Entry) {
 	if !f.enabled {
@@ -84,7 +103,7 @@ func (f *Forwarder) Forward(entry auditlog.Entry) {
 	event := PlatformEvent{
 		Timestamp:     entry.Timestamp,
 		Source:        "rampart",
-		Version:       "0.2.0",
+		Version:       "0.4.0",
 		Direction:     entry.Direction,
 		Host:          entry.Host,
 		Path:          entry.Path,
@@ -109,7 +128,19 @@ func (f *Forwarder) send(event PlatformEvent) {
 		return
 	}
 
-	resp, err := f.client.Post(f.url, "application/json", bytes.NewReader(payload))
+	req, err := http.NewRequest(http.MethodPost, f.url, bytes.NewReader(payload))
+	if err != nil {
+		log.Printf("rampart: platform forward request error: %v", err)
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	// Add API key authentication if configured
+	if f.apiKey != "" {
+		req.Header.Set("Authorization", "Bearer "+f.apiKey)
+	}
+
+	resp, err := f.client.Do(req)
 	if err != nil {
 		log.Printf("rampart: platform forward error: %v", err)
 		return

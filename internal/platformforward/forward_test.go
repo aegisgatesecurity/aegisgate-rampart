@@ -197,3 +197,128 @@ func TestString(t *testing.T) {
 		t.Errorf("expected URL in string, got %s", enabled.String())
 	}
 }
+
+func TestNewWithAPIKey(t *testing.T) {
+	f := NewWithAPIKey("http://localhost:9090/api/v1/events", "rag-test-key-123")
+	if !f.Enabled() {
+		t.Error("expected forwarding to be enabled with URL and API key")
+	}
+	if f.apiKey != "rag-test-key-123" {
+		t.Errorf("expected API key 'rag-test-key-123', got %s", f.apiKey)
+	}
+}
+
+func TestNewWithAPIKey_Disabled(t *testing.T) {
+	f := NewWithAPIKey("", "rag-test-key-123")
+	if f.Enabled() {
+		t.Error("expected forwarding to be disabled with empty URL")
+	}
+}
+
+func TestForward_WithAPIKey_AuthHeader(t *testing.T) {
+	var mu sync.Mutex
+	var receivedAuth string
+	done := make(chan struct{}, 1)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		receivedAuth = r.Header.Get("Authorization")
+		mu.Unlock()
+		w.WriteHeader(http.StatusOK)
+		done <- struct{}{}
+	}))
+	defer server.Close()
+
+	f := NewWithAPIKey(server.URL, "rag-secret-key-abc123")
+	entry := auditlog.Entry{
+		Direction: "request",
+		Host:      "api.openai.com",
+		TotalDets: 1,
+	}
+
+	f.Forward(entry)
+
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("timeout waiting for platform forward")
+	}
+
+	mu.Lock()
+	auth := receivedAuth
+	mu.Unlock()
+
+	if auth != "Bearer rag-secret-key-abc123" {
+		t.Errorf("expected Authorization header 'Bearer rag-secret-key-abc123', got %s", auth)
+	}
+}
+
+func TestForward_WithoutAPIKey_NoAuthHeader(t *testing.T) {
+	var mu sync.Mutex
+	var receivedAuth string
+	done := make(chan struct{}, 1)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		receivedAuth = r.Header.Get("Authorization")
+		mu.Unlock()
+		w.WriteHeader(http.StatusOK)
+		done <- struct{}{}
+	}))
+	defer server.Close()
+
+	f := New(server.URL)
+	entry := auditlog.Entry{
+		Direction: "request",
+		Host:      "api.openai.com",
+		TotalDets: 1,
+	}
+
+	f.Forward(entry)
+
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("timeout waiting for platform forward")
+	}
+
+	mu.Lock()
+	auth := receivedAuth
+	mu.Unlock()
+
+	if auth != "" {
+		t.Errorf("expected no Authorization header, got %s", auth)
+	}
+}
+
+func TestForward_VersionIsCurrent(t *testing.T) {
+	var mu sync.Mutex
+	var received PlatformEvent
+	done := make(chan struct{}, 1)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		mu.Lock()
+		json.Unmarshal(body, &received)
+		mu.Unlock()
+		w.WriteHeader(http.StatusOK)
+		done <- struct{}{}
+	}))
+	defer server.Close()
+
+	f := New(server.URL)
+	entry := auditlog.Entry{Direction: "request", Host: "api.openai.com", TotalDets: 1}
+	f.Forward(entry)
+
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("timeout")
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+	if received.Version != "0.4.0" {
+		t.Errorf("expected version 0.4.0, got %s", received.Version)
+	}
+}

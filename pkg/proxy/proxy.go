@@ -155,7 +155,11 @@ func New(cfg *config.Config) (*Proxy, error) {
 	p.auditLog = auditLog
 
 	// Initialize platform forwarder (opt-in, requires platform_url in config)
-	p.forwarder = platformforward.New(cfg.PlatformURL)
+	if cfg.PlatformKey != "" {
+		p.forwarder = platformforward.NewWithAPIKey(cfg.PlatformURL, cfg.PlatformKey)
+	} else {
+		p.forwarder = platformforward.New(cfg.PlatformURL)
+	}
 
 	return p, nil
 }

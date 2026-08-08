@@ -5,6 +5,7 @@ import (
 	"encoding/pem"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -280,14 +281,16 @@ func TestSaveEncrypted(t *testing.T) {
 		t.Errorf("key file should be ENCRYPTED PRIVATE KEY PEM block, got %q", keyBlock.Type)
 	}
 
-	// Verify key file permissions
-	info, err := os.Stat(keyPath)
-	if err != nil {
-		t.Fatalf("Stat key: %v", err)
-	}
-	perm := info.Mode().Perm()
-	if perm != 0600 {
-		t.Errorf("expected key file permissions 0600, got %o", perm)
+	// Verify key file permissions (0600 on Unix, may differ on Windows)
+	if runtime.GOOS != "windows" {
+		info, err := os.Stat(keyPath)
+		if err != nil {
+			t.Fatalf("Stat key: %v", err)
+		}
+		perm := info.Mode().Perm()
+		if perm != 0600 {
+			t.Errorf("expected key file permissions 0600, got %o", perm)
+		}
 	}
 }
 

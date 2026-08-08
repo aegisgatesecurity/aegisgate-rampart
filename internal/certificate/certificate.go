@@ -12,13 +12,14 @@ import (
 	"crypto/cipher"
 	"crypto/ecdsa"
 	"crypto/elliptic"
-	"crypto/hkdf"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"fmt"
+	"golang.org/x/crypto/hkdf"
+	"io"
 	"math/big"
 	"os"
 	"sync"
@@ -273,8 +274,10 @@ func EncryptKey(keyPEM []byte, passphrase string) ([]byte, error) {
 	}
 
 	// Derive a 32-byte AES key using HKDF-SHA256
-	aesKey, err := hkdf.Key(sha256.New, []byte(passphrase), salt, "aegisgate-rampart-ca-key", 32)
-	if err != nil {
+	pseudorandomKey := hkdf.Extract(sha256.New, []byte(passphrase), salt)
+	aesKeyReader := hkdf.Expand(sha256.New, pseudorandomKey, []byte("aegisgate-rampart-ca-key"))
+	aesKey := make([]byte, 32)
+	if _, err := io.ReadFull(aesKeyReader, aesKey); err != nil {
 		return nil, fmt.Errorf("failed to derive key: %w", err)
 	}
 
@@ -328,8 +331,10 @@ func DecryptKey(encryptedPEM []byte, passphrase string) ([]byte, error) {
 	ciphertext := data[44:]
 
 	// Derive the same AES key using HKDF-SHA256
-	aesKey, err := hkdf.Key(sha256.New, []byte(passphrase), salt, "aegisgate-rampart-ca-key", 32)
-	if err != nil {
+	pseudorandomKey := hkdf.Extract(sha256.New, []byte(passphrase), salt)
+	aesKeyReader := hkdf.Expand(sha256.New, pseudorandomKey, []byte("aegisgate-rampart-ca-key"))
+	aesKey := make([]byte, 32)
+	if _, err := io.ReadFull(aesKeyReader, aesKey); err != nil {
 		return nil, fmt.Errorf("failed to derive key: %w", err)
 	}
 

@@ -1,6 +1,6 @@
 module github.com/aegisgatesecurity/aegisgate-rampart
 
-go 1.23
+go 1.25.0
 
 // Onnxruntime for ML inference (CGO build tag)
 // Only needed when CGO_ENABLED=1 — the non-CGO build uses heuristic fallback
@@ -9,7 +9,7 @@ require github.com/yalue/onnxruntime_go v1.27.0
 require (
 	fyne.io/systray v1.12.2
 	github.com/gen2brain/beeep v0.11.2
-	golang.org/x/sys v0.30.0
+	golang.org/x/sys v0.47.0
 	golang.org/x/time v0.7.0
 )
 
@@ -23,4 +23,5 @@ require (
 	github.com/sergeymakinen/go-bmp v1.0.0 // indirect
 	github.com/sergeymakinen/go-ico v1.0.0-beta.0 // indirect
 	github.com/tadvi/systray v0.0.0-20190226123456-11a2b8fa57af // indirect
+	golang.org/x/crypto v0.54.0 // indirect
 )

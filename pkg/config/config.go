@@ -25,17 +25,19 @@ const (
 
 // Config holds all Rampart configuration.
 type Config struct {
-	ProxyPort    int            `json:"proxy_port"`
-	DaemonMode   bool           `json:"daemon_mode"`
-	Verbose      bool           `json:"verbose"`
-	PlatformURL  string         `json:"platform_url"`
-	PlatformKey  string         `json:"platform_api_key"`
-	RateLimitRPS int            `json:"rate_limit_rps"`
-	Mode         string         `json:"mode"` // "monitor" (default) or "block"
-	Block        BlockConfig    `json:"block"`
-	Targets      []TargetConfig `json:"targets"`
-	Models       ModelConfig    `json:"models"`
-	Privacy      PrivacyConfig  `json:"privacy"`
+	ProxyPort       int            `json:"proxy_port"`
+	DaemonMode      bool           `json:"daemon_mode"`
+	Verbose         bool           `json:"verbose"`
+	PlatformURL     string         `json:"platform_url"`
+	PlatformKey     string         `json:"platform_api_key"`
+	RateLimitRPS    int            `json:"rate_limit_rps"`
+	Mode            string         `json:"mode"` // "monitor" (default) or "block"
+	Block           BlockConfig    `json:"block"`
+	Targets         []TargetConfig `json:"targets"`
+	Models          ModelConfig    `json:"models"`
+	Privacy         PrivacyConfig  `json:"privacy"`
+	PprofAddr       string         `json:"pprof_addr"`        // pprof debug server address (e.g., "localhost:6060"), empty = disabled
+	CAKeyPassphrase string         `json:"ca_key_passphrase"` // passphrase for CA key encryption at rest (empty = unencrypted)
 }
 
 // BlockConfig defines what gets blocked and how.

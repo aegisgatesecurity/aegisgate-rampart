@@ -2,12 +2,12 @@
 
 ## Supported Versions
 
-AegisGate Rampart follows semantic versioning. Security updates are provided for the latest minor version and the previous major version during transition periods.
+AegisGate Rampart follows semantic versioning. We are currently pre-1.0, so all 0.x.x versions receive security updates.
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 4.x.x   | :white_check_mark: |
-| < 4.0   | :x:                |
+| 0.x.x   | :white_check_mark: |
+| < 0.1   | :x:                |
 
 ## Security Architecture
 
@@ -15,9 +15,24 @@ Rampart is designed with security as a first principle:
 
 - **Air-gap ready**: Zero phone-home when `PlatformURL` is empty
 - **Local-first**: All detection logic runs locally on your machine
-- **No data retention**: Request/response data is not stored unless explicitly configured
 - **Transparent proxy**: MITM certificates are generated locally and never transmitted
 - **Open source**: All code is auditable under Apache 2.0 license
+
+### Audit Log Data Handling
+
+Rampart audit logs store detection metadata including categories, matched rules, and severity levels. **The original prompt text, PII values, and secret values are never stored in audit logs.** Secret values are redacted to `[REDACTED]` and PII values are partially masked (e.g., `SSN: ***-**-1234`) before any logging occurs.
+
+### CA Private Key Security
+
+The CA private key is stored on disk with **0600 file permissions** (owner read/write only). It should be protected with file integrity monitoring (FIM). **If the CA private key is compromised, an attacker could intercept all HTTPS traffic** passing through the proxy. If compromise is suspected, immediately rotate the CA key and re-install the new CA certificate on all client machines.
+
+### Block Mode Security
+
+In block mode, blocked request metadata (category, rule, severity) is logged, but the **original request content is not persisted**. The blocking response is only visible to the proxy operator, not the downstream AI API endpoint.
+
+### Config Integrity
+
+We recommend monitoring `configs/config.json` for unauthorized changes using file integrity monitoring (FIM). A change from `"mode": "block"` to `"mode": "monitor"` silently degrades security posture by allowing detected violations to pass through without blocking. Future versions may include config hash verification.
 
 ## Reporting a Vulnerability
 
@@ -26,6 +41,8 @@ We take the security of Rampart seriously. If you believe you've found a securit
 ### How to Report
 
 **Email**: security@aegisgatesecurity.io
+
+> **Note**: PGP key for encrypting vulnerability reports will be published here when available. For now, please send reports in plain text and we will provide a PGP key upon request.
 
 **Do NOT**:
 - Open a public GitHub issue for security vulnerabilities
@@ -79,6 +96,7 @@ We follow a coordinated disclosure process:
 3. **Restrict proxy access**: Use firewall rules to limit who can connect
 4. **Monitor detection logs**: Set up alerting for high-severity detections
 5. **Keep updated**: Enable Dependabot or monitor releases
+6. **Monitor config integrity**: Use file integrity monitoring (FIM) on `configs/config.json` to detect unauthorized mode changes
 
 ### CA Certificate Security
 
@@ -88,6 +106,8 @@ Rampart generates a local CA certificate for TLS interception:
 - Store the CA certificate securely after installation
 - Only trust the CA on machines where Rampart is installed
 - Revoke and regenerate if you suspect compromise
+- The CA private key file uses 0600 permissions — verify this with `ls -la`
+- Use file integrity monitoring (FIM) to detect unauthorized access or modification of the CA private key
 
 ### API Endpoint Security
 
@@ -116,4 +136,4 @@ We appreciate responsible disclosure and will credit researchers who report vali
 
 ---
 
-**Last updated**: August 6, 2026
+**Last updated**: August 7, 2026

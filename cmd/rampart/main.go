@@ -18,20 +18,22 @@ import (
 )
 
 var (
-	versionFlag     = "dev"
-	daemonFlag      = flag.Bool("daemon", false, "Run as background daemon with system tray notifications")
-	portFlag        = flag.Int("port", 8080, "Local proxy port")
-	configDirFlag   = flag.String("config", "", "Configuration directory path")
-	platformFlag    = flag.String("platform-url", "", "Optional Platform backend URL for telemetry")
-	platformKeyFlag = flag.String("platform-api-key", "", "API key for Platform authentication")
-	verboseFlag     = flag.Bool("v", false, "Verbose output")
-	trustFlag       = flag.Bool("trust", false, "Install CA certificate into system trust store")
-	autostartFlag   = flag.Bool("autostart", false, "Configure auto-start on boot")
-	noAutostartFlag = flag.Bool("no-autostart", false, "Remove auto-start configuration")
-	statusFlag      = flag.Bool("status", false, "Show current status and exit")
-	rateLimitFlag   = flag.Int("rate-limit", 0, "Rate limit (requests/second, 0=default)")
-	blockFlag       = flag.Bool("block", false, "Enable block mode (actively block detected threats)")
-	modeFlag        = flag.String("mode", "", "Operating mode: monitor (log only) or block (active blocking)")
+	versionFlag         = "dev"
+	daemonFlag          = flag.Bool("daemon", false, "Run as background daemon with system tray notifications")
+	portFlag            = flag.Int("port", 8080, "Local proxy port")
+	configDirFlag       = flag.String("config", "", "Configuration directory path")
+	platformFlag        = flag.String("platform-url", "", "Optional Platform backend URL for telemetry")
+	platformKeyFlag     = flag.String("platform-api-key", "", "API key for Platform authentication")
+	verboseFlag         = flag.Bool("v", false, "Verbose output")
+	trustFlag           = flag.Bool("trust", false, "Install CA certificate into system trust store")
+	autostartFlag       = flag.Bool("autostart", false, "Configure auto-start on boot")
+	noAutostartFlag     = flag.Bool("no-autostart", false, "Remove auto-start configuration")
+	statusFlag          = flag.Bool("status", false, "Show current status and exit")
+	rateLimitFlag       = flag.Int("rate-limit", 0, "Rate limit (requests/second, 0=default)")
+	blockFlag           = flag.Bool("block", false, "Enable block mode (actively block detected threats)")
+	modeFlag            = flag.String("mode", "", "Operating mode: monitor (log only) or block (active blocking)")
+	pprofFlag           = flag.String("pprof", "", "Enable pprof debug server (e.g., 'localhost:6060'), empty = disabled")
+	caKeyPassphraseFlag = flag.String("ca-key-passphrase", "", "Passphrase for encrypting the CA private key at rest")
 )
 
 func main() {
@@ -98,6 +100,16 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Configure pprof debug server if requested
+	if *pprofFlag != "" {
+		cfg.PprofAddr = *pprofFlag
+	}
+
+	// CA key passphrase: encrypt the CA private key at rest
+	if *caKeyPassphraseFlag != "" {
+		cfg.CAKeyPassphrase = *caKeyPassphraseFlag
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -153,6 +165,9 @@ func runForeground(ctx context.Context, cancel context.CancelFunc, cfg *config.C
 		modeLabel = "BLOCK"
 	}
 	fmt.Printf("Mode: %s (detections %s)\n", modeLabel, map[bool]string{true: "will be blocked", false: "logged only"}[cfg.Mode == config.ModeBlock])
+	if cfg.CAKeyPassphrase == "" {
+		fmt.Fprintln(os.Stderr, "WARNING: CA private key stored unencrypted on disk. Use --ca-key-passphrase for enhanced security.")
+	}
 	fmt.Println("Press Ctrl+C to stop")
 
 	if err := p.Start(ctx); err != nil {

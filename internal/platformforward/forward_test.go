@@ -299,7 +299,13 @@ func TestForward_VersionIsCurrent(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
 		mu.Lock()
-		json.Unmarshal(body, &received)
+		if err := json.Unmarshal(body, &received); err != nil {
+			mu.Unlock()
+			t.Errorf("unmarshal: %v", err)
+			w.WriteHeader(http.StatusOK)
+			done <- struct{}{}
+			return
+		}
 		mu.Unlock()
 		w.WriteHeader(http.StatusOK)
 		done <- struct{}{}

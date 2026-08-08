@@ -946,7 +946,9 @@ func TestBlockResponseExcludeDetections(t *testing.T) {
 	p.HandleDetectAPI(w, req)
 
 	var result map[string]interface{}
-	json.Unmarshal(w.Body.Bytes(), &result)
+	if err := json.Unmarshal(w.Body.Bytes(), &result); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
 
 	results, ok := result["results"].([]interface{})
 	if ok && len(results) > 0 {
@@ -1012,8 +1014,8 @@ func TestFormatBlockHTTPResponseCustomMessage(t *testing.T) {
 	if !strings.Contains(string(body), "Custom: threat detected") {
 		t.Errorf("Expected custom message in block response, got: %s", body)
 	}
-	if strings.Contains(string(body), "results") && cfg.Block.IncludeDetections == false {
-		// Results should be omitted when IncludeDetections is false
+	if cfg.Block.IncludeDetections == false && strings.Contains(string(body), "results") {
+		t.Errorf("Expected results to be omitted when IncludeDetections=false, but found: %s", body)
 	}
 }
 
@@ -1173,7 +1175,9 @@ func TestHandleStatsAPIWithMode(t *testing.T) {
 	}
 
 	var stats map[string]interface{}
-	json.Unmarshal(w.Body.Bytes(), &stats)
+	if err := json.Unmarshal(w.Body.Bytes(), &stats); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
 	if stats["mode"] != "block" {
 		t.Errorf("Expected mode=block in stats, got %v", stats["mode"])
 	}

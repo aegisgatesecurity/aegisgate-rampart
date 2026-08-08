@@ -1297,8 +1297,10 @@ func TestHandleDetectAPI_MaxBodySize(t *testing.T) {
 		t.Fatalf("New failed: %v", err)
 	}
 
-	// Create a request body larger than 10MB
-	largeBody := `{"text":"` + strings.Repeat("A", 11*1024*1024) + `"}`
+	// Create a request body slightly larger than 10MB
+	// Using 10MB + 1KB to stay within CI memory limits while exceeding the cap
+	largeText := strings.Repeat("A", 10*1024*1024+1024)
+	largeBody := `{"text":"` + largeText + `"}`
 
 	req := httptest.NewRequest(http.MethodPost, "/detect", strings.NewReader(largeBody))
 	req.Header.Set("Content-Type", "application/json")

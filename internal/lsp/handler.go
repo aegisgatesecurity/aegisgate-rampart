@@ -92,6 +92,7 @@ type Handler struct {
 	mu             sync.Mutex
 	documents      map[string]string // uri → full text
 	debounceTimers map[string]*time.Timer
+	blockMode      string // "monitor" or "block", cached from /stats
 
 	// OnDiagnostics is invoked after debounce completes with diagnostics.
 	// The server sets this to publish diagnostics to the LSP client.
@@ -107,6 +108,24 @@ func NewHandler(client *RampartClient, debounceMs int, minSeverity SeverityThres
 		documents:      make(map[string]string),
 		debounceTimers: make(map[string]*time.Timer),
 	}
+}
+
+// checkBlockMode polls the Rampart /stats endpoint to determine the current mode.
+// Returns "block" or "monitor". Caches the result on the Handler.
+func (h *Handler) checkBlockMode() string {
+	stats, err := h.client.GetStats(context.Background())
+	if err != nil {
+		log.Printf("rampart-lsp: failed to check block mode: %v", err)
+		return h.blockMode // return cached value on error
+	}
+	mode := stats.Mode
+	if mode == "" {
+		mode = "monitor"
+	}
+	h.mu.Lock()
+	h.blockMode = mode
+	h.mu.Unlock()
+	return mode
 }
 
 // HandleDidOpen processes a textDocument/didOpen notification.
@@ -172,7 +191,8 @@ func (h *Handler) detectAndPublish(uri string, version int) []Diagnostic {
 		return nil
 	}
 
-	return convertDiagnostics(summary, h.minSeverity)
+	blockMode := h.checkBlockMode()
+	return convertDiagnostics(summary, h.minSeverity, blockMode)
 }
 
 // DetectAndPublish is the exported version for use by the server.
@@ -186,7 +206,8 @@ func (h *Handler) ScheduleDetect(uri string, version int) {
 }
 
 // convertDiagnostics transforms Rampart detection results into LSP diagnostics.
-func convertDiagnostics(summary *DetectSummary, minSeverity SeverityThreshold) []Diagnostic {
+// When the proxy is in block mode, critical/high severity diagnostics are suffixed with [BLOCKED].
+func convertDiagnostics(summary *DetectSummary, minSeverity SeverityThreshold, blockMode string) []Diagnostic {
 	var diagnostics []Diagnostic
 
 	for _, result := range summary.Results {
@@ -206,6 +227,11 @@ func convertDiagnostics(summary *DetectSummary, minSeverity SeverityThreshold) [
 
 		msg := formatDiagnosticMessage(icon, result)
 		msg = strings.TrimSpace(msg)
+
+		// When in block mode, suffix critical/high severity diagnostics with [BLOCKED]
+		if blockMode == "block" && (result.Severity == "critical" || result.Severity == "high") {
+			msg += " [BLOCKED]"
+		}
 
 		diag := Diagnostic{
 			Range: Range{

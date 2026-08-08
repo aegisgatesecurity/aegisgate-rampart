@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"sync"
+	"strings"
 	"testing"
 	"time"
 )
@@ -146,7 +147,7 @@ func TestConvertDiagnostics(t *testing.T) {
 	}
 
 	t.Run("medium threshold filters low", func(t *testing.T) {
-		diagnostics := convertDiagnostics(summary, ThresholdMedium)
+		diagnostics := convertDiagnostics(summary, ThresholdMedium, "monitor")
 		if len(diagnostics) != 2 {
 			t.Errorf("expected 2 diagnostics at medium threshold, got %d", len(diagnostics))
 		}
@@ -159,14 +160,14 @@ func TestConvertDiagnostics(t *testing.T) {
 	})
 
 	t.Run("low threshold includes all", func(t *testing.T) {
-		diagnostics := convertDiagnostics(summary, ThresholdLow)
+		diagnostics := convertDiagnostics(summary, ThresholdLow, "monitor")
 		if len(diagnostics) != 4 {
 			t.Errorf("expected 4 diagnostics at low threshold, got %d", len(diagnostics))
 		}
 	})
 
 	t.Run("critical threshold only critical", func(t *testing.T) {
-		diagnostics := convertDiagnostics(summary, ThresholdCritical)
+		diagnostics := convertDiagnostics(summary, ThresholdCritical, "monitor")
 		// No "critical" severity items in summary (highest is "high"=3, threshold=4)
 		if len(diagnostics) != 0 {
 			t.Errorf("expected 0 diagnostics at critical threshold, got %d", len(diagnostics))
@@ -182,14 +183,14 @@ func TestConvertDiagnostics(t *testing.T) {
 				{Category: "pii", Severity: "medium", Text: "SSN detected", Rule: "pii_ssn"},
 			},
 		}
-		diagnostics := convertDiagnostics(highSummary, ThresholdHigh)
+		diagnostics := convertDiagnostics(highSummary, ThresholdHigh, "monitor")
 		if len(diagnostics) != 2 {
 			t.Errorf("expected 2 diagnostics at high threshold, got %d", len(diagnostics))
 		}
 	})
 
 	t.Run("icon prefix in message", func(t *testing.T) {
-		diagnostics := convertDiagnostics(summary, ThresholdLow)
+		diagnostics := convertDiagnostics(summary, ThresholdLow, "monitor")
 		// secrets → 🔑
 		found := false
 		for _, d := range diagnostics {
@@ -229,7 +230,7 @@ func TestConvertDiagnosticsIconMapping(t *testing.T) {
 				{Category: tt.category, Severity: "high", Text: "test", Rule: tt.category},
 			},
 		}
-		diagnostics := convertDiagnostics(summary, ThresholdLow)
+		diagnostics := convertDiagnostics(summary, ThresholdLow, "monitor")
 		if len(diagnostics) != 1 {
 			t.Errorf("category %s: expected 1 diagnostic, got %d", tt.category, len(diagnostics))
 			continue
@@ -471,6 +472,48 @@ func TestDebounceTimer(t *testing.T) {
 	// Note: AfterFunc timers are not removed from the map automatically
 	// This is fine — they get replaced on next change
 	_ = stillHasTimer // not a test failure
+}
+
+
+func TestConvertDiagnosticsBlockMode(t *testing.T) {
+	summary := &DetectSummary{
+		TotalDetections: 4,
+		Results: []DetectResult{
+			{Category: "secrets", Severity: "critical", Text: "Leaked key", Rule: "secret_leak"},
+			{Category: "secrets", Severity: "high", Text: "AWS key found", Rule: "secret_aws_key"},
+			{Category: "pii", Severity: "medium", Text: "SSN detected", Rule: "pii_ssn"},
+			{Category: "xss", Severity: "low", Text: "XSS pattern", Rule: "xss_reflected"},
+		},
+	}
+
+	t.Run("block mode adds [BLOCKED] suffix to critical and high", func(t *testing.T) {
+		diagnostics := convertDiagnostics(summary, ThresholdLow, "block")
+		for _, d := range diagnostics {
+			if d.Code == "secret_leak" || d.Code == "secret_aws_key" {
+				if !containsBlocked(d.Message) {
+					t.Errorf("expected [BLOCKED] suffix in message for %s, got %q", d.Code, d.Message)
+				}
+			}
+			if d.Code == "pii_ssn" || d.Code == "xss_reflected" {
+				if containsBlocked(d.Message) {
+					t.Errorf("did not expect [BLOCKED] suffix in message for %s, got %q", d.Code, d.Message)
+				}
+			}
+		}
+	})
+
+	t.Run("monitor mode does not add [BLOCKED] suffix", func(t *testing.T) {
+		diagnostics := convertDiagnostics(summary, ThresholdLow, "monitor")
+		for _, d := range diagnostics {
+			if containsBlocked(d.Message) {
+				t.Errorf("did not expect [BLOCKED] suffix in monitor mode for %s, got %q", d.Code, d.Message)
+			}
+		}
+	})
+}
+
+func containsBlocked(s string) bool {
+	return strings.HasSuffix(s, " [BLOCKED]")
 }
 
 func TestContextCancellation(t *testing.T) {

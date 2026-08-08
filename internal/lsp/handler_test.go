@@ -10,8 +10,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"sync"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -473,7 +473,6 @@ func TestDebounceTimer(t *testing.T) {
 	// This is fine — they get replaced on next change
 	_ = stillHasTimer // not a test failure
 }
-
 
 func TestConvertDiagnosticsBlockMode(t *testing.T) {
 	summary := &DetectSummary{

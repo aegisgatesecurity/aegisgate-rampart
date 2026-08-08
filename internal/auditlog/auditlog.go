@@ -22,10 +22,12 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/platform"
+	"github.com/aegisgatesecurity/aegisgate-rampart/pkg/detector"
 )
 
 // Entry represents a single detection audit event.
@@ -37,12 +39,44 @@ type Entry struct {
 	Path          string    `json:"path,omitempty"`
 	TotalDets     int       `json:"total_detections"`
 	Blocked       bool      `json:"blocked"`
+	Redacted      bool      `json:"redacted"`
 	PIICategories []string  `json:"pii_categories,omitempty"`
 	SecretTypes   []string  `json:"secret_types,omitempty"`
 	MLScore       float64   `json:"ml_score,omitempty"`
 	Categories    []string  `json:"categories,omitempty"`
 	Severities    []string  `json:"severities,omitempty"`
 	Rules         []string  `json:"rules,omitempty"`
+}
+
+// RedactText returns a redacted version of a detection result's Text field.
+// Secrets are fully redacted, PII is partially masked, and XSS/compliance
+// text passes through unchanged since those are attack patterns, not sensitive data.
+func RedactText(r detector.Result) string {
+	text := r.Text
+	if text == "" {
+		return ""
+	}
+
+	cat := strings.ToLower(r.Category)
+
+	// Secrets: full redaction
+	if cat == "secrets" || strings.HasPrefix(cat, "secret_") {
+		return "[REDACTED]"
+	}
+
+	// PII categories: partial masking (first 2 + *** + last 2)
+	isPII := strings.HasPrefix(cat, "pii") || strings.HasPrefix(cat, "pii-") ||
+		cat == "pii_us_core" || cat == "pii_us_extended" ||
+		cat == "pii_financial" || cat == "pii_international"
+	if isPII {
+		if len(text) < 4 {
+			return "[REDACTED]"
+		}
+		return text[:2] + "***" + text[len(text)-2:]
+	}
+
+	// XSS and compliance: pass through unchanged (attack patterns, not sensitive data)
+	return text
 }
 
 // Logger writes detection audit events to a JSONL file.

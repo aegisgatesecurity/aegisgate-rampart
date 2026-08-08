@@ -1235,3 +1235,78 @@ func TestBlockHandleDetectEmptyBody(t *testing.T) {
 		t.Errorf("Expected 400 for empty body, got %d", w.Code)
 	}
 }
+
+// TestHandleHealthAPI tests the /health liveness endpoint.
+func TestHandleHealthAPI(t *testing.T) {
+	cfg := config.DefaultConfig()
+	p, err := New(cfg)
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	w := httptest.NewRecorder()
+	p.HandleHealthAPI(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", w.Code)
+	}
+
+	var result map[string]string
+	if err := json.Unmarshal(w.Body.Bytes(), &result); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if result["status"] != "ok" {
+		t.Errorf("expected status ok, got %q", result["status"])
+	}
+}
+
+// TestHandleReadyAPI tests the /readiness endpoint.
+func TestHandleReadyAPI(t *testing.T) {
+	cfg := config.DefaultConfig()
+	p, err := New(cfg)
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/ready", nil)
+	w := httptest.NewRecorder()
+	p.HandleReadyAPI(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", w.Code)
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(w.Body.Bytes(), &result); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if result["status"] != "ready" {
+		t.Errorf("expected status ready, got %v", result["status"])
+	}
+	if result["detector"] != true {
+		t.Error("expected detector to be true")
+	}
+}
+
+// TestHandleDetectAPI_MaxBodySize tests that oversized request bodies are rejected.
+func TestHandleDetectAPI_MaxBodySize(t *testing.T) {
+	cfg := config.DefaultConfig()
+	p, err := New(cfg)
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+
+	// Create a request body larger than 10MB
+	largeBody := `{"text":"` + strings.Repeat("A", 11*1024*1024) + `"}`
+
+	req := httptest.NewRequest(http.MethodPost, "/detect", strings.NewReader(largeBody))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	p.HandleDetectAPI(w, req)
+
+	// Should get an error (413 or 400 from MaxBytesReader)
+	if w.Code == http.StatusOK {
+		t.Error("expected non-200 for oversized request body")
+	}
+}

@@ -5,7 +5,48 @@ All notable changes to AegisGate Rampart are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [0.4.0] - 2026-08-07
+## [0.5.0] - 2026-08-07
+
+### Added — Phase 7: Security Hardening + Operational Endpoints
+
+- **P0: Audit log redaction**: Secret values fully redacted to `[REDACTED]`, PII values partially
+  masked (e.g., `26***34`), XSS/compliance text passed through unchanged
+  - `RedactText()` function in `internal/auditlog` package
+  - `Redacted` field on audit log `Entry` struct for compliance verification
+  - Audit log comment updated to document redaction policy
+- **P0: CA key encryption at rest**: AES-256-GCM encryption for CA private keys
+  - `EncryptKey()` / `DecryptKey()` in `internal/certificate` using HKDF-SHA256 key derivation
+  - `SaveEncrypted()` / `LoadEncrypted()` for transparent encrypted file I/O
+  - `--ca-key-passphrase` CLI flag for passphrase-based encryption
+  - Startup warning when CA key is stored unencrypted (no passphrase provided)
+  - Encrypted PEM type: `ENCRYPTED PRIVATE KEY`
+- **P0: SECURITY.md updated**: Fixed version (0.x.x not 4.x.x), added audit log data handling,
+  CA key security, block mode security, config integrity, PGP reporting note
+- **P0: THREAT-MODEL.md created**: Complete threat model document with trust boundaries, assets
+  protected, threats addressed, out-of-scope threats, threats TO Rampart, security assumptions
+- **P4: pprof memory monitoring**: `--pprof` flag enables Go pprof debug server
+  - Endpoints: `/debug/pprof/`, `/debug/pprof/heap`, `/debug/pprof/goroutine`, etc.
+  - Graceful shutdown of pprof server with 5s timeout
+- **P5: `/health` and `/ready` endpoints**: Production deployment readiness
+  - `GET /health` → `{"status":"ok"}` (liveness probe)
+  - `GET /ready` → `{"status":"ready","detector":true}` (readiness probe)
+- **P5: Request body size limit on `/detect`**: 10MB max to prevent compute abuse
+
+### Changed
+
+- Go version upgraded from 1.23 to 1.25.0 (for `crypto/hkdf` stdlib support)
+- `golang.org/x/crypto` added as dependency (v0.54.0)
+- `golang.org/x/sys` upgraded from v0.30.0 to v0.47.0
+- `PprofAddr` and `CAKeyPassphrase` fields added to `Config` struct
+- `Proxy` struct includes `pprofServer` field for debug server lifecycle
+
+### Testing
+
+- 7 new CA key encryption tests (round-trip, wrong passphrase, empty passphrase, SaveEncrypted, LoadEncrypted, file permissions, invalid data)
+- 3 new endpoint tests (health, readiness, max body size)
+- All 19 packages pass with `-race` flag
+- Coverage: internal/auditlog 86.5% → higher (with RedactText tests)
+- Coverage: internal/certificate 85.1% → higher (with Encrypt/Decrypt tests)
 
 ### Added — Phase 6: Block Mode + k6 Load Testing
 

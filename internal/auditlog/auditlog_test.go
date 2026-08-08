@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/aegisgatesecurity/aegisgate-rampart/pkg/detector"
 )
 
 func TestLog_WritesEntry(t *testing.T) {
@@ -81,6 +83,7 @@ func TestLog_NoPromptText(t *testing.T) {
 		Direction:  "response",
 		Host:       "api.anthropic.com",
 		TotalDets:  2,
+		Redacted:   true,
 		Categories: []string{"pii", "secret"},
 		Rules:      []string{"pii_ssn", "secret_aws_key"},
 	}
@@ -100,6 +103,15 @@ func TestLog_NoPromptText(t *testing.T) {
 		if strings.Contains(string(data), s) {
 			t.Errorf("SECURITY: audit log contains sensitive text: %s", s)
 		}
+	}
+
+	// SECURITY: verify the redacted flag is present in the log
+	var parsed Entry
+	if err := json.Unmarshal(data, &parsed); err != nil {
+		t.Fatalf("Unmarshal: %v", err)
+	}
+	if !parsed.Redacted {
+		t.Error("SECURITY: expected Redacted=true for entry containing sensitive detection results")
 	}
 }
 
@@ -396,5 +408,107 @@ func TestClose_NilFile(t *testing.T) {
 	logger := &Logger{file: nil}
 	if err := logger.Close(); err != nil {
 		t.Errorf("expected nil error on Close with nil file, got %v", err)
+	}
+}
+
+func TestRedactText_Secrets(t *testing.T) {
+	// Secrets categories should be fully redacted
+	tests := []struct {
+		name     string
+		category string
+		text     string
+		want     string
+	}{
+		{"aws_key", "secrets", "AKIAIOSFODNN7EXAMPLE", "[REDACTED]"},
+		{"secret_prefixed", "secret_aws_key", "AKIAIOSFODNN7EXAMPLE", "[REDACTED]"},
+		{"secret_github", "secret_github_token", "ghp_abcdef1234", "[REDACTED]"},
+		{"secrets_uppercase_cat", "Secrets", "AKIAIOSFODNN7EXAMPLE", "[REDACTED]"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := detector.Result{Category: tt.category, Text: tt.text}
+			got := RedactText(r)
+			if got != tt.want {
+				t.Errorf("RedactText(%+v) = %q, want %q", tt, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestRedactText_PII(t *testing.T) {
+	// PII categories should show first 2 + *** + last 2
+	tests := []struct {
+		name     string
+		category string
+		text     string
+		want     string
+	}{
+		{"ssn_us_core", "pii-us-core", "263-78-1234", "26***34"},
+		{"ssn_us_extended", "pii-us-extended", "263-78-1234", "26***34"},
+		{"credit_card_financial", "pii-financial", "4111111111111111", "41***11"},
+		{"passport_international", "pii-international", "AB1234567", "AB***67"},
+		{"pii_underscore_core", "pii_us_core", "263-78-1234", "26***34"},
+		{"pii_underscore_extended", "pii_us_extended", "263-78-1234", "26***34"},
+		{"pii_underscore_financial", "pii_financial", "4111111111111111", "41***11"},
+		{"pii_underscore_international", "pii_international", "AB1234567", "AB***67"},
+		{"pii_dash_prefix", "pii-financial", "4111-1111-1111-1111", "41***11"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := detector.Result{Category: tt.category, Text: tt.text}
+			got := RedactText(r)
+			if got != tt.want {
+				t.Errorf("RedactText(%+v) = %q, want %q", tt, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestRedactText_ShortPII(t *testing.T) {
+	// PII text shorter than 4 characters should be fully redacted
+	r := detector.Result{Category: "pii-us-core", Text: "abc"}
+	got := RedactText(r)
+	if got != "[REDACTED]" {
+		t.Errorf("RedactText short PII = %q, want [REDACTED]", got)
+	}
+}
+
+func TestRedactText_XSS(t *testing.T) {
+	// XSS categories should pass through unchanged
+	text := `<script>alert('xss')</script>`
+	r := detector.Result{Category: "xss", Text: text}
+	got := RedactText(r)
+	if got != text {
+		t.Errorf("RedactText XSS = %q, want %q", got, text)
+	}
+}
+
+func TestRedactText_Compliance(t *testing.T) {
+	// Compliance categories should pass through unchanged
+	text := "GDPR violation: personal data exported without consent"
+	r := detector.Result{Category: "compliance", Text: text}
+	got := RedactText(r)
+	if got != text {
+		t.Errorf("RedactText compliance = %q, want %q", got, text)
+	}
+}
+
+func TestRedactText_Empty(t *testing.T) {
+	r := detector.Result{Category: "secrets", Text: ""}
+	got := RedactText(r)
+	if got != "" {
+		t.Errorf("RedactText empty = %q, want empty string", got)
+	}
+}
+
+func TestRedactText_UnknownCategory(t *testing.T) {
+	// Unknown categories should pass through unchanged
+	text := "some detection text"
+	r := detector.Result{Category: "unknown_category", Text: text}
+	got := RedactText(r)
+	if got != text {
+		t.Errorf("RedactText unknown = %q, want %q", got, text)
 	}
 }

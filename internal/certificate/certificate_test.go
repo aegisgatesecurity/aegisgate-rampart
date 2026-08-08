@@ -2,6 +2,9 @@ package certificate
 
 import (
 	"crypto/x509"
+	"encoding/pem"
+	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -171,5 +174,190 @@ func TestCertificateStruct(t *testing.T) {
 	}
 	if c.Certificate == nil {
 		t.Error("Certificate field should not be nil")
+	}
+}
+
+func TestEncryptDecryptKey(t *testing.T) {
+	mgr := NewManager()
+	cert, err := mgr.GenerateSelfSigned()
+	if err != nil {
+		t.Fatalf("GenerateSelfSigned: %v", err)
+	}
+
+	// Encrypt
+	encrypted, err := EncryptKey(cert.KeyBytes, "test-passphrase-123")
+	if err != nil {
+		t.Fatalf("EncryptKey: %v", err)
+	}
+
+	// Verify it's a PEM block with type ENCRYPTED PRIVATE KEY
+	block, _ := pem.Decode(encrypted)
+	if block == nil {
+		t.Fatal("encrypted data is not a valid PEM block")
+	}
+	if block.Type != "ENCRYPTED PRIVATE KEY" {
+		t.Errorf("expected PEM type 'ENCRYPTED PRIVATE KEY', got %q", block.Type)
+	}
+
+	// Decrypt
+	decrypted, err := DecryptKey(encrypted, "test-passphrase-123")
+	if err != nil {
+		t.Fatalf("DecryptKey: %v", err)
+	}
+
+	// Verify round-trip
+	if string(decrypted) != string(cert.KeyBytes) {
+		t.Error("decrypted key does not match original")
+	}
+}
+
+func TestEncryptDecryptKeyWrongPassphrase(t *testing.T) {
+	mgr := NewManager()
+	cert, err := mgr.GenerateSelfSigned()
+	if err != nil {
+		t.Fatalf("GenerateSelfSigned: %v", err)
+	}
+
+	encrypted, err := EncryptKey(cert.KeyBytes, "correct-passphrase")
+	if err != nil {
+		t.Fatalf("EncryptKey: %v", err)
+	}
+
+	// Decrypt with wrong passphrase should fail
+	_, err = DecryptKey(encrypted, "wrong-passphrase")
+	if err == nil {
+		t.Error("expected error when decrypting with wrong passphrase")
+	}
+}
+
+func TestEncryptKeyEmptyPassphrase(t *testing.T) {
+	mgr := NewManager()
+	cert, err := mgr.GenerateSelfSigned()
+	if err != nil {
+		t.Fatalf("GenerateSelfSigned: %v", err)
+	}
+
+	// Empty passphrase should be rejected (encryption requires a passphrase)
+	_, err = EncryptKey(cert.KeyBytes, "")
+	if err == nil {
+		t.Error("expected error when encrypting with empty passphrase")
+	}
+}
+
+func TestSaveEncrypted(t *testing.T) {
+	mgr := NewManager()
+	cert, err := mgr.GenerateSelfSigned()
+	if err != nil {
+		t.Fatalf("GenerateSelfSigned: %v", err)
+	}
+
+	tmpDir := t.TempDir()
+	certPath := filepath.Join(tmpDir, "ca.crt")
+	keyPath := filepath.Join(tmpDir, "ca.key")
+
+	err = mgr.SaveEncrypted(cert, certPath, keyPath, "my-secret-passphrase")
+	if err != nil {
+		t.Fatalf("SaveEncrypted: %v", err)
+	}
+
+	// Verify cert file is plaintext PEM
+	certData, err := os.ReadFile(certPath)
+	if err != nil {
+		t.Fatalf("ReadFile cert: %v", err)
+	}
+	certBlock, _ := pem.Decode(certData)
+	if certBlock == nil || certBlock.Type != "CERTIFICATE" {
+		t.Errorf("cert file should be a CERTIFICATE PEM block, got %q", certBlock.Type)
+	}
+
+	// Verify key file is encrypted PEM
+	keyData, err := os.ReadFile(keyPath)
+	if err != nil {
+		t.Fatalf("ReadFile key: %v", err)
+	}
+	keyBlock, _ := pem.Decode(keyData)
+	if keyBlock == nil || keyBlock.Type != "ENCRYPTED PRIVATE KEY" {
+		t.Errorf("key file should be ENCRYPTED PRIVATE KEY PEM block, got %q", keyBlock.Type)
+	}
+
+	// Verify key file permissions
+	info, err := os.Stat(keyPath)
+	if err != nil {
+		t.Fatalf("Stat key: %v", err)
+	}
+	perm := info.Mode().Perm()
+	if perm != 0600 {
+		t.Errorf("expected key file permissions 0600, got %o", perm)
+	}
+}
+
+func TestLoadEncrypted(t *testing.T) {
+	mgr := NewManager()
+	cert, err := mgr.GenerateSelfSigned()
+	if err != nil {
+		t.Fatalf("GenerateSelfSigned: %v", err)
+	}
+
+	tmpDir := t.TempDir()
+	certPath := filepath.Join(tmpDir, "ca.crt")
+	keyPath := filepath.Join(tmpDir, "ca.key")
+
+	// Save encrypted
+	err = mgr.SaveEncrypted(cert, certPath, keyPath, "load-test-passphrase")
+	if err != nil {
+		t.Fatalf("SaveEncrypted: %v", err)
+	}
+
+	// Load encrypted
+	loaded, err := LoadEncrypted(certPath, keyPath, "load-test-passphrase")
+	if err != nil {
+		t.Fatalf("LoadEncrypted: %v", err)
+	}
+
+	// Verify certificate
+	if loaded.Certificate == nil {
+		t.Error("loaded certificate is nil")
+	}
+	if loaded.PrivateKey == nil {
+		t.Error("loaded private key is nil")
+	}
+	if string(loaded.CertBytes) != string(cert.CertBytes) {
+		t.Error("loaded cert bytes don't match original")
+	}
+}
+
+func TestLoadEncryptedWrongPassphrase(t *testing.T) {
+	mgr := NewManager()
+	cert, err := mgr.GenerateSelfSigned()
+	if err != nil {
+		t.Fatalf("GenerateSelfSigned: %v", err)
+	}
+
+	tmpDir := t.TempDir()
+	certPath := filepath.Join(tmpDir, "ca.crt")
+	keyPath := filepath.Join(tmpDir, "ca.key")
+
+	err = mgr.SaveEncrypted(cert, certPath, keyPath, "right-pass")
+	if err != nil {
+		t.Fatalf("SaveEncrypted: %v", err)
+	}
+
+	_, err = LoadEncrypted(certPath, keyPath, "wrong-pass")
+	if err == nil {
+		t.Error("expected error when loading with wrong passphrase")
+	}
+}
+
+func TestDecryptKeyInvalidData(t *testing.T) {
+	// Too short data
+	_, err := DecryptKey([]byte("short"), "pass")
+	if err == nil {
+		t.Error("expected error for too-short encrypted data")
+	}
+
+	// Not a PEM block
+	_, err = DecryptKey([]byte("not a pem block"), "pass")
+	if err == nil {
+		t.Error("expected error for non-PEM data")
 	}
 }

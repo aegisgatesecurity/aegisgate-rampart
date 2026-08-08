@@ -44,6 +44,7 @@ import (
 	"github.com/aegisgatesecurity/aegisgate-rampart/pkg/config"
 	"github.com/aegisgatesecurity/aegisgate-rampart/pkg/detector"
 	"golang.org/x/time/rate"
+	"net/http/pprof"
 )
 
 // Operating modes
@@ -74,6 +75,9 @@ type Proxy struct {
 
 	// Platform forwarding
 	forwarder *platformforward.Forwarder
+
+	// pprof debug server
+	pprofServer *http.Server
 }
 
 // ProxyStats tracks interception statistics.
@@ -196,6 +200,23 @@ func (p *Proxy) Start(ctx context.Context) error {
 	}
 	fmt.Printf("rampart: Detection engine ready (153 regex patterns + ML) — mode: %s\n", modeLabel)
 
+	// Start pprof debug server if configured
+	if p.cfg.PprofAddr != "" {
+		pprofMux := http.NewServeMux()
+		pprofMux.HandleFunc("/debug/pprof/", pprof.Index)
+		pprofMux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+		pprofMux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+		pprofMux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+		pprofMux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+		p.pprofServer = &http.Server{Addr: p.cfg.PprofAddr, Handler: pprofMux}
+		go func() {
+			log.Printf("rampart: pprof debug server listening on %s", p.cfg.PprofAddr)
+			if err := p.pprofServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				log.Printf("rampart: pprof server error: %v", err)
+			}
+		}()
+	}
+
 	// Graceful shutdown: drain in-flight connections, then close
 	go func() {
 		<-ctx.Done()
@@ -222,6 +243,14 @@ func (p *Proxy) Shutdown() {
 	if p.auditLog != nil {
 		if err := p.auditLog.Close(); err != nil {
 			log.Printf("rampart: audit log close: %v", err)
+		}
+	}
+	// Shut down pprof debug server
+	if p.pprofServer != nil {
+		pprofCtx, pprofCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer pprofCancel()
+		if err := p.pprofServer.Shutdown(pprofCtx); err != nil {
+			log.Printf("rampart: pprof shutdown error: %v", err)
 		}
 	}
 	if p.server != nil {
@@ -260,6 +289,9 @@ func (p *Proxy) ReloadConfig(cfg *config.Config) {
 
 // auditLogEntry writes a detection event to the audit log.
 // Only metadata is stored — no prompt text, no PII values, no credentials.
+// Detection results used for blocking decisions use full values (those are
+// sent to the proxy user, not persisted), but what gets written to the
+// audit log is redacted.
 func (p *Proxy) auditLogEntry(direction, host, path string, result *detector.Summary) {
 	if p.auditLog == nil {
 		return
@@ -268,10 +300,14 @@ func (p *Proxy) auditLogEntry(direction, host, path string, result *detector.Sum
 	categories := make([]string, 0, len(result.Results))
 	severities := make([]string, 0, len(result.Results))
 	rules := make([]string, 0, len(result.Results))
+	hasRedacted := false
 	for _, r := range result.Results {
 		categories = append(categories, r.Category)
 		severities = append(severities, r.Severity)
 		rules = append(rules, r.Rule)
+		if auditlog.RedactText(r) != r.Text {
+			hasRedacted = true
+		}
 	}
 
 	entry := auditlog.Entry{
@@ -280,6 +316,7 @@ func (p *Proxy) auditLogEntry(direction, host, path string, result *detector.Sum
 		Path:          path,
 		TotalDets:     result.TotalDetections,
 		Blocked:       result.Blocked,
+		Redacted:      hasRedacted,
 		PIICategories: result.PIICategories,
 		SecretTypes:   result.SecretTypes,
 		MLScore:       result.MLScore,
@@ -304,10 +341,14 @@ func (p *Proxy) forwardEntry(direction, host, path string, result *detector.Summ
 	categories := make([]string, 0, len(result.Results))
 	severities := make([]string, 0, len(result.Results))
 	rules := make([]string, 0, len(result.Results))
+	hasRedacted := false
 	for _, r := range result.Results {
 		categories = append(categories, r.Category)
 		severities = append(severities, r.Severity)
 		rules = append(rules, r.Rule)
+		if auditlog.RedactText(r) != r.Text {
+			hasRedacted = true
+		}
 	}
 
 	entry := auditlog.Entry{
@@ -316,6 +357,7 @@ func (p *Proxy) forwardEntry(direction, host, path string, result *detector.Summ
 		Path:          path,
 		TotalDets:     result.TotalDetections,
 		Blocked:       result.Blocked,
+		Redacted:      hasRedacted,
 		PIICategories: result.PIICategories,
 		SecretTypes:   result.SecretTypes,
 		MLScore:       result.MLScore,
@@ -340,6 +382,14 @@ func (p *Proxy) handleRequest(w http.ResponseWriter, r *http.Request) {
 	}
 	if r.Method == http.MethodGet && r.URL.Path == "/stats" {
 		p.HandleStatsAPI(w, r)
+		return
+	}
+	if r.Method == http.MethodGet && r.URL.Path == "/health" {
+		p.HandleHealthAPI(w, r)
+		return
+	}
+	if r.Method == http.MethodGet && r.URL.Path == "/ready" {
+		p.HandleReadyAPI(w, r)
 		return
 	}
 
@@ -1010,6 +1060,10 @@ func (p *Proxy) HandleDetectAPI(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Request body size limit: 10MB max to prevent compute abuse
+	const maxBodySize = 10 << 20 // 10 MB
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
+
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "read body failed", http.StatusBadRequest)
@@ -1062,4 +1116,36 @@ func (p *Proxy) HandleStatsAPI(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(p.GetStats())
+}
+
+// HandleHealthAPI serves the /health endpoint for liveness probes.
+// GET /health → {"status":"ok"}
+func (p *Proxy) HandleHealthAPI(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+}
+
+// HandleReadyAPI serves the /ready endpoint for readiness probes.
+// GET /ready → {"status":"ready","detector":true} if the detector is initialized.
+func (p *Proxy) HandleReadyAPI(w http.ResponseWriter, r *http.Request) {
+	p.mu.RLock()
+	detectorReady := p.detector != nil
+	p.mu.RUnlock()
+
+	status := "ready"
+	if !detectorReady {
+		status = "not_ready"
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	code := http.StatusOK
+	if !detectorReady {
+		code = http.StatusServiceUnavailable
+	}
+	w.WriteHeader(code)
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":    status,
+		"detector":  detectorReady,
+		"timestamp": time.Now().UTC().Format(time.RFC3339),
+	})
 }

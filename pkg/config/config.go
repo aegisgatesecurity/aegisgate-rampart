@@ -29,6 +29,7 @@ type Config struct {
 	DaemonMode   bool           `json:"daemon_mode"`
 	Verbose      bool           `json:"verbose"`
 	PlatformURL  string         `json:"platform_url"`
+	PlatformKey  string         `json:"platform_api_key"`
 	RateLimitRPS int            `json:"rate_limit_rps"`
 	Mode         string         `json:"mode"` // "monitor" (default) or "block"
 	Block        BlockConfig    `json:"block"`

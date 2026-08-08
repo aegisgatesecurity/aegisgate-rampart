@@ -23,6 +23,7 @@ var (
 	portFlag        = flag.Int("port", 8080, "Local proxy port")
 	configDirFlag   = flag.String("config", "", "Configuration directory path")
 	platformFlag    = flag.String("platform-url", "", "Optional Platform backend URL for telemetry")
+	platformKeyFlag = flag.String("platform-api-key", "", "API key for Platform authentication")
 	verboseFlag     = flag.Bool("v", false, "Verbose output")
 	trustFlag       = flag.Bool("trust", false, "Install CA certificate into system trust store")
 	autostartFlag   = flag.Bool("autostart", false, "Configure auto-start on boot")
@@ -70,6 +71,9 @@ func main() {
 	}
 	if *platformFlag != "" {
 		cfg.PlatformURL = *platformFlag
+	}
+	if *platformKeyFlag != "" {
+		cfg.PlatformKey = *platformKeyFlag
 	}
 	if *rateLimitFlag > 0 {
 		cfg.RateLimitRPS = *rateLimitFlag

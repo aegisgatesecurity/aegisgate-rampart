@@ -46,6 +46,12 @@ import (
 	"golang.org/x/time/rate"
 )
 
+// Operating modes
+const (
+	ModeMonitor = config.ModeMonitor
+	ModeBlock   = config.ModeBlock
+)
+
 // Proxy is the local HTTPS interception proxy.
 type Proxy struct {
 	cfg      *config.Config
@@ -78,6 +84,7 @@ type ProxyStats struct {
 	Detections      int64     `json:"detections"`
 	BlockedRequests int64     `json:"blocked_requests"`
 	MLDetections    int64     `json:"ml_detections"`
+	Mode            string    `json:"mode"`
 	StartTime       time.Time `json:"start_time"`
 }
 
@@ -179,7 +186,11 @@ func (p *Proxy) Start(ctx context.Context) error {
 
 	fmt.Printf("rampart: Listening on %s\n", addr)
 	fmt.Printf("rampart: Intercepting %d AI API endpoints\n", len(p.cfg.Targets))
-	fmt.Printf("rampart: Detection engine ready (153 regex patterns + ML)\n")
+	modeLabel := "MONITOR"
+	if p.cfg.Mode == ModeBlock {
+		modeLabel = "BLOCK"
+	}
+	fmt.Printf("rampart: Detection engine ready (153 regex patterns + ML) — mode: %s\n", modeLabel)
 
 	// Graceful shutdown: drain in-flight connections, then close
 	go func() {
@@ -223,7 +234,9 @@ func (p *Proxy) Shutdown() {
 func (p *Proxy) GetStats() ProxyStats {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
-	return p.stats
+	s := p.stats
+	s.Mode = p.cfg.Mode
+	return s
 }
 
 // ReloadConfig reloads the configuration from disk and updates the proxy.
@@ -496,7 +509,25 @@ func (p *Proxy) interceptHTTPS(w http.ResponseWriter, r *http.Request) {
 
 	// Run detection on request body (outbound = user prompt)
 	if len(bodyBytes) > 0 {
-		p.scanAndAlert("request", host, clientReq.URL.Path, bodyBytes)
+		result := p.scanAndAlert("request", host, clientReq.URL.Path, bodyBytes)
+
+		// Block mode: check if the request should be blocked
+		if result != nil && result.TotalDetections > 0 {
+			if shouldBlock, reason := p.shouldBlock(result); shouldBlock {
+				p.mu.Lock()
+				p.stats.BlockedRequests++
+				p.mu.Unlock()
+				// Write block response back to client through TLS
+				blockResp := p.formatBlockHTTPResponse("request", host, clientReq.URL.Path, result, reason)
+				_, _ = fmt.Fprintf(tlsConn, "HTTP/1.1 %d %s\r\n", p.cfg.Block.StatusCode, http.StatusText(p.cfg.Block.StatusCode))
+				_, _ = fmt.Fprintf(tlsConn, "Content-Type: application/json\r\n")
+				_, _ = fmt.Fprintf(tlsConn, "X-Rampart-Blocked: true\r\n")
+				_, _ = fmt.Fprintf(tlsConn, "Content-Length: %d\r\n", len(blockResp))
+				_, _ = fmt.Fprintf(tlsConn, "Connection: close\r\n\r\n")
+				_, _ = tlsConn.Write(blockResp)
+				return
+			}
+		}
 	}
 
 	// Reconstruct the request body for forwarding
@@ -530,7 +561,24 @@ func (p *Proxy) interceptHTTPS(w http.ResponseWriter, r *http.Request) {
 
 	// Run detection on response body (inbound = AI response)
 	if len(respBody) > 0 {
-		p.scanAndAlert("response", host, clientReq.URL.Path, respBody)
+		result := p.scanAndAlert("response", host, clientReq.URL.Path, respBody)
+
+		// Block mode: check if the response should be blocked
+		if result != nil && result.TotalDetections > 0 {
+			if shouldBlock, reason := p.shouldBlock(result); shouldBlock {
+				p.mu.Lock()
+				p.stats.BlockedRequests++
+				p.mu.Unlock()
+				blockResp := p.formatBlockHTTPResponse("response", host, clientReq.URL.Path, result, reason)
+				_, _ = fmt.Fprintf(tlsConn, "HTTP/1.1 %d %s\r\n", p.cfg.Block.StatusCode, http.StatusText(p.cfg.Block.StatusCode))
+				_, _ = fmt.Fprintf(tlsConn, "Content-Type: application/json\r\n")
+				_, _ = fmt.Fprintf(tlsConn, "X-Rampart-Blocked: true\r\n")
+				_, _ = fmt.Fprintf(tlsConn, "Content-Length: %d\r\n", len(blockResp))
+				_, _ = fmt.Fprintf(tlsConn, "Connection: close\r\n\r\n")
+				_, _ = tlsConn.Write(blockResp)
+				return
+			}
+		}
 	}
 
 	// Write the response back to the client through the TLS connection
@@ -558,7 +606,15 @@ func (p *Proxy) handleHTTP(w http.ResponseWriter, r *http.Request) {
 		p.mu.Lock()
 		p.stats.Intercepted++
 		p.mu.Unlock()
-		p.scanAndAlert("request", host, r.URL.Path, bodyBytes)
+		result := p.scanAndAlert("request", host, r.URL.Path, bodyBytes)
+
+		// Block mode: check if the request should be blocked
+		if result != nil && result.TotalDetections > 0 {
+			if shouldBlock, reason := p.shouldBlock(result); shouldBlock {
+				p.blockResponse(w, "request", host, r.URL.Path, result, reason)
+				return
+			}
+		}
 	}
 
 	// Forward the request
@@ -577,7 +633,15 @@ func (p *Proxy) handleHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if isTarget && len(respBody) > 0 {
-		p.scanAndAlert("response", host, r.URL.Path, respBody)
+		result := p.scanAndAlert("response", host, r.URL.Path, respBody)
+
+		// Block mode: check if the response should be blocked
+		if result != nil && result.TotalDetections > 0 {
+			if shouldBlock, reason := p.shouldBlock(result); shouldBlock {
+				p.blockResponse(w, "response", host, r.URL.Path, result, reason)
+				return
+			}
+		}
 	}
 
 	// Copy response headers
@@ -590,23 +654,160 @@ func (p *Proxy) handleHTTP(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(respBody)
 }
 
+// shouldBlock determines if a detection result should be blocked based on
+// the current mode and block configuration. Returns true if the request/response
+// should be blocked, and the reason if applicable.
+func (p *Proxy) shouldBlock(result *detector.Summary) (bool, string) {
+	// Monitor mode: never block
+	if p.cfg.Mode != ModeBlock {
+		return false, ""
+	}
+
+	// No detections: nothing to block
+	if result.TotalDetections == 0 {
+		return false, ""
+	}
+
+	blockCfg := p.cfg.Block
+
+	// Check each detection against threshold and category filters
+	for _, r := range result.Results {
+		// Severity threshold check
+		if !meetsSeverityThreshold(r.Severity, blockCfg.Threshold) {
+			continue
+		}
+
+		// Category filter check (empty = all categories)
+		if len(blockCfg.Categories) > 0 && !containsCategory(blockCfg.Categories, r.Category) {
+			continue
+		}
+
+		// At least one detection meets both threshold and category criteria
+		return true, fmt.Sprintf("%s: %s", r.Category, r.Text)
+	}
+
+	return false, ""
+}
+
+// meetsSeverityThreshold checks if a severity meets the blocking threshold.
+func meetsSeverityThreshold(severity, threshold string) bool {
+	severityLevels := map[string]int{
+		config.SeverityCritical: 4,
+		config.SeverityHigh:     3,
+		config.SeverityMedium:   2,
+		config.SeverityLow:      1,
+	}
+	sevLevel, ok := severityLevels[severity]
+	if !ok {
+		sevLevel = 0
+	}
+	thrLevel, ok := severityLevels[threshold]
+	if !ok {
+		thrLevel = 3 // default: high
+	}
+	return sevLevel >= thrLevel
+}
+
+// containsCategory checks if a category is in the allowed list.
+func containsCategory(categories []string, cat string) bool {
+	for _, c := range categories {
+		if c == cat {
+			return true
+		}
+	}
+	return false
+}
+
+// blockResponse writes an HTTP response that blocks the request/response.
+// In block mode, Rampart returns a structured JSON response explaining why.
+func (p *Proxy) blockResponse(w http.ResponseWriter, direction, host, path string, result *detector.Summary, blockReason string) {
+	p.mu.Lock()
+	p.stats.BlockedRequests++
+	p.mu.Unlock()
+
+	statusCode := p.cfg.Block.StatusCode
+	if statusCode == 0 {
+		statusCode = 403
+	}
+
+	blockMsg := p.cfg.Block.Message
+	if blockMsg == "" {
+		blockMsg = "Request blocked by AegisGate Rampart"
+	}
+
+	// Build the block response body
+	type BlockResult struct {
+		Category   string  `json:"category"`
+		Severity   string  `json:"severity"`
+		Rule       string  `json:"rule"`
+		Text       string  `json:"text,omitempty"`
+		Confidence float64 `json:"confidence"`
+	}
+
+	type BlockDetail struct {
+		Direction string        `json:"direction"`
+		Host      string        `json:"host"`
+		Path      string        `json:"path,omitempty"`
+		Blocked   bool          `json:"blocked"`
+		Reason    string        `json:"reason"`
+		Severity  string        `json:"severity"`
+		Message   string        `json:"message"`
+		Results   []BlockResult `json:"results,omitempty"`
+	}
+
+	detail := BlockDetail{
+		Direction: direction,
+		Host:      host,
+		Path:      path,
+		Blocked:   true,
+		Reason:    blockReason,
+		Message:   blockMsg,
+	}
+
+	// Include detection details if configured
+	if p.cfg.Block.IncludeDetections {
+		detail.Results = make([]BlockResult, 0, len(result.Results))
+		for _, r := range result.Results {
+			detail.Results = append(detail.Results, BlockResult{
+				Category:   r.Category,
+				Severity:   r.Severity,
+				Rule:       r.Rule,
+				Text:       r.Text,
+				Confidence: r.Confidence,
+			})
+		}
+	}
+
+	// Determine overall severity from the highest-severity detection
+	highestSev := "low"
+	for _, r := range result.Results {
+		if meetsSeverityThreshold(r.Severity, highestSev) {
+			highestSev = r.Severity
+		}
+	}
+	detail.Severity = highestSev
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("X-Rampart-Blocked", "true")
+	w.Header().Set("X-Rampart-Severity", highestSev)
+	w.WriteHeader(statusCode)
+	_ = json.NewEncoder(w).Encode(detail)
+}
+
 // scanAndAlert runs detection on a body and alerts the user.
-func (p *Proxy) scanAndAlert(direction, host, path string, body []byte) {
+func (p *Proxy) scanAndAlert(direction, host, path string, body []byte) *detector.Summary {
 	result, err := p.detector.Detect(string(body))
 	if err != nil {
 		log.Printf("rampart: detection error: %v", err)
-		return
+		return result
 	}
 
 	if result.TotalDetections == 0 {
-		return
+		return result
 	}
 
 	p.mu.Lock()
 	p.stats.Detections++
-	if result.Blocked {
-		p.stats.BlockedRequests++
-	}
 	if result.MLScore > 0 {
 		p.stats.MLDetections++
 	}
@@ -626,6 +827,8 @@ func (p *Proxy) scanAndAlert(direction, host, path string, body []byte) {
 
 	// Forward to Platform (opt-in, metadata only, async)
 	p.forwardEntry(direction, host, path, result)
+
+	return result
 }
 
 // ANSI color codes for terminal output.
@@ -645,7 +848,7 @@ func (p *Proxy) printDetection(direction, host, path string, result *detector.Su
 	// Header with severity-appropriate coloring
 	severityColor := colorRed
 	severityIcon := "⚠️"
-	if result.Blocked {
+	if p.cfg.Mode == ModeBlock {
 		severityColor = colorRed
 		severityIcon = "🚫"
 	} else if result.TotalDetections == 1 {
@@ -653,9 +856,14 @@ func (p *Proxy) printDetection(direction, host, path string, result *detector.Su
 		severityIcon = "⚠️"
 	}
 
-	fmt.Printf("\n%s%s %sDETECTION: %s %s%s%s\n",
+	modeTag := ""
+	if p.cfg.Mode == ModeBlock {
+		modeTag = colorRed + " [BLOCKED]" + colorReset
+	}
+
+	fmt.Printf("\n%s%s %sDETECTION: %s %s%s%s%s\n",
 		severityColor, severityIcon, colorBold,
-		direction, colorCyan, host, colorReset)
+		direction, colorCyan, host, colorReset, modeTag)
 
 	if path != "" && path != "/" {
 		fmt.Printf("   %s%s%s\n", colorDim, path, colorReset)
@@ -723,6 +931,67 @@ func (p *Proxy) notifyDesktop(direction, host string, result *detector.Summary) 
 	log.Printf("rampart: [%s] %s — %d detections", direction, host, result.TotalDetections)
 }
 
+// formatBlockHTTPResponse creates a JSON block response body for MITM responses.
+func (p *Proxy) formatBlockHTTPResponse(direction, host, path string, result *detector.Summary, blockReason string) []byte {
+	blockMsg := p.cfg.Block.Message
+	if blockMsg == "" {
+		blockMsg = "Request blocked by AegisGate Rampart"
+	}
+
+	type BlockResult struct {
+		Category   string  `json:"category"`
+		Severity   string  `json:"severity"`
+		Rule       string  `json:"rule"`
+		Text       string  `json:"text,omitempty"`
+		Confidence float64 `json:"confidence"`
+	}
+
+	type BlockDetail struct {
+		Direction string        `json:"direction"`
+		Host      string        `json:"host"`
+		Path      string        `json:"path,omitempty"`
+		Blocked   bool          `json:"blocked"`
+		Reason    string        `json:"reason"`
+		Severity  string        `json:"severity"`
+		Message   string        `json:"message"`
+		Results   []BlockResult `json:"results,omitempty"`
+	}
+
+	detail := BlockDetail{
+		Direction: direction,
+		Host:      host,
+		Path:      path,
+		Blocked:   true,
+		Reason:    blockReason,
+		Message:   blockMsg,
+	}
+
+	if p.cfg.Block.IncludeDetections {
+		detail.Results = make([]BlockResult, 0, len(result.Results))
+		for _, r := range result.Results {
+			detail.Results = append(detail.Results, BlockResult{
+				Category:   r.Category,
+				Severity:   r.Severity,
+				Rule:       r.Rule,
+				Text:       r.Text,
+				Confidence: r.Confidence,
+			})
+		}
+	}
+
+	// Determine overall severity
+	highestSev := "low"
+	for _, r := range result.Results {
+		if meetsSeverityThreshold(r.Severity, highestSev) {
+			highestSev = r.Severity
+		}
+	}
+	detail.Severity = highestSev
+
+	data, _ := json.Marshal(detail)
+	return data
+}
+
 // HandleDetectAPI serves the /detect HTTP endpoint for IDE extensions.
 // POST /detect { "text": "..." } → detection results
 func (p *Proxy) HandleDetectAPI(w http.ResponseWriter, r *http.Request) {
@@ -762,13 +1031,16 @@ func (p *Proxy) HandleDetectAPI(w http.ResponseWriter, r *http.Request) {
 	if result.TotalDetections > 0 {
 		p.mu.Lock()
 		p.stats.Detections++
-		if result.Blocked {
-			p.stats.BlockedRequests++
-		}
 		if result.MLScore > 0 {
 			p.stats.MLDetections++
 		}
 		p.mu.Unlock()
+
+		// Block mode: return block response instead of detection result
+		if shouldBlock, reason := p.shouldBlock(result); shouldBlock {
+			p.blockResponse(w, "request", "", "/detect", result, reason)
+			return
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")

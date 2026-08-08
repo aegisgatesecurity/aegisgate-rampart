@@ -5,6 +5,48 @@ All notable changes to AegisGate Rampart are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.4.0] - 2026-08-07
+
+### Added — Phase 6: Block Mode + k6 Load Testing
+
+- **Block Mode**: Active threat blocking (CLI flag `--block` or config `"mode": "block"`)
+  - `shouldBlock()`: Severity-threshold and category-filter based blocking decisions
+  - `blockResponse()`: Structured JSON 403 response with detection details
+  - `formatBlockHTTPResponse()`: Raw HTTP response for MITM proxy path
+  - Blocks both outbound requests (user → AI) and inbound responses (AI → user)
+  - Configurable: threshold (low/medium/high/critical), categories, status code, message
+  - `BlockConfig` struct with full JSON configuration support
+  - `--block` CLI shorthand for `--mode=block`
+  - Stats API includes `"mode"` field ("monitor" or "block")
+  - Terminal output shows `[BLOCKED]` tag in block mode
+- **k6 Load Testing Suite** (7 test scripts, 1,817 LOC):
+  - `stress-test.js`: Baseline graduated load (5→100 VUs)
+  - `break-test.js`: Find the ceiling — 1x→20x progressive load (1,000 VUs peak)
+  - `crush-test.js`: Sequential crush with recovery (2,000 VUs peak)
+  - `malformed-input-test.js`: Invalid JSON, oversized, binary, unicode, HTTP abuse
+  - `rate-limit-test.js`: Rate limiter enforcement verification
+  - `connection-flood-test.js`: Rapid open/close, connection storms (500 VUs)
+  - `endurance-test.js`: 5-minute sustained load (memory leak detection)
+  - `run-all.sh` orchestrator, `README.md` with usage instructions
+  - Verified: 1.19M requests, 0% crash rate across all tests
+- **Configurable rate limiting**: `--rate-limit` flag and `RateLimitRPS` config field
+- **CA trust bug fix**: `checkTrustDarwin` and `checkTrustWindows` now check file existence
+  before querying system keychain (fixes macOS CI failure)
+- **Audit log coverage**: Raised from 61.5% to 86.5% (7 new tests for rotate, copyFile, etc.)
+
+### Changed
+
+- `ProxyStats` now includes `mode` field (monitor/block)
+- `scanAndAlert()` now returns `*detector.Summary` for block decisions
+- Recovery verdicts in k6 tests use crash_rate (not success_rate) to avoid false negatives
+- Default rate limit changed from 30 RPS to configurable (default still 30)
+
+### Testing
+
+- 10 new block mode unit tests (monitor mode, block mode, threshold, categories, API)
+- k6 load test suite: 1.19M requests, 0% crash rate, all 7 tests pass
+- All 19 packages pass with `-race` flag
+
 ## [0.3.0] - 2026-08-07
 
 ### Added — Phase 5: IDE Coverage Expansion

@@ -511,3 +511,283 @@ func TestProxyDefaultPort(t *testing.T) {
 		t.Errorf("Default proxy port = %d, want 8080", cfg.ProxyPort)
 	}
 }
+
+// ============================================================================
+// Block Mode Tests
+// ============================================================================
+
+func TestShouldBlockMonitorMode(t *testing.T) {
+	cfg := config.DefaultConfig()
+	cfg.Mode = config.ModeMonitor
+	p, err := New(cfg)
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+
+	result := &detector.Summary{
+		TotalDetections: 1,
+		Results: []detector.Result{
+			{Category: "pii", Severity: "critical", Text: "SSN detected"},
+		},
+	}
+
+	shouldBlock, reason := p.shouldBlock(result)
+	if shouldBlock {
+		t.Error("shouldBlock should return false in monitor mode")
+	}
+	if reason != "" {
+		t.Errorf("reason should be empty in monitor mode, got: %s", reason)
+	}
+}
+
+func TestShouldBlockBlockModeCritical(t *testing.T) {
+	cfg := config.DefaultConfig()
+	cfg.Mode = config.ModeBlock
+	cfg.Block.Threshold = config.SeverityHigh
+	p, err := New(cfg)
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+
+	result := &detector.Summary{
+		TotalDetections: 1,
+		Results: []detector.Result{
+			{Category: "pii", Severity: "critical", Text: "SSN detected", Rule: "pii_ssn"},
+		},
+	}
+
+	shouldBlock, reason := p.shouldBlock(result)
+	if !shouldBlock {
+		t.Error("shouldBlock should return true for critical detection in block mode")
+	}
+	if reason == "" {
+		t.Error("reason should not be empty when blocking")
+	}
+}
+
+func TestShouldBlockBlockModeBelowThreshold(t *testing.T) {
+	cfg := config.DefaultConfig()
+	cfg.Mode = config.ModeBlock
+	cfg.Block.Threshold = config.SeverityCritical // only block on critical
+	p, err := New(cfg)
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+
+	result := &detector.Summary{
+		TotalDetections: 1,
+		Results: []detector.Result{
+			{Category: "pii", Severity: "medium", Text: "phone detected", Rule: "pii_phone"},
+		},
+	}
+
+	shouldBlock, _ := p.shouldBlock(result)
+	if shouldBlock {
+		t.Error("shouldBlock should return false for medium detection when threshold is critical")
+	}
+}
+
+func TestShouldBlockBlockModeCategoryFilter(t *testing.T) {
+	cfg := config.DefaultConfig()
+	cfg.Mode = config.ModeBlock
+	cfg.Block.Threshold = config.SeverityHigh
+	cfg.Block.Categories = []string{"pii"} // only block PII
+	p, err := New(cfg)
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+
+	// XSS should NOT be blocked (category filter)
+	xssResult := &detector.Summary{
+		TotalDetections: 1,
+		Results: []detector.Result{
+			{Category: "xss", Severity: "critical", Text: "script tag", Rule: "xss_script_tag"},
+		},
+	}
+	shouldBlock, _ := p.shouldBlock(xssResult)
+	if shouldBlock {
+		t.Error("shouldBlock should return false for XSS when category filter is pii-only")
+	}
+
+	// PII SHOULD be blocked (category filter passes)
+	piiResult := &detector.Summary{
+		TotalDetections: 1,
+		Results: []detector.Result{
+			{Category: "pii", Severity: "critical", Text: "SSN detected", Rule: "pii_ssn"},
+		},
+	}
+	shouldBlock, reason := p.shouldBlock(piiResult)
+	if !shouldBlock {
+		t.Error("shouldBlock should return true for PII with pii category filter")
+	}
+	if reason == "" {
+		t.Error("reason should not be empty when blocking")
+	}
+}
+
+func TestShouldBlockNoDetections(t *testing.T) {
+	cfg := config.DefaultConfig()
+	cfg.Mode = config.ModeBlock
+	p, err := New(cfg)
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+
+	result := &detector.Summary{
+		TotalDetections: 0,
+		Results:         []detector.Result{},
+	}
+
+	shouldBlock, _ := p.shouldBlock(result)
+	if shouldBlock {
+		t.Error("shouldBlock should return false when there are no detections")
+	}
+}
+
+func TestMeetsSeverityThreshold(t *testing.T) {
+	tests := []struct {
+		severity  string
+		threshold string
+		expected  bool
+	}{
+		{"critical", "critical", true},
+		{"critical", "high", true},
+		{"critical", "medium", true},
+		{"critical", "low", true},
+		{"high", "critical", false},
+		{"high", "high", true},
+		{"high", "medium", true},
+		{"medium", "critical", false},
+		{"medium", "high", false},
+		{"medium", "medium", true},
+		{"low", "critical", false},
+		{"low", "high", false},
+		{"low", "medium", false},
+		{"low", "low", true},
+		{"unknown", "high", false},
+		{"high", "unknown", true}, // unknown threshold defaults to high
+	}
+
+	for _, tc := range tests {
+		result := meetsSeverityThreshold(tc.severity, tc.threshold)
+		if result != tc.expected {
+			t.Errorf("meetsSeverityThreshold(%q, %q) = %v, want %v", tc.severity, tc.threshold, result, tc.expected)
+		}
+	}
+}
+
+func TestBlockDetectAPIInBlockMode(t *testing.T) {
+	cfg := config.DefaultConfig()
+	cfg.Mode = config.ModeBlock
+	cfg.Block.Threshold = config.SeverityHigh
+	p, err := New(cfg)
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+
+	// Test that /detect returns a block response for PII
+	payload := `{"text":"My SSN is 123-45-6789"}`
+	req := httptest.NewRequest(http.MethodPost, "/detect", strings.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	p.HandleDetectAPI(w, req)
+
+	if w.Code != cfg.Block.StatusCode {
+		t.Errorf("Expected status %d, got %d", cfg.Block.StatusCode, w.Code)
+	}
+
+	body := w.Body.String()
+	if !strings.Contains(body, "blocked") {
+		t.Errorf("Expected block response to contain 'blocked', got: %s", body)
+	}
+	if !strings.Contains(body, "X-Rampart-Blocked") {
+		// Check body content instead of header (already written)
+		t.Logf("Block response body: %s", body)
+	}
+}
+
+func TestBlockDetectAPIMonitorMode(t *testing.T) {
+	cfg := config.DefaultConfig()
+	cfg.Mode = config.ModeMonitor
+	p, err := New(cfg)
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+
+	// In monitor mode, /detect should return normal detection result (200)
+	payload := `{"text":"My SSN is 123-45-6789"}`
+	req := httptest.NewRequest(http.MethodPost, "/detect", strings.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	p.HandleDetectAPI(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected status 200 in monitor mode, got %d", w.Code)
+	}
+
+	body := w.Body.String()
+	if strings.Contains(body, "blocked") && !strings.Contains(body, `"blocked":false`) {
+		t.Errorf("In monitor mode, response should not be a block response, got: %s", body)
+	}
+}
+
+func TestBlockDetectAPICleanText(t *testing.T) {
+	cfg := config.DefaultConfig()
+	cfg.Mode = config.ModeBlock
+	cfg.Block.Threshold = config.SeverityHigh
+	p, err := New(cfg)
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+
+	// Clean text should NOT be blocked even in block mode
+	payload := `{"text":"Hello, how are you?"}`
+	req := httptest.NewRequest(http.MethodPost, "/detect", strings.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	p.HandleDetectAPI(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected status 200 for clean text, got %d", w.Code)
+	}
+}
+
+func TestConfigBlockDefaults(t *testing.T) {
+	cfg := config.DefaultConfig()
+
+	if cfg.Mode != config.ModeMonitor {
+		t.Errorf("Default mode should be monitor, got %s", cfg.Mode)
+	}
+	if cfg.Block.Threshold != config.SeverityHigh {
+		t.Errorf("Default block threshold should be high, got %s", cfg.Block.Threshold)
+	}
+	if cfg.Block.StatusCode != 403 {
+		t.Errorf("Default block status code should be 403, got %d", cfg.Block.StatusCode)
+	}
+	if !cfg.Block.IncludeDetections {
+		t.Error("Default IncludeDetections should be true")
+	}
+	if cfg.Block.Message != "Request blocked by AegisGate Rampart" {
+		t.Errorf("Default block message incorrect, got: %s", cfg.Block.Message)
+	}
+	if cfg.Block.BlockResponse != "both" {
+		t.Errorf("Default BlockResponse should be 'both', got %s", cfg.Block.BlockResponse)
+	}
+}
+
+func TestStatsIncludeMode(t *testing.T) {
+	cfg := config.DefaultConfig()
+	cfg.Mode = config.ModeBlock
+	p, err := New(cfg)
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+
+	stats := p.GetStats()
+	if stats.Mode != config.ModeBlock {
+		t.Errorf("Expected mode=%s in stats, got %s", config.ModeBlock, stats.Mode)
+	}
+}

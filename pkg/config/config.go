@@ -9,6 +9,20 @@ import (
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/platform"
 )
 
+// Operating mode for Rampart: monitor-only or active blocking.
+const (
+	ModeMonitor = "monitor" // Log detections but allow all traffic
+	ModeBlock   = "block"   // Actively block requests that match criteria
+)
+
+// BlockSeverityThreshold defines which severity levels trigger blocking.
+const (
+	SeverityLow      = "low"
+	SeverityMedium   = "medium"
+	SeverityHigh     = "high"
+	SeverityCritical = "critical"
+)
+
 // Config holds all Rampart configuration.
 type Config struct {
 	ProxyPort    int            `json:"proxy_port"`
@@ -16,9 +30,43 @@ type Config struct {
 	Verbose      bool           `json:"verbose"`
 	PlatformURL  string         `json:"platform_url"`
 	RateLimitRPS int            `json:"rate_limit_rps"`
+	Mode         string         `json:"mode"` // "monitor" (default) or "block"
+	Block        BlockConfig    `json:"block"`
 	Targets      []TargetConfig `json:"targets"`
 	Models       ModelConfig    `json:"models"`
 	Privacy      PrivacyConfig  `json:"privacy"`
+}
+
+// BlockConfig defines what gets blocked and how.
+// Only used when Mode is "block".
+type BlockConfig struct {
+	// Threshold is the minimum severity to block on.
+	// Options: "low", "medium", "high", "critical"
+	// Default: "high" — blocks on high and critical findings.
+	Threshold string `json:"threshold"`
+
+	// Categories is the list of detection categories to block on.
+	// Empty means block on ALL categories.
+	// Options: "pii", "secrets", "xss", "toxicity", "compliance", "ml_threat"
+	Categories []string `json:"categories"`
+
+	// StatusCode is the HTTP status code returned when blocking.
+	// Default: 403 (Forbidden)
+	StatusCode int `json:"status_code"`
+
+	// IncludeDetections controls whether the block response includes
+	// the list of specific detections. Default: true (transparency).
+	IncludeDetections bool `json:"include_detections"`
+
+	// Message is the custom message returned in the block response.
+	// Default: "Request blocked by AegisGate Rampart"
+	Message string `json:"message"`
+
+	// BlockResponse controls whether Rampart blocks the outbound request
+	// (user → AI), the inbound response (AI → user), or both.
+	// Options: "both", "request", "response"
+	// Default: "both"
+	BlockResponse string `json:"block_response"`
 }
 
 // TargetConfig defines an AI API endpoint to intercept.
@@ -58,11 +106,20 @@ func DefaultConfig() *Config {
 		DaemonMode:  false,
 		Verbose:     false,
 		PlatformURL: "",
+		Mode:        ModeMonitor,
 		Targets:     DefaultTargets(),
 		Models: ModelConfig{
 			Path:      "/opt/aegisgate/models/threat-detection.onnx",
 			Threshold: 0.05,
 			Shadow:    true,
+		},
+		Block: BlockConfig{
+			Threshold:         SeverityHigh,
+			Categories:        []string{}, // empty = all categories
+			StatusCode:        403,
+			IncludeDetections: true,
+			Message:           "Request blocked by AegisGate Rampart",
+			BlockResponse:     "both",
 		},
 		Privacy: PrivacyConfig{
 			NoPromptText:     true,

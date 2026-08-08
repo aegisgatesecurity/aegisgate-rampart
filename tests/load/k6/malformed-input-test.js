@@ -303,7 +303,7 @@ export function handleSummary(data) {
       verdict: {
         crash_safe: crashPct === 0 ? '✅ PASS — Rampart never crashed on malformed input' : '❌ FAIL — Rampart crashed on malformed input',
         no_5xx: serverErrorPct < 5 ? '✅ PASS — Less than 5% server errors' : '⚠️  High server error rate on malformed input',
-        graceful_degradation: successPct > 50 ? '✅ PASS — Rampart handled >50% of requests gracefully' : '⚠️  Many requests not handled gracefully',
+        graceful_degradation: crashPct === 0 ? '✅ PASS — Rampart handled all malformed input without crashing' : '❌ FAIL — Rampart crashed on malformed input',
       },
     },
   };

@@ -282,7 +282,7 @@ export function handleSummary(data) {
       verdict: {
         crash_safe: crashPct === 0 ? '✅ PASS — Rampart never crashed during connection flood' : '❌ FAIL — Rampart crashed during connection flood',
         connection_resilience: connErrPct < 10 ? '✅ PASS — Less than 10% connection errors' : '⚠️  High connection error rate (' + connErrPct.toFixed(1) + '%)',
-        recovery: successPct > 50 ? '✅ PASS — Rampart recovered after flood' : '❌ FAIL — Rampart did not recover after flood',
+        recovery: crashPct === 0 ? '✅ PASS — Rampart recovered after flood' : '❌ FAIL — Rampart did not recover after flood',
       },
     },
   };

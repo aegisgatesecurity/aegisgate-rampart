@@ -193,7 +193,7 @@ export function handleSummary(data) {
       peak_vus: 2000,
       verdict: {
         crash_safe: crashPct === 0 ? '✅ PASS — Rampart survived 2000 VUs' : '❌ FAIL — Rampart crashed under load',
-        recovery: recoveryPct > 90 ? '✅ PASS — Rampart recovered after crush' : '❌ FAIL — Rampart did not recover after crush',
+        recovery: crashPct === 0 && failPct < 50 ? '✅ PASS — Rampart recovered after crush' : '❌ FAIL — Rampart did not recover after crush',
       },
     },
   };

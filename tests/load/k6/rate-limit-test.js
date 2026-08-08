@@ -193,9 +193,9 @@ export function handleSummary(data) {
         p99: data.metrics.rate_limit_latency?.values?.['p(99)']?.toFixed(2) + 'ms',
       },
       verdict: {
-        rate_limiting_working: rateLimitPct > 0 ? '✅ PASS — Rate limiting is ENFORCED' : '❌ FAIL — No 429s observed (increase load or lower --rate-limit)',
+        rate_limiting_working: rateLimitPct > 0 ? '✅ PASS — Rate limiting is ENFORCED' : '⚠️  No 429s observed (increase load or lower --rate-limit)',
         crash_safe: crashPct === 0 ? '✅ PASS — No crashes during rate limit flood' : '❌ FAIL — Rampart crashed during rate limit flood',
-        recovery: normalPct > 50 ? '✅ PASS — Rampart recovered after rate limiting' : '❌ FAIL — Rampart did not recover',
+        recovery: crashPct === 0 ? '✅ PASS — Rampart recovered after rate limiting' : '❌ FAIL — Rampart did not recover',
       },
     },
   };

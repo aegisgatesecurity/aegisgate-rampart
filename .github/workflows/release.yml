@@ -11,6 +11,12 @@ on:
         required: true
         type: string
 
+permissions:
+  contents: write
+  packages: write
+  id-token: write
+  security-events: write
+
 jobs:
   # ========================================
   # Build binaries — Linux, Windows (CGO_ENABLED=0)

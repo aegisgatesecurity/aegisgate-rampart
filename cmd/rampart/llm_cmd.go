@@ -31,13 +31,13 @@ func runLLMList(args []string) error {
 
 	// Table format
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "NAME\tURL\tDESCRIPTION")
-	fmt.Fprintln(w, "----\t---\t-----------")
+	_, _ = fmt.Fprintln(w, "NAME\tURL\tDESCRIPTION")
+	_, _ = fmt.Fprintln(w, "----\t---\t-----------")
 
 	for _, p := range presets {
-		fmt.Fprintf(w, "%s\t%s\t%s\n", p.Name, p.URL, p.Description)
+		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", p.Name, p.URL, p.Description)
 	}
-	w.Flush()
+	_ = w.Flush()
 
 	fmt.Printf("\nTotal: %d presets\n", len(presets))
 	fmt.Println("\nAdd a preset with: rampart llm add <name>")

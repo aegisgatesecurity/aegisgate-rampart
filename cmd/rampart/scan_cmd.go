@@ -64,14 +64,14 @@ func runScan(args []string) error {
 
 	// Table format
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "FILE\tLINE\tCATEGORY\tSEVERITY\tMESSAGE")
-	fmt.Fprintln(w, "----\t----\t--------\t--------\t-------")
+	_, _ = fmt.Fprintln(w, "FILE\tLINE\tCATEGORY\tSEVERITY\tMESSAGE")
+	_, _ = fmt.Fprintln(w, "----\t----\t--------\t--------\t-------")
 
 	for _, d := range result.Detections {
-		fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%s\n",
+		_, _ = fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%s\n",
 			filepath.Base(d.File), d.Line, d.Category, d.Severity, d.Message)
 	}
-	w.Flush()
+	_ = w.Flush()
 
 	fmt.Printf("\nTotal: %d detections in %d files\n", len(result.Detections), result.TotalFiles)
 

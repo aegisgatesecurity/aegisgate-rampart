@@ -95,6 +95,11 @@ type ProxyStats struct {
 	MLDetections    int64     `json:"ml_detections"`
 	Mode            string    `json:"mode"`
 	StartTime       time.Time `json:"start_time"`
+
+	// Detection breakdown by category (for Lens integration)
+	CategoryCounts    map[string]int64 `json:"category_counts,omitempty"`
+	LastDetectionTime time.Time        `json:"last_detection_time,omitempty"`
+	PIICategories     []string         `json:"pii_categories,omitempty"`
 }
 
 // New creates a new Proxy with the given configuration.
@@ -392,6 +397,20 @@ func (p *Proxy) auditLogEntry(direction, host, path string, result *detector.Sum
 			p.metricsCollector.RecordDetection(host, category, highestSeverity, result.Blocked)
 		}
 	}
+
+	// Track per-category counts and last detection time for Lens stats
+	p.mu.Lock()
+	if p.stats.CategoryCounts == nil {
+		p.stats.CategoryCounts = make(map[string]int64)
+	}
+	for _, category := range categories {
+		p.stats.CategoryCounts[category]++
+	}
+	p.stats.LastDetectionTime = time.Now()
+	if len(result.PIICategories) > 0 {
+		p.stats.PIICategories = result.PIICategories
+	}
+	p.mu.Unlock()
 }
 
 // forwardEntry sends detection metadata to AegisGate Platform.

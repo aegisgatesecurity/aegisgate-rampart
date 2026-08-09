@@ -85,29 +85,40 @@ func (p *Proxy) HandleStatsAPILens(w http.ResponseWriter, r *http.Request) {
 func (p *Proxy) getDetectionsByCategory() map[string]int64 {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
-
-	// This would integrate with the detector to get category breakdown
-	// For now, return empty map - to be implemented with detector integration
-	return make(map[string]int64)
+	if p.stats.CategoryCounts == nil {
+		return make(map[string]int64)
+	}
+	result := make(map[string]int64, len(p.stats.CategoryCounts))
+	for k, v := range p.stats.CategoryCounts {
+		result[k] = v
+	}
+	return result
 }
 
 // getComplianceStatus returns compliance framework violation counts
-// TODO: Integrate with response scanner to track actual compliance violations
 func (p *Proxy) getComplianceStatus() response.ComplianceStatus {
-	// For now, return compliant status
-	// Future: Track PIIMatches from response scanner and call response.GetComplianceStatus()
-	return response.ComplianceStatus{
-		OverallCompliant: true,
+	p.mu.RLock()
+	piiCats := p.stats.PIICategories
+	p.mu.RUnlock()
+
+	if len(piiCats) == 0 {
+		return response.ComplianceStatus{OverallCompliant: true}
 	}
+	// Convert category strings to PIIMatch for compliance mapping
+	matches := make([]response.PIIMatch, 0, len(piiCats))
+	for _, cat := range piiCats {
+		matches = append(matches, response.PIIMatch{
+			Category: response.PIICategory(cat),
+		})
+	}
+	return response.GetComplianceStatus(matches)
 }
 
 // getLastDetectionTime returns the timestamp of the last detection
 func (p *Proxy) getLastDetectionTime() time.Time {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
-
-	// Placeholder - to be implemented with detection tracking
-	return time.Time{}
+	return p.stats.LastDetectionTime
 }
 
 // getAverageLatency returns average detection latency in milliseconds

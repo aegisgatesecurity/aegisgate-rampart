@@ -6,9 +6,6 @@ License:        Apache-2.0
 URL:            https://github.com/aegisgatesecurity/aegisgate-rampart
 Source0:        https://github.com/aegisgatesecurity/aegisgate-rampart/archive/v%{version}.tar.gz
 
-BuildRequires:  golang >= 1.24
-BuildRequires:  gcc
-
 Requires:       ca-certificates
 
 %description
@@ -29,7 +26,8 @@ Features:
 %setup -q
 
 %build
-go build -o rampart ./cmd/rampart
+# Binary is pre-built in the source tarball
+echo "Using pre-built binary"
 
 %install
 mkdir -p %{buildroot}/usr/bin

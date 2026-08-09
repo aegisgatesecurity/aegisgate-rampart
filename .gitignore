@@ -45,3 +45,12 @@ coverage.html
 /rampart-lsp
 tests/load/k6/results/
 coverage-filtered.out
+
+# Go test binaries
+proxy.test
+*.test
+
+# Strategic/business documents (internal only)
+STRATEGY-MARKET-ANALYSIS.md
+TECHNICAL-GAPS-CORRECTED.md
+95-PERCENT-NEEDS.md

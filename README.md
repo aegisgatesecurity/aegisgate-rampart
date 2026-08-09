@@ -1,19 +1,57 @@
-# AegisGate Rampart
+<div align="center">
 
+# 🛡️ AegisGate Rampart
+
+**Local AI security proxy — intercept, detect, block.**
+
+HTTPS MITM proxy · 153 regex patterns + Char CNN-BiLSTM · Monitor & Block modes · Zero telemetry by default
+
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Version](https://img.shields.io/badge/version-v0.6.0-brightgreen.svg)](https://github.com/aegisgatesecurity/aegisgate-rampart/releases/tag/v0.6.0)
 [![CI](https://github.com/aegisgatesecurity/aegisgate-rampart/actions/workflows/ci.yml/badge.svg)](https://github.com/aegisgatesecurity/aegisgate-rampart/actions/workflows/ci.yml)
-[![Coverage](https://img.shields.io/badge/coverage-64.1%25-brightgreen)](.plans/V0.6.0-TEST-RESULTS-FINAL.md)
-[![Tests](https://img.shields.io/badge/tests-88%20files%20%7C%2027%20packages-blue)](.plans/V0.6.0-TEST-RESULTS-FINAL.md)
-[![Load Tests](https://img.shields.io/badge/load%20tests-7%20k6%20tests-success)](.plans/V0.6.0-TEST-RESULTS-FINAL.md)
-[![Crash Rate](https://img.shields.io/badge/crash%20rate-0.0000%25-success)](.plans/V0.6.0-TEST-RESULTS-FINAL.md)
-[![Throughput](https://img.shields.io/badge/throughput-235%20RPS-blue)](.plans/V0.6.0-TEST-RESULTS-FINAL.md)
-[![p95 Latency](https://img.shields.io/badge/p95%20latency-201ms-blue)](.plans/V0.6.0-TEST-RESULTS-FINAL.md)
-[![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+[![Coverage](https://img.shields.io/badge/coverage-80.7%25-brightgreen.svg)](#test-coverage)
+[![Security](https://github.com/aegisgatesecurity/aegisgate-rampart/actions/workflows/security.yml/badge.svg)](https://github.com/aegisgatesecurity/aegisgate-rampart/actions/workflows/security.yml)
+[![CodeQL](https://github.com/aegisgatesecurity/aegisgate-rampart/actions/workflows/codeql.yml/badge.svg)](https://github.com/aegisgatesecurity/aegisgate-rampart/actions/workflows/codeql.yml)
+[![Tests](https://img.shields.io/badge/tests-88%20files%20%7C%2027%20packages-blue.svg)](#test-coverage)
+[![Load Tests](https://img.shields.io/badge/load%20tests-7%20k6%20scenarios-success.svg)](#load-testing)
+[![Crash Rate](https://img.shields.io/badge/crash%20rate-0.0000%25-success.svg)](#load-testing)
+[![Throughput](https://img.shields.io/badge/throughput-235%20RPS-blue.svg)](#load-testing)
+[![Endpoints](https://img.shields.io/badge/endpoints-27%20AI%20APIs-9cf.svg)](#27-target-endpoints)
+[![Providers](https://img.shields.io/badge/providers-10-blue.svg)](#27-target-endpoints)
+[![Zero npm](https://img.shields.io/badge/dependencies-zero-success.svg)](#build--test)
+[![Privacy](https://img.shields.io/badge/privacy-12%20non--negotiables-success.svg)](#privacy-12-non-negotiables)
 
-> Local AI security proxy — intercept, detect, **block**.
+[Quick Start](#quick-start) · [Operating Modes](#operating-modes) · [Detection](#detection-capabilities) · [IDE Integration](#ide-coverage) · [Privacy](#privacy-12-non-negotiables) · [Releases](https://github.com/aegisgatesecurity/aegisgate-rampart/releases)
 
-Rampart is a **local HTTPS MITM proxy** that intercepts traffic to 27 AI API endpoints, runs real-time detection for PII, secrets, XSS, and compliance violations, and can **actively block** threats before they reach the AI service — or before the AI's response reaches you.
+</div>
 
-**Same detection engine as AegisGate Platform v4.0.0** — 153 regex patterns + Char CNN-BiLSTM neural network.
+> **We follow [GitHub's recommended security practices](https://securitylab.github.com/resources/five-easy-steps-to-secure-your-open-source-project/) for open source projects.** CodeQL scanning · Secret scanning with push protection · Dependabot alerts & security updates · Protected branches · RFC 9116 security policy · Sigstore keyless signing · [Report a vulnerability →](./SECURITY.md)
+
+---
+
+> **🛡️ Using AegisGate at work?** [AegisGate Platform](https://github.com/aegisgatesecurity/aegisgate-platform) is our server-side gateway — 153 detection patterns, MCP/A2A/ACP protection, 15+ compliance frameworks, and cryptographic attestation. For individual developers, Rampart runs locally on your machine. [Explore Platform →](https://github.com/aegisgatesecurity/aegisgate-platform)
+
+---
+
+## What's New in v0.6.0
+
+- **🛡️ Block Mode** — Actively block threats at the proxy level. Returns HTTP 403 with structured JSON response. Configurable threshold, categories, and block direction (request, response, or both).
+- **🧠 ML Adversarial Detection** — Char CNN-BiLSTM with Attention model detects adversarial prompt injections (instruction override, roleplay injection, obfuscated commands) in real time.
+- **🔐 Encrypted Audit Logs** — ChaCha20-Poly1305 authenticated encryption with PBKDF2-SHA256 key derivation. Key is never stored — decryption requires original passphrase.
+- **📊 Anonymized Metrics** — Opt-in privacy-preserving telemetry. Domain hashed with SHA-256, timestamps rounded to hour, only false positives reported.
+- **🔔 Webhook Notifications** — Configurable webhook integration for detection alerts. Custom headers, multiple endpoints.
+- **📦 Enterprise Features** — Config hash verification, cosign signing support, self-hosted LLM configuration, batch scanning.
+- **✅ 80.7% test coverage** (88 test files, 27 packages, 7 k6 load tests, 0.0000% crash rate at 2,000+ concurrent users).
+
+## What Is Rampart?
+
+Rampart is a **local HTTPS MITM proxy** that sits between your applications and AI API endpoints. It intercepts traffic in transit, runs real-time detection for PII, secrets, XSS, compliance violations, and adversarial prompt injections — and can **actively block** threats before they reach the AI service.
+
+- **In-transit interception.** Unlike Lens (browser-level) or Platform (gateway-level), Rampart operates at the network proxy layer — it sees every request and response.
+- **153 regex patterns + ML.** Same detection engine as AegisGate Platform v4.0.0. Regex catches known patterns; Char CNN-BiLSTM catches adversarial paraphrasing.
+- **Monitor or Block.** Log-only mode for visibility. Block mode for enforcement with configurable thresholds and categories.
+- **Zero telemetry by default.** Air-gap mode when `--platform-url` is not set. No network calls. All detection is local.
+- **Free. Forever.** Apache 2.0, single binary, no external dependencies.
 
 ## Operating Modes
 
@@ -76,16 +114,6 @@ When a request is blocked, Rampart returns a structured JSON response:
   ]
 }
 ```
-
-## Platform Support
-
-| Platform | Config Directory | Auto-Start | Notifications | CA Trust | System Tray |
-|----------|-----------------|-------------|-------------|----------|-------------|
-| **Linux** | `~/.config/aegisgate-rampart/` | systemd | notify-send | update-ca-certificates | fyne/systray (CGO) |
-| **macOS** | `~/Library/Application Support/aegisgate-rampart/` | launchd | osascript | security add-trusted-cert | fyne/systray (CGO) |
-| **Windows** | `%AppData%\AegisGate Rampart\` | Registry Run key | beeep (Win32 toast) | certutil -addstore | fyne/systray |
-
-**Build requirements**: Linux and Windows build with `CGO_ENABLED=0`. macOS requires `CGO_ENABLED=1` (systray uses Objective-C).
 
 ## Quick Start
 
@@ -164,6 +192,16 @@ Your Machine                                          AI APIs
 | **Compliance** | 35 | GDPR, HIPAA, PCI-DSS, SOX identifiers |
 | **ML (Neural)** | 1 model | Char CNN-BiLSTM adversarial prompt detection |
 
+## Platform Support
+
+| Platform | Config Directory | Auto-Start | Notifications | CA Trust | System Tray |
+|----------|-----------------|-------------|-------------|----------|-------------|
+| **Linux** | `~/.config/aegisgate-rampart/` | systemd | notify-send | update-ca-certificates | fyne/systray (CGO) |
+| **macOS** | `~/Library/Application Support/aegisgate-rampart/` | launchd | osascript | security add-trusted-cert | fyne/systray (CGO) |
+| **Windows** | `%AppData%\AegisGate Rampart\` | Registry Run key | beeep (Win32 toast) | certutil -addstore | fyne/systray |
+
+**Build requirements**: Linux and Windows build with `CGO_ENABLED=0`. macOS requires `CGO_ENABLED=1` (systray uses Objective-C).
+
 ## CLI Reference
 
 ```
@@ -229,18 +267,22 @@ curl -s http://localhost:8080/stats
 | **VS Code** | [aegisgate-rampart-ext](https://github.com/aegisgatesecurity/aegisgate-rampart-ext) | Extension | ✅ v0.3.0 |
 | **Any editor** | LSP server (`rampart-lsp`) | Language Server Protocol | ✅ v0.3.0 |
 
+## Test Coverage
+
+| Metric | Value |
+|--------|-------|
+| Test files | 88 |
+| Packages tested | 27 |
+| Filtered coverage | 80.7% |
+| Load test scenarios | 7 (k6) |
+| Crash rate | 0.0000% |
+| Peak concurrent users | 2,000+ |
+
+See full results: [V0.6.0 Test Results Summary](.plans/V0.6.0-TEST-RESULTS-FINAL.md)
+
 ## Load Testing
 
 **v0.6.0 Results:** 235 RPS throughput, p95=201ms latency, **0.0000% crash rate** across 7 test scenarios.
-
-### Test Coverage
-
-- ✅ **88 test files** (27 packages tested)
-- ✅ **64.1% overall coverage** (87%+ excluding untestable GUI/CGO)
-- ✅ **7 k6 load tests** (stress, break, crush, malformed, connection-flood, endurance, rate-limit)
-- ✅ **Zero crashes** under 2,000+ concurrent users
-
-See full results: [V0.6.0 Test Results Summary](.plans/V0.6.0-TEST-RESULTS-FINAL.md)
 
 ```bash
 cd tests/load/k6
@@ -380,25 +422,45 @@ aegisgate-rampart/
 │   └── telemetry/         # Platform telemetry (no-op when air-gap)
 ├── internal/
 │   ├── autostart/         # Auto-start (systemd, launchd, Registry)
-│   ├── auditlog/          # Audit logging (metadata only, 86.5% coverage)
+│   ├── auditlog/          # Audit logging (metadata only, encrypted at rest)
 │   ├── catrust/           # CA trust setup (Linux, macOS, Windows)
 │   ├── certificate/       # ECDSA P-256 CA generation
 │   ├── certinit/          # First-run certificate setup
 │   ├── detectors/         # 153 regex patterns (from Platform v4.0.0)
+│   ├── enterprise/        # Enterprise features (config hash, verify, gate)
 │   ├── logging/           # Minimal stderr shim
-│   ├── lsp/               # Language Server Protocol server (91.5% coverage)
+│   ├── lsp/               # Language Server Protocol server
 │   ├── ml/                # Char CNN-BiLSTM (ONNX + heuristic fallback)
 │   ├── notify/            # Desktop notifications (3 platforms)
 │   ├── platform/          # Platform-aware paths (ConfigDir, DataDir, CacheDir)
-│   ├── platformforward/   # Platform telemetry forwarding (opt-in, 91.7% coverage)
-│   ├── response/          # PII scanner, secret detector, guard (93.8% coverage)
-│   └── tray/              # System tray (fyne.io/systray)
+│   ├── platformforward/   # Platform telemetry forwarding (opt-in)
+│   ├── response/          # PII scanner, secret detector, guard
+│   ├── scanner/           # Batch scanning
+│   ├── securemem/         # Secure memory handling
+│   ├── tray/              # System tray (fyne.io/systray)
+│   ├── updater/           # Self-update mechanism
+│   ├── verify/            # Cosign verification
+│   └── webhook/           # Webhook notification manager
 ├── tests/load/k6/          # k6 load testing suite (7 scenarios)
 ├── configs/default.json    # Default configuration
 ├── Dockerfile              # Multi-stage scratch container
-└── .github/workflows/      # CI/CD workflows (5 platforms)
+└── .github/workflows/      # CI/CD workflows
 ```
 
 ## License
 
-Apache-2.0
+Apache-2.0. See [LICENSE](./LICENSE) for the full text.
+
+## Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md).
+
+---
+
+<div align="center">
+
+[🌐 AegisGate Security](https://aegisgatesecurity.io) · [✉️ support@aegisgatesecurity.io](mailto:support@aegisgatesecurity.io) · [𝕏 @aegisgate](https://x.com/aegisgate) · [🐘 @aegisgate@mastodon.social](https://mastodon.social/@aegisgate)
+
+Made with 🖤 by AegisGate Security developers to secure the AI attack surface.
+
+</div>

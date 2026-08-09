@@ -196,14 +196,15 @@ jobs:
         run: echo "version=$(cat VERSION)" >> $GITHUB_OUTPUT
       
       - name: Calculate SHA256
+        id: sha
         run: |
-          SHA=$(curl -L "https://github.com/aegisgatesecurity/aegisgate-rampart/archive/v${{ steps.version.outputs.version }}.tar.gz" | sha256sum | cut -d' ' -f1)
+          SHA=$(curl -sL "https://github.com/aegisgatesecurity/aegisgate-rampart/archive/v${{ steps.version.outputs.version }}.tar.gz" | sha256sum | cut -d' ' -f1)
           echo "sha256=$SHA" >> $GITHUB_OUTPUT
       
       - name: Update formula
         run: |
           sed -i 's|url ".*"|url "https://github.com/aegisgatesecurity/aegisgate-rampart/archive/v${{ steps.version.outputs.version }}.tar.gz"|' packaging/homebrew/aegisgate-rampart.rb
-          sed -i 's|sha256 ".*"|sha256 "${{ steps.outputs.sha256 }}"|' packaging/homebrew/aegisgate-rampart.rb
+          sed -i 's|sha256 ".*"|sha256 "${{ steps.sha.outputs.sha256 }}"|' packaging/homebrew/aegisgate-rampart.rb
       
       - name: Commit formula update
         uses: stefanzweifel/git-auto-commit-action@v5

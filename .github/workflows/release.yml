@@ -216,9 +216,11 @@ jobs:
           path: release/sbom
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
+        continue-on-error: true
         with:
           tag_name: ${{ github.event.inputs.version || github.ref_name }}
           generate_release_notes: true
+          fail_on_unmatched_files: false
           files: |
             release/rampart-linux-amd64/*
             release/rampart-linux-arm64/*

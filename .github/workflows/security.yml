@@ -99,7 +99,7 @@ jobs:
           mv gitleaks /usr/local/bin/
       - name: Run Gitleaks
         run: |
-          gitleaks detect --source . --verbose --report-format sarif --report-path gitleaks.sarif || true
+          gitleaks detect --source . --config .gitleaks.toml --verbose --report-format sarif --report-path gitleaks.sarif || true
         continue-on-error: true
       - name: Upload SARIF
         uses: github/codeql-action/upload-sarif@v4

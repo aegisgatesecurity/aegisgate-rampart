@@ -1,0 +1,51 @@
+# AegisGate Rampart - Development Dockerfile
+#
+# Optimized for development with hot-reload support and all dev tools.
+# Not suitable for production use (see packaging/ for production images).
+#
+# Usage:
+#   docker build -f Dockerfile.dev -t rampart-dev .
+#   docker run -v $(pwd):/app rampart-dev make dev
+#
+
+ARG GO_VERSION=1.21
+
+FROM golang:${GO_VERSION}-alpine
+
+# Install development dependencies
+RUN apk add --no-cache \
+    git \
+    make \
+    bash \
+    ca-certificates \
+    # Hot-reload tool
+    github.com/cosmtrek/air@latest \
+    # Linting
+    github.com/golangci/golangci-lint/cmd/golangci-lint@latest \
+    # Testing tools
+    gotest.tools/gotestsum@latest
+
+# Set working directory
+WORKDIR /app
+
+# Copy go mod files first (for layer caching)
+COPY go.mod go.sum ./
+
+# Download dependencies
+RUN go mod download
+
+# Copy source code (will be mounted in development)
+COPY . .
+
+# Build development binary with debug symbols
+RUN go build -race -gcflags="all=-N -l" -o bin/rampart ./cmd/rampart
+
+# Default command: run with air for hot-reload
+CMD ["air", "-c", ".air.toml"]
+
+# Expose proxy port and pprof port
+EXPOSE 8080 6060
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+    CMD test -f /app/bin/rampart || exit 1

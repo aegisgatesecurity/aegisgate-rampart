@@ -20,6 +20,7 @@ package platformforward
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -163,4 +164,96 @@ func (f *Forwarder) String() string {
 		return "platform forwarding disabled"
 	}
 	return fmt.Sprintf("platform forwarding → %s", f.url)
+}
+
+// HeartbeatResult contains the result of a Platform connectivity check.
+type HeartbeatResult struct {
+	Success   bool          `json:"success"`
+	Latency   time.Duration `json:"latency_ms"`
+	Error     string        `json:"error,omitempty"`
+	Timestamp time.Time     `json:"timestamp"`
+}
+
+// Heartbeat performs a connectivity check to Platform.
+// Returns success status, latency, and any error encountered.
+// This is a blocking call with a 5-second timeout.
+func (f *Forwarder) Heartbeat() HeartbeatResult {
+	result := HeartbeatResult{
+		Timestamp: f.nowFunc(),
+		Success:   false,
+	}
+
+	if !f.enabled {
+		result.Error = "platform forwarding disabled"
+		return result
+	}
+
+	start := f.nowFunc()
+
+	// Create a lightweight ping request
+	req, err := http.NewRequest(http.MethodGet, f.url+"/health", nil)
+	if err != nil {
+		result.Error = fmt.Sprintf("request creation failed: %v", err)
+		return result
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	// Add API key authentication if configured
+	if f.apiKey != "" {
+		req.Header.Set("Authorization", "Bearer "+f.apiKey)
+	}
+
+	// Execute request
+	resp, err := f.client.Do(req)
+	if err != nil {
+		result.Error = fmt.Sprintf("connectivity check failed: %v", err)
+		return result
+	}
+	defer resp.Body.Close()
+
+	result.Latency = f.nowFunc().Sub(start)
+
+	// Check response status
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		result.Error = fmt.Sprintf("HTTP %d", resp.StatusCode)
+		return result
+	}
+
+	result.Success = true
+	return result
+}
+
+// StartHeartbeatLoop begins periodic heartbeat checks to Platform.
+// Returns a channel that receives heartbeat results at the specified interval.
+// The loop runs in a background goroutine and stops when the context is cancelled.
+func (f *Forwarder) StartHeartbeatLoop(ctx context.Context, interval time.Duration) <-chan HeartbeatResult {
+	results := make(chan HeartbeatResult, 1)
+
+	go func() {
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		defer close(results)
+
+		for {
+			select {
+			case <-ctx.Done():
+				log.Printf("rampart: platform heartbeat loop stopped")
+				return
+			case <-ticker.C:
+				result := f.Heartbeat()
+				if result.Success {
+					log.Printf("rampart: platform heartbeat OK (latency: %v)", result.Latency)
+				} else {
+					log.Printf("rampart: platform heartbeat FAILED: %s", result.Error)
+				}
+				select {
+				case results <- result:
+				default:
+					// Channel full, skip this result
+				}
+			}
+		}
+	}()
+
+	return results
 }

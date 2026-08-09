@@ -1,0 +1,30 @@
+#!/bin/bash
+set -e
+
+case "$1" in
+    configure)
+        echo "Setting up AegisGate Rampart..."
+        
+        # Create config directory
+        if [ ! -d "/etc/aegisgate-rampart" ]; then
+            mkdir -p /etc/aegisgate-rampart
+            chmod 755 /etc/aegisgate-rampart
+        fi
+        
+        # Copy default config if it doesn't exist
+        if [ ! -f "/etc/aegisgate-rampart/config.json" ]; then
+            cp /usr/share/aegisgate-rampart/configs/default.json /etc/aegisgate-rampart/config.json 2>/dev/null || true
+        fi
+        
+        # Generate CA certificate on first install
+        if command -v rampart >/dev/null 2>&1; then
+            rampart --trust 2>/dev/null || true
+        fi
+        
+        echo "✓ AegisGate Rampart installed successfully"
+        echo "  Run 'rampart --trust' to install the CA certificate"
+        echo "  Run 'rampart --help' for usage information"
+        ;;
+esac
+
+exit 0

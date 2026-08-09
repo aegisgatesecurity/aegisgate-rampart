@@ -154,6 +154,11 @@ func (rg *ResponseGuard) ScanWithContext(ctx context.Context, response string, s
 				MatchEnd:   match.End,
 			})
 		}
+
+		// Generate compliance framework reports from PII matches
+		if rg.config.EnableComplianceDetection && len(piiMatches) > 0 {
+			result.ComplianceReports = GenerateComplianceReports(piiMatches)
+		}
 	}
 
 	// 2. Scan for secrets if enabled

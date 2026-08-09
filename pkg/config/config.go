@@ -36,8 +36,11 @@ type Config struct {
 	Targets         []TargetConfig `json:"targets"`
 	Models          ModelConfig    `json:"models"`
 	Privacy         PrivacyConfig  `json:"privacy"`
-	PprofAddr       string         `json:"pprof_addr"`        // pprof debug server address (e.g., "localhost:6060"), empty = disabled
-	CAKeyPassphrase string         `json:"ca_key_passphrase"` // passphrase for CA key encryption at rest (empty = unencrypted)
+	PprofAddr          string         `json:"pprof_addr"`           // pprof debug server address (e.g., "localhost:6060"), empty = disabled
+	CAKeyPassphrase    string         `json:"ca_key_passphrase"`    // passphrase for CA key encryption at rest (empty = unencrypted)
+	AuditKeyPassphrase string         `json:"audit_key_passphrase"` // passphrase for audit log encryption at rest (empty = unencrypted)
+	AnonymizedMetrics  bool           `json:"anonymized_metrics"`   // enable privacy-preserving telemetry (opt-in)
+	MetricsEndpoint    string         `json:"metrics_endpoint"`     // custom endpoint for anonymized metrics
 }
 
 // BlockConfig defines what gets blocked and how.

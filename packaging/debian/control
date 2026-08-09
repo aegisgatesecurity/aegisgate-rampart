@@ -1,0 +1,26 @@
+Source: aegisgate-rampart
+Section: net
+Priority: optional
+Maintainer: AegisGate Security <security@aegisgate.dev>
+Build-Depends: debhelper (>= 12), golang-go (>= 1.24)
+Standards-Version: 4.6.0
+Homepage: https://github.com/aegisgatesecurity/aegisgate-rampart
+Vcs-Git: https://github.com/aegisgatesecurity/aegisgate-rampart.git
+Vcs-Browser: https://github.com/aegisgatesecurity/aegisgate-rampart
+
+Package: aegisgate-rampart
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ca-certificates
+Description: Local AI security proxy for intercepting and detecting threats
+ AegisGate Rampart is a local HTTPS MITM proxy that intercepts traffic to AI API
+ endpoints, runs real-time detection for PII, secrets, XSS, and compliance
+ violations, and can actively block threats before they reach the AI service.
+ .
+ Features:
+  - 153 regex patterns + Char CNN-BiLSTM neural network
+  - Monitor mode (log only) or Block mode (active blocking)
+  - System tray notifications (daemon mode)
+  - Auto-start on boot
+  - IDE integration (VS Code, JetBrains)
+  - Compliance mapping (SOC2, GDPR, HIPAA, PCI-DSS)
+  - Privacy-first (no telemetry by default)

@@ -33,7 +33,10 @@ var (
 	blockFlag           = flag.Bool("block", false, "Enable block mode (actively block detected threats)")
 	modeFlag            = flag.String("mode", "", "Operating mode: monitor (log only) or block (active blocking)")
 	pprofFlag           = flag.String("pprof", "", "Enable pprof debug server (e.g., 'localhost:6060'), empty = disabled")
-	caKeyPassphraseFlag = flag.String("ca-key-passphrase", "", "Passphrase for encrypting the CA private key at rest")
+	caKeyPassphraseFlag     = flag.String("ca-key-passphrase", "", "Passphrase for encrypting the CA private key at rest")
+	auditKeyPassphraseFlag  = flag.String("audit-key-passphrase", "", "Passphrase for encrypting audit logs at rest")
+	anonymizedMetricsFlag   = flag.Bool("anonymized-metrics", false, "Enable privacy-preserving anonymized metrics (opt-in)")
+	metricsEndpointFlag     = flag.String("metrics-endpoint", "", "Custom endpoint for anonymized metrics (default: https://rampart.aegisgatesecurity.io/metrics)")
 )
 
 func main() {
@@ -60,6 +63,72 @@ func main() {
 	if *statusFlag {
 		handleStatus()
 		return
+	}
+
+	// Handle subcommands
+	if len(flag.Args()) > 0 {
+		switch flag.Arg(0) {
+		case "decrypt-audit":
+			handleDecryptAudit(flag.Args()[1:])
+			return
+		case "generate-passphrase":
+			handleGeneratePassphrase(flag.Args()[1:])
+			return
+		case "verify":
+			if err := runVerify(flag.Args()[1:]); err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+			return
+		case "config-hash":
+			if err := runConfigHash(flag.Args()[1:]); err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+			return
+		case "config-verify":
+			if err := runConfigVerify(flag.Args()[1:]); err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+			return
+		case "config-check":
+			if err := runConfigCheck(flag.Args()[1:]); err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+			return
+		case "webhook":
+			if err := runWebhookCmd(flag.Args()[1:]); err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+			return
+		case "llm":
+			if err := runLLMList(flag.Args()[1:]); err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+			return
+		case "scan":
+			if err := runScan(flag.Args()[1:]); err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+			return
+		case "cosign":
+			if err := runCosignCmd(flag.Args()[1:]); err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+			return
+		case "audit":
+			if err := runAuditCmd(flag.Args()[1:]); err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+			return
+		}
 	}
 
 	cfg, err := config.Load(*configDirFlag)
@@ -108,6 +177,19 @@ func main() {
 	// CA key passphrase: encrypt the CA private key at rest
 	if *caKeyPassphraseFlag != "" {
 		cfg.CAKeyPassphrase = *caKeyPassphraseFlag
+	}
+
+	// Audit log encryption: encrypt audit logs at rest
+	if *auditKeyPassphraseFlag != "" {
+		cfg.AuditKeyPassphrase = *auditKeyPassphraseFlag
+	}
+
+	// Anonymized metrics: opt-in privacy-preserving telemetry
+	if *anonymizedMetricsFlag {
+		cfg.AnonymizedMetrics = true
+		if *metricsEndpointFlag != "" {
+			cfg.MetricsEndpoint = *metricsEndpointFlag
+		}
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -167,6 +249,14 @@ func runForeground(ctx context.Context, cancel context.CancelFunc, cfg *config.C
 	fmt.Printf("Mode: %s (detections %s)\n", modeLabel, map[bool]string{true: "will be blocked", false: "logged only"}[cfg.Mode == config.ModeBlock])
 	if cfg.CAKeyPassphrase == "" {
 		fmt.Fprintln(os.Stderr, "WARNING: CA private key stored unencrypted on disk. Use --ca-key-passphrase for enhanced security.")
+	}
+	if cfg.AuditKeyPassphrase == "" {
+		fmt.Fprintln(os.Stderr, "WARNING: Audit logs stored unencrypted. Use --audit-key-passphrase for enhanced security.")
+	} else {
+		fmt.Println("Audit logs: encrypted at rest (ChaCha20-Poly1305)")
+	}
+	if cfg.AnonymizedMetrics {
+		fmt.Println("Anonymized metrics: enabled (privacy-preserving telemetry)")
 	}
 	fmt.Println("Press Ctrl+C to stop")
 

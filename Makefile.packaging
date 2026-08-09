@@ -1,0 +1,91 @@
+# AegisGate Rampart - Packaging Makefile
+# Usage: make package-deb, make package-rpm, make package-brew
+
+VERSION := $(shell cat VERSION)
+BINARY := rampart
+CMD_PATH := ./cmd/rampart
+
+.PHONY: all package-deb package-rpm package-brew clean
+
+all: package-deb package-rpm
+
+# Build binary
+build:
+	CGO_ENABLED=0 go build -o $(BINARY) $(CMD_PATH)
+
+# Debian/Ubuntu package
+package-deb: build
+	@echo "Building .deb package..."
+	mkdir -p packaging/debian/$(BINARY)-$(VERSION)
+	mkdir -p packaging/debian/$(BINARY)-$(VERSION)/usr/bin
+	mkdir -p packaging/debian/$(BINARY)-$(VERSION)/etc/aegisgate-rampart
+	mkdir -p packaging/debian/$(BINARY)-$(VERSION)/usr/share/doc/aegisgate-rampart
+	
+	cp $(BINARY) packaging/debian/$(BINARY)-$(VERSION)/usr/bin/
+	cp README.md packaging/debian/$(BINARY)-$(VERSION)/usr/share/doc/aegisgate-rampart/
+	cp LICENSE packaging/debian/$(BINARY)-$(VERSION)/usr/share/doc/aegisgate-rampart/
+	cp configs/default.json packaging/debian/$(BINARY)-$(VERSION)/etc/aegisgate-rampart/ || true
+	cp -r packaging/debian/control packaging/debian/$(BINARY)-$(VERSION)/DEBIAN/control
+	cp packaging/debian/postinst packaging/debian/$(BINARY)-$(VERSION)/DEBIAN/postinst
+	chmod +x packaging/debian/$(BINARY)-$(VERSION)/DEBIAN/postinst
+	
+	cd packaging/debian && dpkg-deb --build $(BINARY)-$(VERSION)
+	@echo "✓ Created packaging/debian/$(BINARY)_$(VERSION)_amd64.deb"
+
+# RPM package (requires rpmbuild)
+package-rpm: build
+	@echo "Building .rpm package..."
+	mkdir -p packaging/redhat/RPMS
+	mkdir -p packaging/redhat/SOURCES
+	mkdir -p packaging/redhat/SPECS
+	mkdir -p packaging/redhat/BUILD
+	mkdir -p packaging/redhat/SRPMS
+	
+	tar -czf packaging/redhat/SOURCES/$(BINARY)-$(VERSION).tar.gz \
+		--transform 's,^,$(BINARY)-$(VERSION)/,' \
+		$(BINARY) README.md LICENSE configs/
+	
+	cp packaging/redhat/$(BINARY).spec packaging/redhat/SPECS/
+	
+	rpmbuild --define "_topdir $(PWD)/packaging/redhat" \
+		--define "version $(VERSION)" \
+		-bb packaging/redhat/SPECS/$(BINARY).spec
+	@echo "✓ Created packaging/redhat/RPMS/$(BINARY)-$(VERSION)-1.x86_64.rpm"
+
+# Homebrew formula (update tap repository)
+package-brew:
+	@echo "Updating Homebrew formula..."
+	@echo "Formula location: packaging/homebrew/$(BINARY).rb"
+	@echo "To publish:"
+	@echo "  1. Update SHA256 in packaging/homebrew/$(BINARY).rb"
+	@echo "  2. Push to aegisgatesecurity/homebrew-tap"
+	@echo "  3. Users can install with: brew tap aegisgatesecurity/tap && brew install $(BINARY)"
+
+# Clean build artifacts
+clean:
+	rm -rf packaging/debian/$(BINARY)-*
+	rm -rf packaging/redhat/RPMS
+	rm -rf packaging/redhat/SOURCES
+	rm -rf packaging/redhat/BUILD
+	rm -rf packaging/redhat/SRPMS
+	rm -f $(BINARY)
+
+# Test packages on clean systems (requires Docker)
+test-deb: package-deb
+	@echo "Testing .deb package in clean Docker container..."
+	docker run --rm -v $(PWD)/packaging/debian:/packages debian:bookworm-slim \
+		bash -c "dpkg -i /packages/$(BINARY)_$(VERSION)_amd64.deb && rampart version"
+
+test-rpm: package-rpm
+	@echo "Testing .rpm package in clean Docker container..."
+	docker run --rm -v $(PWD)/packaging/redhat/RPMS:/packages rockylinux:9 \
+		bash -c "rpm -ivh /packages/$(BINARY)-$(VERSION)-1.x86_64.rpm && rampart version"
+
+# Upload to GitHub Releases
+release: package-deb package-rpm
+	@echo "Uploading packages to GitHub Releases..."
+	gh release upload v$(VERSION) \
+		packaging/debian/$(BINARY)_$(VERSION)_amd64.deb \
+		packaging/redhat/RPMS/x86_64/$(BINARY)-$(VERSION)-1.x86_64.rpm \
+		--clobber
+	@echo "✓ Packages uploaded to GitHub Releases v$(VERSION)"

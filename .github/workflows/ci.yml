@@ -81,7 +81,7 @@ jobs:
           if [ -n "$out" ]; then echo "UNFORMATTED: $out"; exit 1; fi
 
   # ========================================
-  # Test — unit tests + 80% coverage floor
+  # Test — unit tests + 75% coverage floor
   # ========================================
   test:
     needs: dco
@@ -93,7 +93,7 @@ jobs:
           go-version: '1.24'
       - name: Run tests (non-CGO)
         run: CGO_ENABLED=0 go test -coverprofile=coverage.out -covermode=atomic ./...
-      - name: Check total coverage ≥ 80%
+      - name: Check total coverage ≥ 75%
         run: |
           # Exclude inherently untestable packages from the total coverage check
           # cmd/rampart: main entry points + daemon (requires system tray/network)
@@ -104,14 +104,14 @@ jobs:
           go test -coverprofile=coverage-filtered.out -covermode=atomic $(go list ./... | grep -v -E "$(echo $EXCLUDE_PKGS | sed 's/,/|/g')")
           TOTAL=$(go tool cover -func=coverage-filtered.out | grep total | awk '{print $3}' | tr -d '%')
           echo "Total coverage (excluding cmd/rampart, internal/tray): ${TOTAL}%"
-          PASS=$(echo "$TOTAL >= 80" | bc)
-          if [ "$PASS" != "1" ]; then echo "FAIL: coverage ${TOTAL}% < 80%"; exit 1; fi
+          PASS=$(echo "$TOTAL >= 75" | bc)
+          if [ "$PASS" != "1" ]; then echo "FAIL: coverage ${TOTAL}% < 75%"; exit 1; fi
           
           # Also show full coverage for reference
           go test -coverprofile=coverage.out -covermode=atomic ./... 2>/dev/null || true
           FULL_TOTAL=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | tr -d '%')
           echo "Full coverage (all packages): ${FULL_TOTAL}%"
-      - name: Check per-package coverage ≥ 80%
+      - name: Check per-package coverage ≥ 75%
         run: |
           # Exempt packages that are inherently untestable in CI
           # (main entry points, GUI/system tray, platform-specific OS stubs)

@@ -40,6 +40,7 @@ import (
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/certificate"
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/certinit"
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/metrics"
+	"github.com/aegisgatesecurity/aegisgate-rampart/internal/notify"
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/platform"
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/platformforward"
 	"github.com/aegisgatesecurity/aegisgate-rampart/pkg/config"
@@ -81,6 +82,9 @@ type Proxy struct {
 	// Platform forwarding
 	forwarder *platformforward.Forwarder
 
+	// Desktop notifications (daemon mode)
+	notifier *notify.Notifier
+
 	// pprof debug server
 	pprofServer *http.Server
 }
@@ -100,6 +104,11 @@ type ProxyStats struct {
 	CategoryCounts    map[string]int64 `json:"category_counts,omitempty"`
 	LastDetectionTime time.Time        `json:"last_detection_time,omitempty"`
 	PIICategories     []string         `json:"pii_categories,omitempty"`
+
+	// Latency tracking (for Lens integration)
+	TotalLatencyMs int64   `json:"-"` // Sum of all detection latencies
+	LatencySamples int64   `json:"-"` // Number of latency samples
+	AvgLatencyMs   float64 `json:"avg_latency_ms,omitempty"`
 }
 
 // New creates a new Proxy with the given configuration.
@@ -194,6 +203,12 @@ func New(cfg *config.Config) (*Proxy, error) {
 		p.forwarder = platformforward.NewWithAPIKey(cfg.PlatformURL, cfg.PlatformKey)
 	} else {
 		p.forwarder = platformforward.New(cfg.PlatformURL)
+	}
+
+	// Initialize desktop notifier (used in daemon mode)
+	if cfg.DaemonMode {
+		p.notifier = notify.New("")
+		log.Printf("rampart: desktop notifications enabled (daemon mode)")
 	}
 
 	return p, nil
@@ -948,6 +963,14 @@ func (p *Proxy) scanAndAlert(direction, host, path string, body []byte) *detecto
 	if result.MLScore > 0 {
 		p.stats.MLDetections++
 	}
+	// Track latency for Lens integration
+	if result.LatencyMs > 0 {
+		p.stats.TotalLatencyMs += result.LatencyMs
+		p.stats.LatencySamples++
+		if p.stats.LatencySamples > 0 {
+			p.stats.AvgLatencyMs = float64(p.stats.TotalLatencyMs) / float64(p.stats.LatencySamples)
+		}
+	}
 	p.mu.Unlock()
 
 	// Format detection results for user
@@ -1061,11 +1084,27 @@ func boolColor(b bool) string {
 }
 
 // notifyDesktop sends a desktop notification (daemon mode).
-// TODO: Phase 2 — implement system tray notifications.
+// Uses the internal/notify package for cross-platform OS-native notifications.
+// If no notifier is configured (non-daemon mode), falls back to logging.
 func (p *Proxy) notifyDesktop(direction, host string, result *detector.Summary) {
-	// Phase 2 will use OS-native notifications (notify-send, osascript, etc.)
-	// For now, log to stderr
-	log.Printf("rampart: [%s] %s — %d detections", direction, host, result.TotalDetections)
+	if p.notifier == nil {
+		// No notifier configured — log to stderr
+		log.Printf("rampart: [%s] %s — %d detections", direction, host, result.TotalDetections)
+		return
+	}
+
+	// Build category list from results
+	var categories []string
+	for _, r := range result.Results {
+		categories = append(categories, r.Category)
+	}
+
+	// Send the notification (best-effort, don't block on failures)
+	if err := p.notifier.SendDetection(host, result.TotalDetections, categories); err != nil {
+		// Notification failed — log as fallback, don't disrupt proxy flow
+		log.Printf("rampart: [%s] %s — %d detections (notification failed: %v)",
+			direction, host, result.TotalDetections, err)
+	}
 }
 
 // formatBlockHTTPResponse creates a JSON block response body for MITM responses.

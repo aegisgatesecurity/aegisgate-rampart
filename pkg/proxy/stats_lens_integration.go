@@ -121,11 +121,13 @@ func (p *Proxy) getLastDetectionTime() time.Time {
 	return p.stats.LastDetectionTime
 }
 
-// getAverageLatency returns average detection latency in milliseconds
+// getAverageLatency returns average detection latency in milliseconds.
 func (p *Proxy) getAverageLatency() float64 {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 
-	// Placeholder - to be implemented with latency tracking
-	return 0.0
+	if p.stats.LatencySamples == 0 {
+		return 0.0
+	}
+	return float64(p.stats.TotalLatencyMs) / float64(p.stats.LatencySamples)
 }

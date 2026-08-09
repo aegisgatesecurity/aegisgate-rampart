@@ -84,10 +84,13 @@ jobs:
 
   # ========================================
   # Keyless signing — Sigstore/Cosign
+  # Requires id-token: write for OIDC-based keyless signing
   # ========================================
   sign-binary:
     needs: [build-static, build-macos]
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
     strategy:
       matrix:
         include:
@@ -154,6 +157,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       packages: write
+      id-token: write
     steps:
       - uses: actions/checkout@v4
       - name: Download Linux amd64 binary

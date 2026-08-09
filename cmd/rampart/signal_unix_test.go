@@ -43,5 +43,5 @@ func TestShutdownSignals_Unix(t *testing.T) {
 func TestReloadSignalIsOsSignal(t *testing.T) {
 	sig := reloadSignal()
 	// Verify it implements os.Signal
-	var _ os.Signal = sig
+	var _ os.Signal = sig //nolint:staticcheck // QF1011: explicit type for documentation
 }

@@ -114,7 +114,7 @@ func runWebhookList(args []string) error {
 	}
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "ID\tNAME\tURL\tENABLED\tTIMEOUT")
+	_, _ = fmt.Fprintln(w, "ID\tNAME\tURL\tENABLED\tTIMEOUT")
 
 	for _, wh := range cfg.Webhooks {
 		enabled := "✓"
@@ -127,11 +127,11 @@ func runWebhookList(args []string) error {
 			timeout = 30 * time.Second
 		}
 
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
+		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
 			wh.ID, wh.Name, truncateURL(wh.URL, 40), enabled, timeout)
 	}
 
-	w.Flush()
+	_ = w.Flush()
 	return nil
 }
 

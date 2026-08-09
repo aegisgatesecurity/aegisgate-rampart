@@ -135,7 +135,7 @@ func outputTable(result *auditlog.SearchResult, logPath string) error {
 	}
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "TIMESTAMP\tDIRECTION\tHOST\tBLOCKED\tSEVERITY\tCATEGORIES")
+	_, _ = fmt.Fprintln(w, "TIMESTAMP\tDIRECTION\tHOST\tBLOCKED\tSEVERITY\tCATEGORIES")
 
 	for _, entry := range result.Entries {
 		blocked := "✓"
@@ -158,12 +158,12 @@ func outputTable(result *auditlog.SearchResult, logPath string) error {
 
 		timestamp := entry.Timestamp.Format("2006-01-02 15:04:05")
 
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
+		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
 			timestamp, entry.Direction, truncateString(entry.Host, 20),
 			blocked, severity, categories)
 	}
 
-	w.Flush()
+	_ = w.Flush()
 
 	fmt.Printf("\nShowing %d of %d matches (search took %v)\n",
 		len(result.Entries), result.Total, result.SearchTime)

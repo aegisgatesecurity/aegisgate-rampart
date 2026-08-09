@@ -251,7 +251,7 @@ func (p *Proxy) Start(ctx context.Context) error {
 		log.Printf("rampart: shutting down, draining connections for up to %v...", p.shutdownTimeout)
 		if err := p.server.Shutdown(shutdownCtx); err != nil {
 			log.Printf("rampart: shutdown error: %v", err)
-			p.server.Close()
+			_ = p.server.Close()
 		}
 		log.Printf("rampart: shutdown complete")
 	}()
@@ -300,7 +300,7 @@ func (p *Proxy) Shutdown() {
 		defer cancel()
 		if err := p.server.Shutdown(shutdownCtx); err != nil {
 			log.Printf("rampart: forced shutdown: %v", err)
-			p.server.Close()
+			_ = p.server.Close()
 		}
 	}
 }
@@ -530,7 +530,7 @@ func (p *Proxy) tunnel(w http.ResponseWriter, r *http.Request) {
 
 	hijackedConn, _, err := hijacker.Hijack()
 	if err != nil {
-		destConn.Close()
+		_ = destConn.Close()
 		return
 	}
 
@@ -605,7 +605,7 @@ func (p *Proxy) interceptHTTPS(w http.ResponseWriter, r *http.Request) {
 	tlsConn := tls.Server(hijackedConn, tlsConfig)
 	if err := tlsConn.Handshake(); err != nil {
 		log.Printf("rampart: TLS handshake failed for %s: %v", host, err)
-		hijackedConn.Close()
+		_ = hijackedConn.Close()
 		return
 	}
 	defer tlsConn.Close()
@@ -622,7 +622,7 @@ func (p *Proxy) interceptHTTPS(w http.ResponseWriter, r *http.Request) {
 	var bodyBytes []byte
 	if clientReq.Body != nil {
 		bodyBytes, _ = io.ReadAll(clientReq.Body)
-		clientReq.Body.Close()
+		_ = clientReq.Body.Close()
 	}
 
 	// Run detection on request body (outbound = user prompt)
@@ -717,7 +717,7 @@ func (p *Proxy) handleHTTP(w http.ResponseWriter, r *http.Request) {
 	var bodyBytes []byte
 	if r.Body != nil {
 		bodyBytes, _ = io.ReadAll(r.Body)
-		r.Body.Close()
+		_ = r.Body.Close()
 	}
 
 	if isTarget && len(bodyBytes) > 0 {

@@ -187,7 +187,7 @@ func (m *Manager) disableWindows() error {
 	_ = disableWindowsRegistry()
 	// Also remove .reg file if it exists
 	regPath := filepath.Join(platform.ConfigDir(), "rampart-autostart.reg")
-	os.Remove(regPath)
+	_ = os.Remove(regPath)
 	return nil
 }
 

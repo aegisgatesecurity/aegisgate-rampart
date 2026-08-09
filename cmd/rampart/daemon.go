@@ -120,7 +120,7 @@ func (d *Daemon) writePID() error {
 
 // removePID removes the PID file.
 func (d *Daemon) removePID() {
-	os.Remove(d.pidFile)
+	_ = os.Remove(d.pidFile)
 }
 
 // IsRunning checks if a daemon is already running by reading the PID file.

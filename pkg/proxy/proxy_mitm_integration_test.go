@@ -178,7 +178,7 @@ func startMockBackend(t *testing.T, ca *TestCA, triggerDetection bool, responseB
 		if responseBody != "" {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			_ = w.Write([]byte(responseBody))
+			_, _ = w.Write([]byte(responseBody))
 			return
 		}
 
@@ -210,7 +210,7 @@ func startMockBackend(t *testing.T, ca *TestCA, triggerDetection bool, responseB
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.New_ = Encoder(w).Encode(response)
+		json.NewEncoder(w).Encode(response)
 	})
 
 	server := httptest.NewUnstartedServer(handler)

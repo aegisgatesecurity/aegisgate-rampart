@@ -356,9 +356,9 @@ func TestScanDir_NestedDirectories(t *testing.T) {
 	}
 
 	// Create files at different levels
-	os.WriteFile(filepath.Join(tmpDir, "root.go"), []byte("package root"), 0644)
-	os.WriteFile(filepath.Join(tmpDir, "subdir", "sub.go"), []byte("package sub"), 0644)
-	os.WriteFile(filepath.Join(subDir, "nested.go"), []byte("var api_key = 'secret'"), 0644)
+	_ = os.WriteFile(filepath.Join(tmpDir, "root.go"), []byte("package root"), 0644)
+	_ = os.WriteFile(filepath.Join(tmpDir, "subdir", "sub.go"), []byte("package sub"), 0644)
+	_ = os.WriteFile(filepath.Join(subDir, "nested.go"), []byte("var api_key = 'secret'"), 0644)
 
 	result, err := ScanDir(tmpDir)
 	if err != nil {
@@ -484,7 +484,7 @@ func TestScanDir_PermDenied(t *testing.T) {
 	if err != nil {
 		t.Skip("Cannot change permissions on this platform")
 	}
-	defer os.Chmod(noPermFile, 0644)
+	defer _ = os.Chmod(noPermFile, 0644)
 
 	_, err = ScanDir(tmpDir)
 	// Should handle permission errors gracefully

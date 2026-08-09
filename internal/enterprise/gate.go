@@ -32,7 +32,7 @@ func init() {
 		configPath: getConfigPath(),
 	}
 	// Load existing connection config
-	defaultGate.loadConfig()
+	_ = defaultGate.loadConfig()
 }
 
 // PlatformConfig holds Platform connection settings.

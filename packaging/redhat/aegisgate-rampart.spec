@@ -4,7 +4,7 @@ Release:        1%{?dist}
 Summary:        Local AI security proxy for intercepting and detecting threats
 License:        Apache-2.0
 URL:            https://github.com/aegisgatesecurity/aegisgate-rampart
-Source0:        https://github.com/aegisgatesecurity/aegisgate-rampart/archive/v%{version}.tar.gz
+Source0:        aegisgate-rampart-%{version}.tar.gz
 
 Requires:       ca-certificates
 

@@ -110,8 +110,8 @@ jobs:
       - name: Sign binary (keyless)
         run: |
           cosign sign-blob --yes rampart* \
-            --certificate rampart.cert \
-            --signature rampart.sig
+            --output-certificate rampart.cert \
+            --output-signature rampart.sig
       - name: Upload signature
         uses: actions/upload-artifact@v4
         with:
@@ -215,4 +215,9 @@ jobs:
             release/rampart-darwin-amd64/*
             release/rampart-darwin-arm64/*
             release/rampart-windows-amd64/*
+            release/rampart-linux-amd64-sig/*
+            release/rampart-linux-arm64-sig/*
+            release/rampart-darwin-amd64-sig/*
+            release/rampart-darwin-arm64-sig/*
+            release/rampart-windows-amd64-sig/*
             release/sbom/*

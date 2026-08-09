@@ -1,5 +1,5 @@
 Name:           aegisgate-rampart
-Version:        0.5.0
+Version:        0.6.0
 Release:        1%{?dist}
 Summary:        Local AI security proxy for intercepting and detecting threats
 License:        Apache-2.0
@@ -55,7 +55,5 @@ echo "  Run 'rampart --trust' to install the CA certificate"
 /usr/share/doc/aegisgate-rampart/LICENSE
 
 %changelog
-* Sat Aug 08 2026 AegisGate Security <security@aegisgate.dev> - 0.5.0-1
-- Initial RPM package
-- Includes CLI proxy, daemon mode, IDE integration
-- Compliance mapping for SOC2, GDPR, HIPAA, PCI-DSS
+* Sat Aug 08 2026 AegisGate Security <security@aegisgate.dev> - 0.6.0-1
+- v0.6.0 release

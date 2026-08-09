@@ -4,7 +4,7 @@
 class AegisgateRampart < Formula
   desc "Local AI security proxy — intercept, detect, block"
   homepage "https://github.com/aegisgatesecurity/aegisgate-rampart"
-  url "https://github.com/aegisgatesecurity/aegisgate-rampart/archive/v0.5.0.tar.gz"
+  url "https://github.com/aegisgatesecurity/aegisgate-rampart/archive/v0.6.0.tar.gz"
   sha256 "CHANGE_ME"  # Update with actual SHA256 of tarball
   license "Apache-2.0"
 

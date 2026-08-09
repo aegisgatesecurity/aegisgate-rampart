@@ -26,7 +26,7 @@ func TestHeartbeat_Success(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/health" {
 			w.WriteHeader(http.StatusOK)
-			_ = w.Write([]byte(`{"status": "healthy"}`))
+			_, _ = w.Write([]byte(`{"status": "healthy"}`))
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)
@@ -110,7 +110,7 @@ func TestHeartbeat_Disabled(t *testing.T) {
 func TestHeartbeat_ServerError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		_ = w.Write([]byte(`{"error": "internal server error"}`))
+		_, _ = w.Write([]byte(`{"error": "internal server error"}`))
 	}))
 	defer server.Close()
 

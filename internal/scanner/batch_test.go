@@ -484,7 +484,7 @@ func TestScanDir_PermDenied(t *testing.T) {
 	if err != nil {
 		t.Skip("Cannot change permissions on this platform")
 	}
-	defer _ = os.Chmod(noPermFile, 0644)
+	defer func() { _ = os.Chmod(noPermFile, 0644) }()
 
 	_, err = ScanDir(tmpDir)
 	// Should handle permission errors gracefully

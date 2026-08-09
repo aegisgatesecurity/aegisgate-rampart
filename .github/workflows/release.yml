@@ -36,8 +36,8 @@ jobs:
             goarch: amd64
             suffix: -windows.exe
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v7
         with:
           go-version: '1.25'
       - name: Build
@@ -50,7 +50,7 @@ jobs:
           go build -ldflags "-s -w -X main.versionFlag=$VERSION" \
             -o rampart${{ matrix.suffix }} ./cmd/rampart/
       - name: Upload binary
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: rampart-${{ matrix.goos }}-${{ matrix.goarch }}
           path: rampart${{ matrix.suffix }}
@@ -69,8 +69,8 @@ jobs:
           - goarch: arm64
             suffix: -macos-arm64
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v7
         with:
           go-version: '1.25'
       - name: Build
@@ -83,7 +83,7 @@ jobs:
           go build -ldflags "-s -w -X main.versionFlag=$VERSION" \
             -o rampart${{ matrix.suffix }} ./cmd/rampart/
       - name: Upload binary
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: rampart-darwin-${{ matrix.goarch }}
           path: rampart${{ matrix.suffix }}
@@ -113,7 +113,7 @@ jobs:
     steps:
       - uses: sigstore/cosign-installer@v3
       - name: Download binary
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: rampart-${{ matrix.goos }}-${{ matrix.goarch }}
       - name: Sign binary (keyless)
@@ -122,7 +122,7 @@ jobs:
             --output-certificate rampart.cert \
             --output-signature rampart.sig
       - name: Upload signature
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: rampart-${{ matrix.goos }}-${{ matrix.goarch }}-sig
           path: |
@@ -136,7 +136,7 @@ jobs:
     needs: [build-static, build-macos]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Generate CycloneDX SBOM
         uses: anchore/sbom-action@v0
         with:
@@ -148,7 +148,7 @@ jobs:
           format: spdx-json
           output-file: sbom-spdx.json
       - name: Upload SBOMs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: sbom
           path: |
@@ -165,14 +165,14 @@ jobs:
       packages: write
       id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Download Linux amd64 binary
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: rampart-linux-amd64
           path: build/
       - name: Download Linux arm64 binary
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: rampart-linux-arm64
           path: build/
@@ -209,14 +209,14 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Download binary artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           pattern: rampart-*
           path: release/
       - name: Download SBOM
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: sbom
           path: release/sbom

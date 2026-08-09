@@ -17,6 +17,7 @@ import (
 	"io"
 	"net/http"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -135,11 +136,53 @@ func (c *Checker) getLatestRelease(ctx context.Context) (*GitHubRelease, error) 
 	return &release, nil
 }
 
-// isNewerVersion checks if latest is newer than current
+// isNewerVersion checks if latest is newer than current using semver comparison.
+// Both versions should be in "vX.Y.Z" or "X.Y.Z" format.
 func isNewerVersion(current, latest string) bool {
-	// Simple semver comparison
-	// TODO: Use proper semver library for production
-	return latest > current
+	c := parseSemver(current)
+	l := parseSemver(latest)
+	if c == nil || l == nil {
+		// Fallback to string comparison if parsing fails
+		return latest > current
+	}
+	if l.major != c.major {
+		return l.major > c.major
+	}
+	if l.minor != c.minor {
+		return l.minor > c.minor
+	}
+	return l.patch > c.patch
+}
+
+// semver represents a parsed semantic version.
+type semver struct {
+	major, minor, patch int
+}
+
+// parseSemver extracts major.minor.patch from version strings like
+// "v0.6.0", "0.6.0", "v1.2.3-beta", etc.
+func parseSemver(v string) *semver {
+	v = strings.TrimPrefix(v, "v")
+	// Strip pre-release suffix
+	if idx := strings.IndexAny(v, "-+"); idx >= 0 {
+		v = v[:idx]
+	}
+	parts := strings.Split(v, ".")
+	if len(parts) != 3 {
+		return nil
+	}
+	sv := &semver{}
+	var err error
+	if sv.major, err = strconv.Atoi(parts[0]); err != nil {
+		return nil
+	}
+	if sv.minor, err = strconv.Atoi(parts[1]); err != nil {
+		return nil
+	}
+	if sv.patch, err = strconv.Atoi(parts[2]); err != nil {
+		return nil
+	}
+	return sv
 }
 
 // sendNotification sends a system notification about the update

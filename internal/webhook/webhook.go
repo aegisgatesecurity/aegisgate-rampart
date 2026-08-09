@@ -16,6 +16,10 @@ import (
 	"os"
 	"sync"
 	"time"
+
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 )
 
 // Config represents webhook configuration
@@ -134,8 +138,13 @@ func (m *Manager) sendToWebhook(ctx context.Context, wh WebhookConfig, event Eve
 		req.Header.Set(k, v)
 	}
 
-	// Add HMAC signature if secret is configured
-	// TODO: Implement HMAC signing when Secret is set
+	// Add HMAC-SHA256 signature if secret is configured
+	if wh.Secret != "" {
+		mac := hmac.New(sha256.New, []byte(wh.Secret))
+		mac.Write(payload)
+		sig := hex.EncodeToString(mac.Sum(nil))
+		req.Header.Set("X-AegisGate-Signature", "sha256="+sig)
+	}
 
 	resp, err := client.Do(req)
 	if err != nil {

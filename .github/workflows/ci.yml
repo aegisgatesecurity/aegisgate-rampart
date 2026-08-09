@@ -18,7 +18,7 @@ jobs:
     name: DCO Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - name: Verify Signed-off-by on all commits
@@ -65,8 +65,8 @@ jobs:
     needs: dco
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v6
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v7
         with:
           go-version: '1.25'
       - name: golangci-lint
@@ -87,8 +87,8 @@ jobs:
     needs: dco
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v6
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v7
         with:
           go-version: '1.25'
       - name: Run tests (non-CGO)
@@ -131,7 +131,7 @@ jobs:
             fi
           done
       - name: Upload coverage
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: coverage
           path: coverage.out
@@ -143,8 +143,8 @@ jobs:
     needs: [lint, test]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v6
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v7
         with:
           go-version: '1.25'
       - name: Cross-compile for Windows
@@ -178,8 +178,8 @@ jobs:
     runs-on: macos-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v6
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v7
         with:
           go-version: '1.25'
       - name: Run tests (CGO_ENABLED=1)
@@ -201,8 +201,8 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v6
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v7
         with:
           go-version: '1.25'
       - name: Run tests (CGO_ENABLED=0)
@@ -226,8 +226,8 @@ jobs:
       matrix:
         cgo: [0, 1]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v6
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v7
         with:
           go-version: '1.25'
       - name: Build binary

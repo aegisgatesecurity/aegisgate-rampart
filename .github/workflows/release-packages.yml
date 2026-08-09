@@ -6,210 +6,183 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version to release (e.g., 0.5.0)'
+        description: 'Version to release (e.g., 0.6.0)'
         required: true
 
 jobs:
-  build-binaries:
-    name: Build Binaries
+  # ========================================
+  # Build Linux binary for packaging
+  # macOS/Windows binaries are built by release.yml (CGO requirements)
+  # ========================================
+  build-linux:
+    name: Build Linux Binary
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - os: linux
-            arch: amd64
-          - os: linux
-            arch: arm64
-          - os: darwin
-            arch: amd64
-          - os: darwin
-            arch: arm64
-          - os: windows
-            arch: amd64
-    
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Set up Go
-        uses: actions/setup-go@v6
+      - uses: actions/setup-go@v5
         with:
           go-version: '1.24'
-      
       - name: Build binary
         env:
-          GOOS: ${{ matrix.os }}
-          GOARCH: ${{ matrix.arch }}
+          GOOS: linux
+          GOARCH: amd64
           CGO_ENABLED: 0
         run: |
-          go build -o rampart-${{ matrix.os }}-${{ matrix.arch }} ./cmd/rampart
-      
+          VERSION=${{ github.event.inputs.version || github.event.release.tag_name }}
+          go build -ldflags "-s -w -X main.versionFlag=$VERSION" \
+            -o rampart ./cmd/rampart/
       - name: Upload binary
         uses: actions/upload-artifact@v4
         with:
-          name: rampart-${{ matrix.os }}-${{ matrix.arch }}
-          path: rampart-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.os == 'windows' && '.exe' || '' }}
+          name: rampart-linux-amd64-pkg
+          path: rampart
 
+  # ========================================
+  # Debian package
+  # ========================================
   package-deb:
     name: Build Debian Package
     runs-on: ubuntu-latest
-    needs: build-binaries
-    
+    needs: build-linux
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Set up Go
-        uses: actions/setup-go@v6
+      - name: Download binary
+        uses: actions/download-artifact@v4
         with:
-          go-version: '1.24'
-      
+          name: rampart-linux-amd64-pkg
+          path: .
       - name: Get version
         id: version
-        run: echo "version=$(cat VERSION)" >> $GITHUB_OUTPUT
-      
-      - name: Build binary
         run: |
-          CGO_ENABLED=0 go build -o rampart ./cmd/rampart
-      
+          VERSION=${{ github.event.inputs.version || github.event.release.tag_name }}
+          # Strip leading 'v' if present
+          VERSION=${VERSION#v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
       - name: Create package structure
         run: |
-          mkdir -p packaging/debian/aegisgate-rampart-${{ steps.version.outputs.version }}
-          mkdir -p packaging/debian/aegisgate-rampart-${{ steps.version.outputs.version }}/usr/bin
-          mkdir -p packaging/debian/aegisgate-rampart-${{ steps.version.outputs.version }}/etc/aegisgate-rampart
-          mkdir -p packaging/debian/aegisgate-rampart-${{ steps.version.outputs.version }}/usr/share/doc/aegisgate-rampart
-          mkdir -p packaging/debian/aegisgate-rampart-${{ steps.version.outputs.version }}/DEBIAN
-      
-      - name: Copy files
-        run: |
-          cp rampart packaging/debian/aegisgate-rampart-${{ steps.version.outputs.version }}/usr/bin/
-          cp README.md packaging/debian/aegisgate-rampart-${{ steps.version.outputs.version }}/usr/share/doc/aegisgate-rampart/
-          cp LICENSE packaging/debian/aegisgate-rampart-${{ steps.version.outputs.version }}/usr/share/doc/aegisgate-rampart/
-          cp configs/default.json packaging/debian/aegisgate-rampart-${{ steps.version.outputs.version }}/etc/aegisgate-rampart/ || true
-          cp packaging/debian/control packaging/debian/aegisgate-rampart-${{ steps.version.outputs.version }}/DEBIAN/control
-          cp packaging/debian/postinst packaging/debian/aegisgate-rampart-${{ steps.version.outputs.version }}/DEBIAN/postinst
-          chmod +x packaging/debian/aegisgate-rampart-${{ steps.version.outputs.version }}/DEBIAN/postinst
-      
+          PKGDIR=packaging/debian/aegisgate-rampart_${{ steps.version.outputs.version }}_amd64
+          mkdir -p $PKGDIR/usr/bin
+          mkdir -p $PKGDIR/etc/aegisgate-rampart
+          mkdir -p $PKGDIR/usr/share/doc/aegisgate-rampart
+          mkdir -p $PKGDIR/DEBIAN
+          cp rampart $PKGDIR/usr/bin/
+          cp README.md $PKGDIR/usr/share/doc/aegisgate-rampart/
+          cp LICENSE $PKGDIR/usr/share/doc/aegisgate-rampart/
+          cp configs/default.json $PKGDIR/etc/aegisgate-rampart/ || true
+          cp packaging/debian/control $PKGDIR/DEBIAN/control
+          cp packaging/debian/postinst $PKGDIR/DEBIAN/postinst
+          chmod +x $PKGDIR/DEBIAN/postinst
       - name: Build .deb
         run: |
           cd packaging/debian
-          dpkg-deb --build aegisgate-rampart-${{ steps.version.outputs.version }}
-      
+          dpkg-deb --build aegisgate-rampart_${{ steps.version.outputs.version }}_amd64
       - name: Upload .deb
         uses: actions/upload-artifact@v4
         with:
           name: aegisgate-rampart-deb
           path: packaging/debian/aegisgate-rampart_${{ steps.version.outputs.version }}_amd64.deb
 
+  # ========================================
+  # RPM package
+  # ========================================
   package-rpm:
     name: Build RPM Package
     runs-on: ubuntu-latest
-    needs: build-binaries
-    
+    needs: build-linux
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Set up Go
-        uses: actions/setup-go@v6
+      - name: Download binary
+        uses: actions/download-artifact@v4
         with:
-          go-version: '1.24'
-      
+          name: rampart-linux-amd64-pkg
+          path: .
       - name: Install RPM tools
         run: sudo apt-get update && sudo apt-get install -y rpm
-      
       - name: Get version
         id: version
-        run: echo "version=$(cat VERSION)" >> $GITHUB_OUTPUT
-      
-      - name: Build binary
         run: |
-          CGO_ENABLED=0 go build -o rampart ./cmd/rampart
-      
+          VERSION=${{ github.event.inputs.version || github.event.release.tag_name }}
+          VERSION=${VERSION#v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
       - name: Create RPM structure
         run: |
           mkdir -p packaging/redhat/{RPMS,SOURCES,SPECS,BUILD,SRPMS}
-      
       - name: Create source tarball
         run: |
-          tar -czf packaging/redhat/SOURCES/aegisgate-rampart-${{ steps.version.outputs.version }}.tar.gz \
-            --transform 's,^,aegisgate-rampart-${{ steps.version.outputs.version }}/,' \
+          VERSION=${{ steps.version.outputs.version }}
+          tar -czf packaging/redhat/SOURCES/aegisgate-rampart-${VERSION}.tar.gz \
+            --transform "s,^,aegisgate-rampart-${VERSION}/," \
             rampart README.md LICENSE configs/
-      
       - name: Copy spec file
         run: cp packaging/redhat/aegisgate-rampart.spec packaging/redhat/SPECS/
-      
       - name: Build RPM
         run: |
           rpmbuild --define "_topdir $(pwd)/packaging/redhat" \
             --define "version ${{ steps.version.outputs.version }}" \
             -bb packaging/redhat/SPECS/aegisgate-rampart.spec
-      
       - name: Upload RPM
         uses: actions/upload-artifact@v4
         with:
           name: aegisgate-rampart-rpm
           path: packaging/redhat/RPMS/x86_64/aegisgate-rampart-${{ steps.version.outputs.version }}-1.x86_64.rpm
 
-  upload-release:
-    name: Upload to GitHub Releases
+  # ========================================
+  # Upload packages to GitHub Release
+  # ========================================
+  upload-packages:
+    name: Upload Packages to Release
     runs-on: ubuntu-latest
     needs: [package-deb, package-rpm]
-    
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
-      
       - name: Get version
         id: version
-        run: echo "version=$(cat VERSION)" >> $GITHUB_OUTPUT
-      
-      - name: Download binaries
-        uses: actions/download-artifact@v4
-        with:
-          pattern: rampart-*
-          merge-multiple: true
-          path: binaries/
-      
+        run: |
+          VERSION=${{ github.event.inputs.version || github.event.release.tag_name }}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
       - name: Download packages
         uses: actions/download-artifact@v4
         with:
           pattern: aegisgate-rampart-*
           merge-multiple: true
           path: packages/
-      
       - name: Upload to release
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            binaries/*
-            packages/*
+          tag_name: ${{ steps.version.outputs.version }}
+          files: packages/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  # ========================================
+  # Update Homebrew formula
+  # ========================================
   update-homebrew:
     name: Update Homebrew Formula
     runs-on: ubuntu-latest
-    needs: build-binaries
-    
+    needs: build-linux
     steps:
       - uses: actions/checkout@v4
-      
       - name: Get version
         id: version
-        run: echo "version=$(cat VERSION)" >> $GITHUB_OUTPUT
-      
+        run: |
+          VERSION=${{ github.event.inputs.version || github.event.release.tag_name }}
+          VERSION=${VERSION#v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
       - name: Calculate SHA256
         id: sha
         run: |
-          SHA=$(curl -sL "https://github.com/aegisgatesecurity/aegisgate-rampart/archive/v${{ steps.version.outputs.version }}.tar.gz" | sha256sum | cut -d' ' -f1)
+          TAG=v${{ steps.version.outputs.version }}
+          SHA=$(curl -sL "https://github.com/aegisgatesecurity/aegisgate-rampart/archive/${TAG}.tar.gz" | sha256sum | cut -d' ' -f1)
           echo "sha256=$SHA" >> $GITHUB_OUTPUT
-      
       - name: Update formula
         run: |
           sed -i 's|url ".*"|url "https://github.com/aegisgatesecurity/aegisgate-rampart/archive/v${{ steps.version.outputs.version }}.tar.gz"|' packaging/homebrew/aegisgate-rampart.rb
           sed -i 's|sha256 ".*"|sha256 "${{ steps.sha.outputs.sha256 }}"|' packaging/homebrew/aegisgate-rampart.rb
-      
       - name: Commit formula update
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: 'chore: update formula to v${{ steps.version.outputs.version }}'
+          commit_message: 'chore: update homebrew formula to v${{ steps.version.outputs.version }}'
           file_pattern: packaging/homebrew/*.rb
-          # Note: This would commit to the main repo, not the tap repo
-          # For production, use a separate action to push to homebrew-tap repo

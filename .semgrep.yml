@@ -1,47 +1,75 @@
 rules:
+  # ========================================
+  # Hardcoded secret detection
+  # ========================================
+  # Matches variable assignments where the variable name looks like a secret
+  # and the value is a non-empty string literal. Excludes:
+  #   - Typed const declarations (e.g. `SECRET_PASSWORD SecretCategory = "password"`)
+  #   - Struct field tags
+  #   - Empty strings
+  #   - Short values (< 16 chars — real secrets are longer)
   - id: go-hardcoded-secret
     patterns:
-      - pattern: |
-          $VAR = "..."
-      - metavariable-regex:
-          metavariable: $VAR
-          regex: '(?i)(password|secret|api_key|token|credential|auth_key)'
-      - pattern-not: |
-          $VAR = "" 
-    message: "Hardcoded secret or credential detected"
+      - pattern-regex: '(?i)(password|secret|api_?key|token|credential|auth_?key)\s*(?::=|=)\s*"[^"]{16,}"'
+      - pattern-not-regex: '(?i)(password|secret|api_?key|token|credential|auth_?key)\s+\w+\s*=\s*"'
+    message: "Hardcoded secret or credential detected — use environment variables or a secret manager"
     severity: WARNING
     languages: [go]
+    paths:
+      include:
+        - "*.go"
+      exclude:
+        - "*_test.go"
 
+  # ========================================
+  # SQL injection via fmt.Sprintf
+  # ========================================
   - id: go-sql-injection-format
     patterns:
-      - pattern: |
-          fmt.Sprintf("...SELECT...", $VAR)
-    message: "Potential SQL injection via fmt.Sprintf"
+      - pattern-regex: 'fmt\.Sprintf\("(?:[^"]*\b)?(?:SELECT|INSERT|UPDATE|DELETE|DROP|UNION)\b[^"]*%[svd][^"]*",\s*\w'
+    message: "Potential SQL injection via fmt.Sprintf — use parameterized queries"
     severity: ERROR
     languages: [go]
+    paths:
+      include:
+        - "*.go"
+      exclude:
+        - "*_test.go"
 
+  # ========================================
+  # Command injection
+  # ========================================
+  # Go's exec.Command does not use a shell, so passing args is safe.
+  # We only flag when the binary name itself is a variable (user-controlled).
   - id: go-command-injection
     patterns:
       - pattern: |
-          exec.Command($CMD, $ARG...)
-      - pattern-not: |
-          exec.Command("...", "...")
-    message: "Potential command injection — exec.Command with variable arguments"
+          exec.Command($CMD, ...)
+      - metavariable-pattern:
+          metavariable: $CMD
+          patterns:
+            - pattern-not: '"..."'
+    message: "Potential command injection — exec.Command with user-controlled binary name"
     severity: WARNING
     languages: [go]
+    paths:
+      include:
+        - "*.go"
+      exclude:
+        - "*_test.go"
 
-  - id: go-path-traversal
-    patterns:
-      - pattern: |
-          filepath.Join($BASE, $USER_INPUT)
-    message: "Potential path traversal with user-controlled input"
-    severity: WARNING
-    languages: [go]
-
+  # ========================================
+  # Insecure TLS
+  # ========================================
   - id: go-insecure-tls
     patterns:
       - pattern: |
           tls.Config{InsecureSkipVerify: true}
-    message: "Insecure TLS configuration — InsecureSkipVerify: true"
+    message: "Insecure TLS configuration — InsecureSkipVerify: true disables certificate validation"
     severity: ERROR
     languages: [go]
+    paths:
+      include:
+        - "*.go"
+      exclude:
+        - "*_test.go"

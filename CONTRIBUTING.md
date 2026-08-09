@@ -210,7 +210,7 @@ aegisgate-rampart/
 ├── internal/      # Private implementation
 ├── configs/       # Default configurations
 ├── packaging/     # Distribution packages
-└── .plans/        # Development plans (internal)
+└── tools/         # OPSEC scanner and utilities
 ```
 
 ### Commit Messages

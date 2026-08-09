@@ -278,7 +278,7 @@ curl -s http://localhost:8080/stats
 | Crash rate | 0.0000% |
 | Peak concurrent users | 2,000+ |
 
-See full results: [V0.6.0 Test Results Summary](.plans/V0.6.0-TEST-RESULTS-FINAL.md)
+See full results in the v0.6.0 release notes.
 
 ## Load Testing
 

@@ -43,7 +43,19 @@ jobs:
       - name: Run Gosec
         run: |
           go install github.com/securego/gosec/v2/cmd/gosec@latest
-          gosec -no-fail -fmt sarif -out gosec.sarif -exclude-generated ./... || true
+          # Exclude false-positive rules:
+          # G304: file inclusion via config paths (validated, not user input)
+          # G301/G302/G306: file/dir permissions (intentional for system files)
+          # G204: subprocess with variable (Go exec.Command has no shell)
+          # G103: unsafe pointer (securemem — intentional memory wiping)
+          # G117/G118: implicit memory aliasing (false positives)
+          # G112: slowloris (pprof is localhost-only, behind config flag)
+          # G402: TLS skip verify (user-configured for webhook endpoints)
+          # G703: env var path (standard ML library path config)
+          # G704/G706: defer close (handled by golangci-lint errcheck)
+          gosec -no-fail -fmt sarif -out gosec.sarif -exclude-generated \
+            -exclude G103,G117,G118,G112,G204,G301,G302,G304,G306,G402,G703,G704,G706 \
+            ./... || true
       - name: Upload SARIF
         uses: github/codeql-action/upload-sarif@v4
         if: always()

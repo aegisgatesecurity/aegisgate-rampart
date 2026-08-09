@@ -1,14 +1,21 @@
-# Test files with fake secrets
-# These are intentionally fake patterns for testing
+# Gitleaks ignore — AegisGate Rampart
+# https://github.com/gitleaks/gitleaks#gitleaksignore
+#
+# All entries below are in test files that contain EXAMPLE/DEMO
+# secrets for testing the detection engine. No real credentials
+# are present in any of these files.
 
-# Stripe test keys (fake)
-**/response_comprehensive_test.go
+# Test files with example API keys, GitHub PATs, Stripe tokens, JWTs,
+# and private keys used to verify Rampart's detection capabilities.
+internal/certinit/certinit_comprehensive_test.go
+internal/certinit/certinit_coverage_test.go
+internal/detectors/detectors_test.go
+internal/response/response_comprehensive_test.go
+internal/response/response_coverage_test.go
+internal/scanner/batch_test.go
+pkg/detector/detector_bench_test.go
 
-# Private keys in test fixtures
-**/*_test.go
-configs/*.key
-internal/certificate/testdata/*
-internal/certinit/testdata/*
-
-# Embedded test data
-internal/ml/testdata/*
+# k6 load test scripts contain example API keys for load testing
+tests/load/k6/break-test.js
+tests/load/k6/crush-test.js
+tests/load/k6/endurance-test.js

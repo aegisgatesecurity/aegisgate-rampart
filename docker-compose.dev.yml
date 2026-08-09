@@ -1,0 +1,108 @@
+# AegisGate Rampart - Development Environment
+# 
+# This Docker Compose setup provides a complete development environment
+# for Rampart with hot-reload, test execution, and example configurations.
+#
+# Usage:
+#   docker-compose -f docker-compose.dev.yml up          # Start dev environment
+#   docker-compose -f docker-compose.dev.yml run test    # Run tests
+#   docker-compose -f docker-compose.dev.yml run build   # Build binary
+#   docker-compose -f docker-compose.dev.yml exec rampart bash  # Shell access
+#
+version: '3.8'
+
+services:
+  # Main Rampart development container
+  rampart:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      args:
+        GO_VERSION: "1.21"
+    container_name: rampart-dev
+    volumes:
+      # Mount source code for hot-reload
+      - .:/app:cached
+      # Go module cache (persistent)
+      - go-mod-cache:/go/pkg/mod
+      # Build output
+      - ./bin:/app/bin
+    environment:
+      - GO111MODULE=on
+      - CGO_ENABLED=0
+      - GOOS=linux
+      - GOARCH=amd64
+    working_dir: /app
+    command: ["make", "dev"]
+    ports:
+      - "8080:8080"  # Proxy port
+      - "6060:6060"  # pprof debug port (optional)
+    networks:
+      - rampart-dev
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "test", "-f", "/app/bin/rampart"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Test runner service (on-demand)
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: rampart-test
+    volumes:
+      - .:/app:cached
+      - go-mod-cache:/go/pkg/mod
+    working_dir: /app
+    command: ["go", "test", "./...", "-v", "-race", "-cover"]
+    networks:
+      - rampart-dev
+    profiles:
+      - test
+
+  # Linting service (on-demand)
+  lint:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: rampart-lint
+    volumes:
+      - .:/app:cached
+      - go-mod-cache:/go/pkg/mod
+    working_dir: /app
+    command: ["golangci-lint", "run", "./..."]
+    networks:
+      - rampart-dev
+    profiles:
+      - lint
+
+  # Example AI API endpoints for testing
+  # This simulates AI API endpoints for local testing
+  mock-ai-api:
+    image: nginx:alpine
+    container_name: rampart-mock-api
+    volumes:
+      - ./docker/mock-api/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/mock-api/html:/usr/share/nginx/html:ro
+    ports:
+      - "9090:80"
+    networks:
+      - rampart-dev
+    profiles:
+      - mock
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+networks:
+  rampart-dev:
+    driver: bridge
+    name: rampart-dev-network
+
+volumes:
+  go-mod-cache:
+    name: rampart-go-mod-cache

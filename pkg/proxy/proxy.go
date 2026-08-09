@@ -39,6 +39,7 @@ import (
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/auditlog"
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/certificate"
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/certinit"
+	"github.com/aegisgatesecurity/aegisgate-rampart/internal/metrics"
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/platform"
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/platformforward"
 	"github.com/aegisgatesecurity/aegisgate-rampart/pkg/config"
@@ -71,7 +72,11 @@ type Proxy struct {
 	rateLimiter *rate.Limiter
 
 	// Audit logging
-	auditLog *auditlog.Logger
+	auditLog      *auditlog.Logger
+	auditLogEnc   *auditlog.EncryptedLogger // encrypted audit logger (if enabled)
+
+	// Anonymized metrics
+	metricsCollector *metrics.Collector
 
 	// Platform forwarding
 	forwarder *platformforward.Forwarder
@@ -157,6 +162,27 @@ func New(cfg *config.Config) (*Proxy, error) {
 		// Continue without audit logging — detection still works
 	}
 	p.auditLog = auditLog
+
+	// Initialize encrypted audit logger (if passphrase provided)
+	if cfg.AuditKeyPassphrase != "" {
+		auditLogEnc, err := auditlog.NewEncryptedLogger(cfg.AuditKeyPassphrase)
+		if err != nil {
+			log.Printf("rampart: warning: encrypted audit log disabled: %v", err)
+		} else {
+			p.auditLogEnc = auditLogEnc
+			log.Printf("rampart: encrypted audit logging enabled")
+		}
+	}
+
+	// Initialize anonymized metrics collector (opt-in)
+	if cfg.AnonymizedMetrics {
+		endpoint := cfg.MetricsEndpoint
+		if endpoint == "" {
+			endpoint = metrics.DefaultMetricsEndpoint
+		}
+		p.metricsCollector = metrics.NewCollector(true, endpoint)
+		log.Printf("rampart: anonymized metrics enabled (endpoint: %s)", endpoint)
+	}
 
 	// Initialize platform forwarder (opt-in, requires platform_url in config)
 	if cfg.PlatformKey != "" {
@@ -245,6 +271,22 @@ func (p *Proxy) Shutdown() {
 			log.Printf("rampart: audit log close: %v", err)
 		}
 	}
+	
+	// Close encrypted audit log (if enabled)
+	if p.auditLogEnc != nil {
+		if err := p.auditLogEnc.Close(); err != nil {
+			log.Printf("rampart: encrypted audit log close: %v", err)
+		}
+	}
+	
+	// Flush and close metrics collector (if enabled)
+	if p.metricsCollector != nil {
+		p.metricsCollector.Flush()
+		if err := p.metricsCollector.Close(); err != nil {
+			log.Printf("rampart: metrics collector close: %v", err)
+		}
+	}
+	
 	// Shut down pprof debug server
 	if p.pprofServer != nil {
 		pprofCtx, pprofCancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -293,10 +335,10 @@ func (p *Proxy) ReloadConfig(cfg *config.Config) {
 // sent to the proxy user, not persisted), but what gets written to the
 // audit log is redacted.
 func (p *Proxy) auditLogEntry(direction, host, path string, result *detector.Summary) {
-	if p.auditLog == nil {
-		return
-	}
-
+	// Determine highest severity for metrics
+	highestSeverity := "low"
+	severityOrder := map[string]int{"low": 1, "medium": 2, "high": 3, "critical": 4}
+	
 	categories := make([]string, 0, len(result.Results))
 	severities := make([]string, 0, len(result.Results))
 	rules := make([]string, 0, len(result.Results))
@@ -307,6 +349,10 @@ func (p *Proxy) auditLogEntry(direction, host, path string, result *detector.Sum
 		rules = append(rules, r.Rule)
 		if auditlog.RedactText(r) != r.Text {
 			hasRedacted = true
+		}
+		// Track highest severity
+		if severityOrder[r.Severity] > severityOrder[highestSeverity] {
+			highestSeverity = r.Severity
 		}
 	}
 
@@ -325,8 +371,26 @@ func (p *Proxy) auditLogEntry(direction, host, path string, result *detector.Sum
 		Rules:         rules,
 	}
 
-	if err := p.auditLog.Log(entry); err != nil {
-		log.Printf("rampart: audit log write failed: %v", err)
+	// Write to regular audit log
+	if p.auditLog != nil {
+		if err := p.auditLog.Log(entry); err != nil {
+			log.Printf("rampart: audit log write failed: %v", err)
+		}
+	}
+
+	// Write to encrypted audit log (if enabled)
+	if p.auditLogEnc != nil {
+		if err := p.auditLogEnc.Log(entry); err != nil {
+			log.Printf("rampart: encrypted audit log write failed: %v", err)
+		}
+	}
+
+	// Record anonymized metric (if enabled)
+	if p.metricsCollector != nil && len(categories) > 0 {
+		// Record metric for each detection category
+		for _, category := range categories {
+			p.metricsCollector.RecordDetection(host, category, highestSeverity, result.Blocked)
+		}
 	}
 }
 

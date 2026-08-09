@@ -1,0 +1,64 @@
+# Air configuration for hot-reload development
+# https://github.com/cosmtrek/air
+
+# Working directory (relative to project root)
+root = "."
+
+# Output directory for build
+tmp_dir = "tmp"
+
+# Build configuration
+[build]
+  # Command to build the application
+  cmd = "go build -race -o ./bin/rampart ./cmd/rampart"
+  
+  # Binary file path
+  bin = "./bin/rampart"
+  
+  # Arguments for the binary
+  full_bin = "./bin/rampart --port 8080 --v"
+  
+  # Watch for changes in these directories
+  include_dir = ["cmd", "pkg", "internal"]
+  
+  # Watch these file extensions
+  include_ext = ["go", "mod", "sum"]
+  
+  # Exclude directories
+  exclude_dir = ["tmp", "bin", "vendor", ".git", "node_modules"]
+  
+  # Exclude files
+  exclude_file = []
+  
+  # Delay before rebuild (milliseconds)
+  delay = 1000
+  
+  # Stop on error
+  stop_on_error = false
+  
+  # Send interrupt signal before rebuild
+  send_interrupt = true
+  
+  # Kill delay (milliseconds)
+  kill_delay = 500
+
+# Log configuration
+[log]
+  # Show log time
+  time = true
+  
+  # Main log level (debug, info, warn, error)
+  level = "info"
+
+# Color configuration
+[color]
+  # Enable colors
+  main = "magenta"
+  watcher = "cyan"
+  build = "yellow"
+  runner = "green"
+
+# Misc configuration
+[misc]
+  # Clean tmp directory on exit
+  clean_on_exit = true

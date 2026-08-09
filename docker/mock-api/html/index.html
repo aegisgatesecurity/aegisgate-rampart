@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rampart Mock AI API - Development</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 { color: #333; }
+        .endpoint {
+            background: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        code {
+            background: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+        .method {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .get { background: #61affe; color: white; }
+        .post { background: #49cc90; color: white; }
+    </style>
+</head>
+<body>
+    <h1>🚀 Rampart Mock AI API</h1>
+    <p>This is a development mock API for testing AegisGate Rampart locally.</p>
+    
+    <h2>Available Endpoints</h2>
+    
+    <div class="endpoint">
+        <span class="method post">POST</span>
+        <code>/v1/chat/completions</code>
+        <p>Simulates OpenAI Chat Completions API</p>
+    </div>
+    
+    <div class="endpoint">
+        <span class="method post">POST</span>
+        <code>/v1/completions</code>
+        <p>Simulates OpenAI Completions API</p>
+    </div>
+    
+    <div class="endpoint">
+        <span class="method post">POST</span>
+        <code>/v1/complete</code>
+        <p>Simulates Anthropic Completions API</p>
+    </div>
+    
+    <div class="endpoint">
+        <span class="method post">POST</span>
+        <code>/v1/models/gemini-pro:generateContent</code>
+        <p>Simulates Google AI GenerateContent API</p>
+    </div>
+    
+    <h2>Usage</h2>
+    <p>Configure Rampart to proxy through this mock API:</p>
+    <pre><code>rampart --port 8080</code></pre>
+    
+    <p>Then send requests through the proxy:</p>
+    <pre><code>curl -x http://localhost:8080 \
+  https://api.openai.com/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model": "gpt-4", "messages": [{"role": "user", "content": "Hello"}]}'</code></pre>
+    
+    <h2>Testing Detections</h2>
+    <p>Send test payloads to trigger detections:</p>
+    <ul>
+        <li><strong>SSN:</strong> Include "123-45-6789" in your request</li>
+        <li><strong>Credit Card:</strong> Include "4111-1111-1111-1111"</li>
+        <li><strong>AWS Key:</strong> Include "AKIAIOSFODNN7EXAMPLE"</li>
+        <li><strong>XSS:</strong> Include "&lt;script&gt;alert('xss')&lt;/script&gt;"</li>
+    </ul>
+    
+    <hr>
+    <p><small>Rampart v0.5.1 - Development Environment</small></p>
+</body>
+</html>

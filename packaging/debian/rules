@@ -1,0 +1,25 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	go build -o rampart ./cmd/rampart
+
+override_dh_auto_install:
+	install -d $(DESTDIR)/usr/bin
+	install -m 755 rampart $(DESTDIR)/usr/bin/
+	install -d $(DESTDIR)/etc/aegisgate-rampart
+	install -d $(DESTDIR)/usr/share/doc/aegisgate-rampart
+	install -m 644 README.md $(DESTDIR)/usr/share/doc/aegisgate-rampart/
+	install -m 644 LICENSE $(DESTDIR)/usr/share/doc/aegisgate-rampart/
+
+override_dh_auto_test:
+	# Tests are run separately in CI
+	go test ./...
+
+override_dh_strip:
+	# Don't strip binary (helps with debugging)
+
+override_dh_shlibdeps:
+	# No shared library dependencies (statically linked Go binary)

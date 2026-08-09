@@ -1,5 +1,14 @@
 # AegisGate Rampart
 
+[![CI](https://github.com/aegisgatesecurity/aegisgate-rampart/actions/workflows/ci.yml/badge.svg)](https://github.com/aegisgatesecurity/aegisgate-rampart/actions/workflows/ci.yml)
+[![Coverage](https://img.shields.io/badge/coverage-64.1%25-brightgreen)](.plans/V0.6.0-TEST-RESULTS-FINAL.md)
+[![Tests](https://img.shields.io/badge/tests-88%20files%20%7C%2027%20packages-blue)](.plans/V0.6.0-TEST-RESULTS-FINAL.md)
+[![Load Tests](https://img.shields.io/badge/load%20tests-7%20k6%20tests-success)](.plans/V0.6.0-TEST-RESULTS-FINAL.md)
+[![Crash Rate](https://img.shields.io/badge/crash%20rate-0.0000%25-success)](.plans/V0.6.0-TEST-RESULTS-FINAL.md)
+[![Throughput](https://img.shields.io/badge/throughput-235%20RPS-blue)](.plans/V0.6.0-TEST-RESULTS-FINAL.md)
+[![p95 Latency](https://img.shields.io/badge/p95%20latency-201ms-blue)](.plans/V0.6.0-TEST-RESULTS-FINAL.md)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+
 > Local AI security proxy — intercept, detect, **block**.
 
 Rampart is a **local HTTPS MITM proxy** that intercepts traffic to 27 AI API endpoints, runs real-time detection for PII, secrets, XSS, and compliance violations, and can **actively block** threats before they reach the AI service — or before the AI's response reaches you.
@@ -222,7 +231,16 @@ curl -s http://localhost:8080/stats
 
 ## Load Testing
 
-Verified with k6: **1.19M requests, 0% crash rate** across 7 test scenarios.
+**v0.6.0 Results:** 235 RPS throughput, p95=201ms latency, **0.0000% crash rate** across 7 test scenarios.
+
+### Test Coverage
+
+- ✅ **88 test files** (27 packages tested)
+- ✅ **64.1% overall coverage** (87%+ excluding untestable GUI/CGO)
+- ✅ **7 k6 load tests** (stress, break, crush, malformed, connection-flood, endurance, rate-limit)
+- ✅ **Zero crashes** under 2,000+ concurrent users
+
+See full results: [V0.6.0 Test Results Summary](.plans/V0.6.0-TEST-RESULTS-FINAL.md)
 
 ```bash
 cd tests/load/k6
@@ -285,6 +303,39 @@ Rampart enforces the same 12 privacy rules as Lens and Platform:
 12. No IP addresses logged
 
 **Air-gap mode**: When `--platform-url` is not set, Rampart makes zero network calls. All detection is local.
+
+### Enhanced Privacy Features (v0.5.1)
+
+**Audit Log Encryption (P2#11):**
+- Encrypt audit logs at rest with **ChaCha20-Poly1305** authenticated encryption
+- Key derived from passphrase via **PBKDF2-SHA256** (100K iterations)
+- Key is **NEVER stored** - decryption requires original passphrase
+- Protects against disk theft and forensic analysis
+
+```bash
+# Generate secure passphrase
+rampart generate-passphrase
+
+# Enable encrypted audit logging
+rampart --audit-key-passphrase="your-passphrase"
+
+# Decrypt logs later
+rampart decrypt-audit --audit-key-passphrase="your-passphrase" audit.log.enc output.log
+```
+
+**Anonymized Metrics (P2#12):**
+- **Opt-in only** - disabled by default
+- Domain hashed with **SHA-256** → 16 hex chars (cannot reverse)
+- Timestamps rounded to hour (cannot correlate events)
+- Only **false positives** sent (user-confirmed)
+- No identifiers, no content, no PII
+
+```bash
+# Enable privacy-preserving telemetry
+rampart --anonymized-metrics
+```
+
+See **[PRIVACY.md](PRIVACY.md)** for complete privacy documentation.
 
 ## Product Family
 

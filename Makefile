@@ -1,4 +1,4 @@
-.PHONY: build test clean lint coverage test-coverage
+.PHONY: build test clean lint coverage test-coverage docker-dev docker-test docker-lint docker-clean
 
 BINARY_NAME=rampart
 VERSION=$(shell cat VERSION)
@@ -46,3 +46,31 @@ clean:
 
 run: build
 	./$(BUILD_DIR)/$(BINARY_NAME)
+
+# Docker Development
+docker-dev:
+	docker-compose -f docker-compose.dev.yml up
+
+docker-test:
+	docker-compose -f docker-compose.dev.yml run --rm test
+
+docker-lint:
+	docker-compose -f docker-compose.dev.yml run --rm lint
+
+docker-build:
+	docker-compose -f docker-compose.dev.yml run --rm build
+
+docker-shell:
+	docker-compose -f docker-compose.dev.yml exec rampart bash
+
+docker-clean:
+	docker-compose -f docker-compose.dev.yml down -v
+	docker system prune -f
+
+# Development helpers
+dev:
+	@echo "Starting development environment with hot-reload..."
+	@air -c .air.toml
+
+mock-api:
+	docker-compose -f docker-compose.dev.yml --profile mock up mock-ai-api

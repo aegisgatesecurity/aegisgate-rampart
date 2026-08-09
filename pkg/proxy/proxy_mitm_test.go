@@ -581,3 +581,190 @@ func TestMITMProxy_StatsEndpoint(t *testing.T) {
 		t.Logf("✅ Stats after detection: %d detections, %d total requests", stats.Detections, stats.TotalRequests)
 	})
 }
+
+// =========================================================================
+// Block Mode MITM Tests - P2#1 Implementation (REVISED)
+// These tests verify block mode functionality without requiring system CA trust
+// =========================================================================
+
+// TestBlockModeMITM_ConfigValidation tests that block mode proxy configurations
+// are valid and the proxy starts correctly.
+func TestBlockModeMITM_ConfigValidation(t *testing.T) {
+	skipUnlessIntegration(t)
+
+	testCases := []struct {
+		name          string
+		threshold     string
+		categories    []string
+		statusCode    int
+		expectSuccess bool
+		description   string
+	}{
+		{
+			name:          "valid_high_threshold",
+			threshold:     "high",
+			categories:    []string{"pii", "secret"},
+			statusCode:    403,
+			expectSuccess: true,
+			description:   "Valid high threshold config",
+		},
+		{
+			name:          "valid_critical_threshold",
+			threshold:     "critical",
+			categories:    []string{},
+			statusCode:    403,
+			expectSuccess: true,
+			description:   "Valid critical threshold (all categories)",
+		},
+		{
+			name:          "valid_custom_status",
+			threshold:     "medium",
+			categories:    []string{"secret"},
+			statusCode:    503,
+			expectSuccess: true,
+			description:   "Valid custom status code",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			proxyPort := findFreePort(t)
+			cfg := &config.Config{
+				ProxyPort:  proxyPort,
+				DaemonMode: false,
+				Mode:       config.ModeBlock,
+				Block: config.BlockConfig{
+					Threshold:  tc.threshold,
+					Categories: tc.categories,
+					StatusCode: tc.statusCode,
+				},
+				Targets: config.DefaultTargets(),
+			}
+
+			proxy, err := New(cfg)
+			if err != nil {
+				if tc.expectSuccess {
+					t.Fatalf("Failed to create proxy: %v", err)
+				}
+				return
+			}
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			go func() { _ = proxy.Start(ctx) }()
+			time.Sleep(300 * time.Millisecond)
+
+			// Verify proxy is running
+			resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/health", proxyPort))
+			if err != nil {
+				t.Fatalf("Proxy health check failed: %v", err)
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != 200 {
+				t.Errorf("Expected health check 200, got %d", resp.StatusCode)
+			}
+
+			cancel()
+			time.Sleep(100 * time.Millisecond)
+
+			t.Logf("✅ %s: proxy started successfully - %s", tc.name, tc.description)
+		})
+	}
+}
+
+// TestBlockModeMITM_DetectAPIBlocking tests block mode via the /detect API
+// (does not require TLS MITM, verifies blocking logic works correctly).
+func TestBlockModeMITM_DetectAPIBlocking(t *testing.T) {
+	skipUnlessIntegration(t)
+
+	proxyPort := findFreePort(t)
+	cfg := &config.Config{
+		ProxyPort:  proxyPort,
+		DaemonMode: false,
+		Mode:       config.ModeBlock,
+		Block: config.BlockConfig{
+			Threshold:  "high",
+			Categories: []string{"pii", "secret"},
+			StatusCode: 403,
+			Message:    "Blocked by AegisGate Rampart",
+		},
+		Targets: config.DefaultTargets(),
+	}
+
+	proxy, err := New(cfg)
+	if err != nil {
+		t.Fatalf("Failed to create proxy: %v", err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go func() { _ = proxy.Start(ctx) }()
+	time.Sleep(500 * time.Millisecond)
+
+	testCases := []struct {
+		name          string
+		payload       string
+		expectBlocked bool
+		description   string
+	}{
+		{
+			name:          "aws_key_blocked",
+			payload:       `{"text": "Use AWS key AKIAIOSFODNN7EXAMPLE"}`,
+			expectBlocked: true,
+			description:   "AWS key (high severity) should be blocked",
+		},
+		{
+			name:          "ssn_blocked",
+			payload:       `{"text": "SSN: 123-45-6789"}`,
+			expectBlocked: true,
+			description:   "SSN (high severity PII) should be blocked",
+		},
+		{
+			name:          "email_allowed",
+			payload:       `{"text": "Email: user@example.com"}`,
+			expectBlocked: false,
+			description:   "Email (low/medium severity) should pass with high threshold",
+		},
+		{
+			name:          "clean_allowed",
+			payload:       `{"text": "What is the weather?"}`,
+			expectBlocked: false,
+			description:   "Clean text should always pass",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			resp, err := http.Post(
+				fmt.Sprintf("http://127.0.0.1:%d/detect", proxyPort),
+				"application/json",
+				bytes.NewBufferString(tc.payload),
+			)
+			if err != nil {
+				t.Fatalf("POST /detect failed: %v", err)
+			}
+			defer resp.Body.Close()
+
+			body, _ := io.ReadAll(resp.Body)
+
+			if tc.expectBlocked {
+				if resp.StatusCode != 403 {
+					t.Errorf("Expected 403 (blocked), got %d: %s", resp.StatusCode, string(body))
+				}
+				if resp.Header.Get("X-Rampart-Blocked") != "true" {
+					t.Errorf("Expected X-Rampart-Blocked: true")
+				}
+				t.Logf("✅ %s: blocked as expected", tc.description)
+			} else {
+				if resp.StatusCode != 200 {
+					t.Errorf("Expected 200 (allowed), got %d: %s", resp.StatusCode, string(body))
+				}
+				t.Logf("✅ %s: passed as expected", tc.description)
+			}
+		})
+	}
+}
+

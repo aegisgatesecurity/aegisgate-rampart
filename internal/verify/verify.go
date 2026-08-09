@@ -28,12 +28,12 @@ import (
 
 // ChecksumResult represents the result of checksum verification
 type ChecksumResult struct {
-	Valid       bool
-	BinaryPath  string
+	Valid        bool
+	BinaryPath   string
 	ChecksumPath string
-	ComputedSHA string
-	ExpectedSHA string
-	Error       error
+	ComputedSHA  string
+	ExpectedSHA  string
+	Error        error
 }
 
 // SignatureResult represents the result of signature verification
@@ -57,7 +57,7 @@ type VerificationResult struct {
 
 // Verifier provides binary verification services
 type Verifier struct {
-	strictMode bool
+	strictMode  bool
 	trustedKeys map[string]bool
 }
 

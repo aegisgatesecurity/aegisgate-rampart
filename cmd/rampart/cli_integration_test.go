@@ -137,7 +137,7 @@ func TestCLI_WatchDetections(t *testing.T) {
 	// Make a request to trigger detection
 	client := &http.Client{Timeout: 2 * time.Second}
 	payload := `{"text": "AWS key AKIAIOSFODNN7EXAMPLE"}`
-	
+
 	detectURL := fmt.Sprintf("http://127.0.0.1:%d/detect", cfg.ProxyPort)
 	resp, err := client.Post(detectURL, "application/json", strings.NewReader(payload))
 	if err != nil {
@@ -331,7 +331,7 @@ func TestCLI_Daemon_AlreadyRunning(t *testing.T) {
 
 	// Write a fake PID file
 	fakePID := 99999 // Unlikely to be a real PID
-	os.WriteFile(pidFile, []byte(fmt.Sprintf("%d", fakePID)), 0644)
+	_ = os.WriteFile(pidFile, []byte(fmt.Sprintf("%d", fakePID)), 0644)
 
 	// Check if running
 	running, pid := IsRunning(pidFile)

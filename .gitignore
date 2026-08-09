@@ -44,3 +44,4 @@ coverage.html
 /rampart
 /rampart-lsp
 tests/load/k6/results/
+coverage-filtered.out

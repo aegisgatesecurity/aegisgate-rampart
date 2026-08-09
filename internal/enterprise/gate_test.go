@@ -24,7 +24,7 @@ func TestIsEnabled_CoreFeatures(t *testing.T) {
 
 func TestIsEnabled_EnterpriseFeatures_NoConnection(t *testing.T) {
 	// Ensure we're not connected
-	Disconnect()
+	_ = Disconnect()
 
 	// Enterprise features should be disabled without Platform connection
 	enterpriseFeatures := []string{"audit_search", "cosign", "memory_zeroing", "encryption", "compliance", "siem", "sso"}
@@ -47,7 +47,7 @@ func TestIsEnabled_UnknownFeature(t *testing.T) {
 
 func TestConnectAndDisconnect(t *testing.T) {
 	// Clean up any existing config
-	Disconnect()
+	_ = Disconnect()
 
 	testURL := "https://platform.aegisgate.com"
 	testToken := "test-api-token-12345"
@@ -134,7 +134,7 @@ func TestGetConfigPath(t *testing.T) {
 	// Should be in user's home directory or current directory
 	homeDir, _ := os.UserHomeDir()
 	expectedPath := filepath.Join(homeDir, ".config", "aegisgate-rampart", "aegisgate-platform.json")
-	
+
 	if configPath != expectedPath {
 		// Fallback to current directory if home dir not available
 		if configPath != "./aegisgate-platform.json" {
@@ -159,8 +159,8 @@ func TestGate_ConnectFailInvalidURL(t *testing.T) {
 
 func TestDisconnect_NoConfig(t *testing.T) {
 	// Disconnect when no config exists should not error
-	Disconnect() // Ensure clean state
-	
+	_ = Disconnect() // Ensure clean state
+
 	err := Disconnect()
 	if err != nil {
 		t.Errorf("Disconnect should not error when no config exists: %v", err)
@@ -170,7 +170,7 @@ func TestDisconnect_NoConfig(t *testing.T) {
 func TestIsEnabled_ThreadSafety(t *testing.T) {
 	// Test concurrent access to IsEnabled
 	done := make(chan bool)
-	
+
 	go func() {
 		for i := 0; i < 100; i++ {
 			IsEnabled("lsp")
@@ -178,15 +178,15 @@ func TestIsEnabled_ThreadSafety(t *testing.T) {
 		}
 		done <- true
 	}()
-	
+
 	go func() {
 		for i := 0; i < 100; i++ {
-			Connect("https://test.com", "token")
-			Disconnect()
+			_ = Connect("https://test.com", "token")
+			_ = Disconnect()
 		}
 		done <- true
 	}()
-	
+
 	<-done
 	<-done
 	// If we reach here without deadlock, test passes

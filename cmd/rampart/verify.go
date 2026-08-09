@@ -59,10 +59,10 @@ func runVerify(args []string) error {
 		fmt.Fprint(os.Stderr, verifyHelp)
 		return fmt.Errorf("binary path required")
 	}
-	
+
 	binaryPath := ""
 	flagArgs := make([]string, 0)
-	
+
 	// Separate binary path from flags
 	for i, arg := range args {
 		if i == 0 && len(arg) > 0 && arg[0] != '-' {
@@ -71,7 +71,7 @@ func runVerify(args []string) error {
 		}
 		flagArgs = append(flagArgs, arg)
 	}
-	
+
 	if binaryPath == "" {
 		fmt.Fprint(os.Stderr, verifyHelp)
 		return fmt.Errorf("binary path required")
@@ -152,19 +152,19 @@ func printTextResult(result *verify.VerificationResult) {
 		}
 	}
 
-	if result.ChecksumValid && (result.SignatureValid || result.SignatureValid == false) {
+	if result.ChecksumValid {
 		fmt.Println("\n✅ Binary integrity verified successfully")
 	}
 }
 
 func printJSONResult(result *verify.VerificationResult) error {
 	output := map[string]interface{}{
-		"success":       result.ChecksumValid,
-		"binary_path":   result.BinaryPath,
-		"checksum_valid": result.ChecksumValid,
+		"success":         result.ChecksumValid,
+		"binary_path":     result.BinaryPath,
+		"checksum_valid":  result.ChecksumValid,
 		"signature_valid": result.SignatureValid,
-		"trusted":       result.Trusted,
-		"warnings":      result.Warnings,
+		"trusted":         result.Trusted,
+		"warnings":        result.Warnings,
 	}
 
 	encoder := json.NewEncoder(os.Stdout)

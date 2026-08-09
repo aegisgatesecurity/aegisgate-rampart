@@ -26,10 +26,10 @@ import (
 // TestMain_FlagParsing tests CLI flag parsing
 func TestMain_FlagParsing(t *testing.T) {
 	tests := []struct {
-		name     string
-		args     []string
-		wantErr  bool
-		errMsg   string
+		name    string
+		args    []string
+		wantErr bool
+		errMsg  string
 	}{
 		{
 			name:    "default flags",
@@ -83,7 +83,7 @@ func TestMain_FlagParsing(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Reset flags
 			flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
-			
+
 			// Re-register flags
 			daemonFlag = flag.Bool("daemon", false, "Run as background daemon")
 			portFlag = flag.Int("port", 8080, "Local proxy port")
@@ -192,8 +192,8 @@ func TestModeValidation(t *testing.T) {
 	}{
 		{"monitor", false},
 		{"block", false},
-		{"Monitor", true},  // case-sensitive
-		{"Block", true},    // case-sensitive
+		{"Monitor", true}, // case-sensitive
+		{"Block", true},   // case-sensitive
 		{"invalid", true},
 		{"", true},
 		{"monitoring", true},
@@ -217,7 +217,7 @@ func TestModeValidation(t *testing.T) {
 func TestRunForeground_Basic(t *testing.T) {
 	// Proxy initialization is tested in pkg/proxy package
 	// This test verifies the CLI can create a valid config
-	
+
 	// Create minimal config
 	cfg := &config.Config{
 		ProxyPort: 0, // Will use random available port
@@ -226,9 +226,6 @@ func TestRunForeground_Basic(t *testing.T) {
 	}
 
 	// Verify config is valid
-	if cfg == nil {
-		t.Error("Expected non-nil config")
-	}
 	if cfg.Mode != config.ModeMonitor {
 		t.Errorf("Mode = %s, want %s", cfg.Mode, config.ModeMonitor)
 	}
@@ -255,7 +252,7 @@ func TestCLICommands(t *testing.T) {
 	if err != nil {
 		t.Logf("version command failed (expected in test env): %v", err)
 	}
-	
+
 	output := stdout.String()
 	if !strings.Contains(output, "aegisgate-rampart") {
 		t.Logf("version output: %s", output)
@@ -371,7 +368,7 @@ func TestProcessExists(t *testing.T) {
 	// Test with non-existent process (high PID)
 	exists = processExists(999999999)
 	// Don't assert - high PID might exist on some systems
-	t.Logf("✓ processExists checked (current: %v, high: %v)", 
+	t.Logf("✓ processExists checked (current: %v, high: %v)",
 		processExists(os.Getpid()), exists)
 }
 
@@ -435,7 +432,7 @@ func TestFlagCombinations(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Reset flags
 			flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
-			
+
 			// Re-register flags
 			daemonFlag = flag.Bool("daemon", false, "")
 			portFlag = flag.Int("port", 8080, "")
@@ -482,7 +479,7 @@ func TestBlockModeShorthand(t *testing.T) {
 func TestVerboseFlag(t *testing.T) {
 	fs := flag.NewFlagSet("test", flag.ContinueOnError)
 	v := fs.Bool("v", false, "Verbose")
-	
+
 	err := fs.Parse([]string{"-v"})
 	if err != nil {
 		t.Fatalf("Flag parsing failed: %v", err)
@@ -497,7 +494,7 @@ func TestVerboseFlag(t *testing.T) {
 func TestPprofFlag(t *testing.T) {
 	fs := flag.NewFlagSet("test", flag.ContinueOnError)
 	pprof := fs.String("pprof", "", "pprof address")
-	
+
 	err := fs.Parse([]string{"-pprof", "localhost:6060"})
 	if err != nil {
 		t.Fatalf("Flag parsing failed: %v", err)
@@ -512,7 +509,7 @@ func TestPprofFlag(t *testing.T) {
 func TestCAKeyPassphraseFlag(t *testing.T) {
 	fs := flag.NewFlagSet("test", flag.ContinueOnError)
 	pass := fs.String("ca-key-passphrase", "", "CA key passphrase")
-	
+
 	err := fs.Parse([]string{"-ca-key-passphrase", "test123"})
 	if err != nil {
 		t.Fatalf("Flag parsing failed: %v", err)
@@ -528,7 +525,7 @@ func TestPlatformFlags(t *testing.T) {
 	fs := flag.NewFlagSet("test", flag.ContinueOnError)
 	url := fs.String("platform-url", "", "Platform URL")
 	key := fs.String("platform-api-key", "", "API key")
-	
+
 	err := fs.Parse([]string{"-platform-url", "https://test.com", "-platform-api-key", "key123"})
 	if err != nil {
 		t.Fatalf("Flag parsing failed: %v", err)
@@ -546,7 +543,7 @@ func TestPlatformFlags(t *testing.T) {
 func TestRateLimitFlag(t *testing.T) {
 	fs := flag.NewFlagSet("test", flag.ContinueOnError)
 	limit := fs.Int("rate-limit", 0, "Rate limit")
-	
+
 	err := fs.Parse([]string{"-rate-limit", "5000"})
 	if err != nil {
 		t.Fatalf("Flag parsing failed: %v", err)
@@ -562,7 +559,7 @@ func TestConfigFlag(t *testing.T) {
 	tmpDir := t.TempDir()
 	fs := flag.NewFlagSet("test", flag.ContinueOnError)
 	cfg := fs.String("config", "", "Config directory")
-	
+
 	err := fs.Parse([]string{"-config", tmpDir})
 	if err != nil {
 		t.Fatalf("Flag parsing failed: %v", err)

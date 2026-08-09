@@ -331,14 +331,14 @@ func MapPIIToFrameworks(match PIIMatch) []ComplianceViolation {
 
 	for _, mapping := range mappings {
 		violation := ComplianceViolation{
-			Framework:     mapping.Framework,
-			ControlID:     mapping.ControlID,
-			ControlName:   mapping.ControlName,
-			Description:   mapping.Description,
-			Severity:      mapping.ViolationSeverity,
-			PIICategory:   match.Category,
-			MatchValue:    match.Redacted,
-			Timestamp:     time.Now(),
+			Framework:   mapping.Framework,
+			ControlID:   mapping.ControlID,
+			ControlName: mapping.ControlName,
+			Description: mapping.Description,
+			Severity:    mapping.ViolationSeverity,
+			PIICategory: match.Category,
+			MatchValue:  match.Redacted,
+			Timestamp:   time.Now(),
 		}
 		violations = append(violations, violation)
 	}
@@ -354,8 +354,8 @@ func AggregateViolationsByFramework(violations []ComplianceViolation) map[Compli
 		fw, exists := aggregated[v.Framework]
 		if !exists {
 			fw = &FrameworkViolations{
-				Framework: v.Framework,
-				Controls:  make(map[string]int),
+				Framework:  v.Framework,
+				Controls:   make(map[string]int),
 				Violations: []ComplianceViolation{},
 			}
 			aggregated[v.Framework] = fw
@@ -410,11 +410,11 @@ func GenerateComplianceReports(matches []PIIMatch) map[string]ComplianceResult {
 
 // ComplianceStatus shows compliance framework violations
 type ComplianceStatus struct {
-	SOC2Violations    int64 `json:"soc2_violations"`
-	GDPRViolations    int64 `json:"gdpr_violations"`
-	HIPAAViolations   int64 `json:"hipaa_violations"`
-	PCIDSSViolations  int64 `json:"pcidss_violations"`
-	OverallCompliant  bool  `json:"overall_compliant"`
+	SOC2Violations   int64 `json:"soc2_violations"`
+	GDPRViolations   int64 `json:"gdpr_violations"`
+	HIPAAViolations  int64 `json:"hipaa_violations"`
+	PCIDSSViolations int64 `json:"pcidss_violations"`
+	OverallCompliant bool  `json:"overall_compliant"`
 }
 
 // GetComplianceStatus returns a summary compliance status across all frameworks

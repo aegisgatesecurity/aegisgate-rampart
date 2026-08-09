@@ -4,6 +4,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -222,7 +223,7 @@ func runWebhookTest(args []string) error {
 
 	// Create manager and send
 	mgr := webhook.NewManager(cfg)
-	err = mgr.Send(nil, event)
+	err = mgr.Send(context.TODO(), event)
 	if err != nil {
 		return fmt.Errorf("send test webhook: %w", err)
 	}

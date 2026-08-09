@@ -10,10 +10,10 @@ import "fmt"
 
 // Preset defines a self-hosted LLM configuration.
 type Preset struct {
-	Name        string   `json:"name"`
-	URL         string   `json:"url"`
-	Type        string   `json:"type"`
-	Description string   `json:"description"`
+	Name          string   `json:"name"`
+	URL           string   `json:"url"`
+	Type          string   `json:"type"`
+	Description   string   `json:"description"`
 	DefaultModels []string `json:"default_models"`
 }
 
@@ -21,38 +21,38 @@ type Preset struct {
 func GetPresets() []Preset {
 	return []Preset{
 		{
-			Name:        "ollama",
-			URL:         "http://localhost:11434/v1",
-			Type:        "openai-compatible",
-			Description: "Ollama local LLM server (https://ollama.ai)",
+			Name:          "ollama",
+			URL:           "http://localhost:11434/v1",
+			Type:          "openai-compatible",
+			Description:   "Ollama local LLM server (https://ollama.ai)",
 			DefaultModels: []string{"llama2", "mistral", "codellama"},
 		},
 		{
-			Name:        "lm-studio",
-			URL:         "http://localhost:1234/v1",
-			Type:        "openai-compatible",
-			Description: "LM Studio desktop app (https://lmstudio.ai)",
+			Name:          "lm-studio",
+			URL:           "http://localhost:1234/v1",
+			Type:          "openai-compatible",
+			Description:   "LM Studio desktop app (https://lmstudio.ai)",
 			DefaultModels: []string{"local-model"},
 		},
 		{
-			Name:        "localai",
-			URL:         "http://localhost:8080/v1",
-			Type:        "openai-compatible",
-			Description: "LocalAI self-hosted API (https://localai.io)",
+			Name:          "localai",
+			URL:           "http://localhost:8080/v1",
+			Type:          "openai-compatible",
+			Description:   "LocalAI self-hosted API (https://localai.io)",
 			DefaultModels: []string{"gpt-3.5-turbo"},
 		},
 		{
-			Name:        "vllm",
-			URL:         "http://localhost:8000/v1",
-			Type:        "openai-compatible",
-			Description: "vLLM high-throughput inference (https://vllm.ai)",
+			Name:          "vllm",
+			URL:           "http://localhost:8000/v1",
+			Type:          "openai-compatible",
+			Description:   "vLLM high-throughput inference (https://vllm.ai)",
 			DefaultModels: []string{"facebook/opt-125m"},
 		},
 		{
-			Name:        "text-generation-webui",
-			URL:         "http://localhost:5000/v1",
-			Type:        "openai-compatible",
-			Description: "Oobabooga Text Generation WebUI",
+			Name:          "text-generation-webui",
+			URL:           "http://localhost:5000/v1",
+			Type:          "openai-compatible",
+			Description:   "Oobabooga Text Generation WebUI",
 			DefaultModels: []string{"model"},
 		},
 	}

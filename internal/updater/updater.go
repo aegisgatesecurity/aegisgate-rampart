@@ -36,7 +36,7 @@ type GitHubRelease struct {
 
 // Checker checks for new releases
 type Checker struct {
-	cfg           *config.Config
+	cfg            *config.Config
 	currentVersion string
 	notifyEnabled  bool
 	checkInterval  time.Duration
@@ -98,7 +98,7 @@ func (c *Checker) CheckForUpdates(ctx context.Context) (*UpdateInfo, error) {
 // getLatestRelease fetches the latest release from GitHub
 func (c *Checker) getLatestRelease(ctx context.Context) (*GitHubRelease, error) {
 	url := "https://api.github.com/repos/aegisgatesecurity/aegisgate-rampart/releases/latest"
-	
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
@@ -146,7 +146,7 @@ func isNewerVersion(current, latest string) bool {
 func (c *Checker) sendNotification(info *UpdateInfo) {
 	title := "AegisGate Rampart Update Available"
 	message := fmt.Sprintf("Version %s is available (you have %s)\nClick to download", info.Version, info.Current)
-	
+
 	// Use system notification
 	n := notify.New("")
 	_ = n.Send(notify.Notification{
@@ -215,12 +215,12 @@ func GetPlatform() string {
 func GetDownloadURL(release *GitHubRelease, version string) string {
 	platform := GetPlatform()
 	baseURL := "https://github.com/aegisgatesecurity/aegisgate-rampart/releases/download"
-	
+
 	// Map platform to asset name
 	assetName := fmt.Sprintf("rampart-%s", platform)
 	if platform == "windows-amd64" {
 		assetName += ".exe"
 	}
-	
+
 	return fmt.Sprintf("%s/v%s/%s", baseURL, version, assetName)
 }

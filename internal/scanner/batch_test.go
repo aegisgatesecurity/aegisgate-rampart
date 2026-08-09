@@ -478,7 +478,7 @@ func TestScanDir_PermDenied(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to write file: %v", err)
 	}
-	
+
 	// Try to remove permissions (may not work on all systems)
 	err = os.Chmod(noPermFile, 0000)
 	if err != nil {

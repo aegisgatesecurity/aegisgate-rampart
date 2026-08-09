@@ -12,13 +12,13 @@ import (
 
 func TestGetComplianceMappingsForPII(t *testing.T) {
 	tests := []struct {
-		name         string
-		category     PIICategory
-		expectCount  int
-		expectSOC2   bool
-		expectGDPR   bool
-		expectHIPAA  bool
-		expectPCI    bool
+		name        string
+		category    PIICategory
+		expectCount int
+		expectSOC2  bool
+		expectGDPR  bool
+		expectHIPAA bool
+		expectPCI   bool
 	}{
 		{
 			name:        "SSN maps to SOC2, HIPAA, GDPR",
@@ -238,22 +238,22 @@ func TestGenerateComplianceReports_NoPII(t *testing.T) {
 
 func TestGetComplianceStatus(t *testing.T) {
 	tests := []struct {
-		name           string
-		matches        []PIIMatch
+		name            string
+		matches         []PIIMatch
 		expectCompliant bool
-		expectSOC2     int64
-		expectHIPAA    int64
-		expectPCI      int64
-		expectGDPR     int64
+		expectSOC2      int64
+		expectHIPAA     int64
+		expectPCI       int64
+		expectGDPR      int64
 	}{
 		{
-			name:           "No PII = compliant",
-			matches:        []PIIMatch{},
+			name:            "No PII = compliant",
+			matches:         []PIIMatch{},
 			expectCompliant: true,
-			expectSOC2:     0,
-			expectHIPAA:    0,
-			expectPCI:      0,
-			expectGDPR:     0,
+			expectSOC2:      0,
+			expectHIPAA:     0,
+			expectPCI:       0,
+			expectGDPR:      0,
 		},
 		{
 			name: "SSN = non-compliant with multiple violations",
@@ -266,9 +266,9 @@ func TestGetComplianceStatus(t *testing.T) {
 				},
 			},
 			expectCompliant: false,
-			expectSOC2:     1,
-			expectHIPAA:    1,
-			expectGDPR:     1,
+			expectSOC2:      1,
+			expectHIPAA:     1,
+			expectGDPR:      1,
 		},
 		{
 			name: "Credit card = PCI-DSS violation",
@@ -281,8 +281,8 @@ func TestGetComplianceStatus(t *testing.T) {
 				},
 			},
 			expectCompliant: false,
-			expectPCI:      1,
-			expectSOC2:     1,
+			expectPCI:       1,
+			expectSOC2:      1,
 		},
 	}
 
@@ -334,8 +334,8 @@ func TestComplianceViolation_Structure(t *testing.T) {
 
 func TestFrameworkViolations_Aggregation(t *testing.T) {
 	fw := &FrameworkViolations{
-		Framework: FRAMEWORK_SOC2,
-		Controls:  make(map[string]int),
+		Framework:  FRAMEWORK_SOC2,
+		Controls:   make(map[string]int),
 		Violations: []ComplianceViolation{},
 	}
 

@@ -57,7 +57,7 @@ func runAuditSearch(args []string) error {
 	// Parse dates
 	var fromTime, toTime time.Time
 	var err error
-	
+
 	if *fromStr != "" {
 		fromTime, err = auditlog.FormatTime(*fromStr)
 		if err != nil {
@@ -66,7 +66,7 @@ func runAuditSearch(args []string) error {
 		// Set to start of day
 		fromTime = time.Date(fromTime.Year(), fromTime.Month(), fromTime.Day(), 0, 0, 0, 0, fromTime.Location())
 	}
-	
+
 	if *toStr != "" {
 		toTime, err = auditlog.FormatTime(*toStr)
 		if err != nil {
@@ -90,21 +90,21 @@ func runAuditSearch(args []string) error {
 
 	// Build query
 	query := auditlog.SearchQuery{
-		Pattern:    *pattern,
-		From:       fromTime,
-		To:         toTime,
-		Severities: sevList,
-		Categories: catList,
-		Direction:  *direction,
-		Host:       *host,
+		Pattern:     *pattern,
+		From:        fromTime,
+		To:          toTime,
+		Severities:  sevList,
+		Categories:  catList,
+		Direction:   *direction,
+		Host:        *host,
 		BlockedOnly: *blockedOnly,
-		Offset:     *offset,
-		Limit:      *limit,
+		Offset:      *offset,
+		Limit:       *limit,
 	}
 
 	// Get log path
 	logPath := filepath.Join(getConfigDir(), "..", "aegisgate-rampart", "audit.log")
-	
+
 	// Try default location first
 	if _, err := os.Stat(logPath); os.IsNotExist(err) {
 		logPath = auditlog.GetLogPath()

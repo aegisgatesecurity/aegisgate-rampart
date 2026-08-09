@@ -38,34 +38,34 @@ import (
 const (
 	// PBKDF2 iterations for key derivation (OWASP recommendation for 2026)
 	pbkdf2Iterations = 100000
-	
+
 	// Salt size in bytes (128 bits)
 	saltSize = 16
-	
+
 	// Key size for ChaCha20-Poly1305 (256 bits)
 	keySize = 32
-	
+
 	// Encryption algorithm identifier (for future-proofing)
 	encryptionAlgorithm = "chacha20-poly1305"
-	
+
 	// Encryption version (increment if format changes)
 	encryptionVersion = 1
 )
 
 // EncryptedEntry wraps an Entry with encryption metadata
 type EncryptedEntry struct {
-	Version   int    `json:"v"`    // Encryption version
-	Algorithm string `json:"a"`    // Algorithm identifier
-	Salt      string `json:"s"`    // Base64-encoded salt
-	Nonce     string `json:"n"`    // Base64-encoded nonce
-	Cipher    string `json:"c"`    // Base64-encoded ciphertext
+	Version   int    `json:"v"` // Encryption version
+	Algorithm string `json:"a"` // Algorithm identifier
+	Salt      string `json:"s"` // Base64-encoded salt
+	Nonce     string `json:"n"` // Base64-encoded nonce
+	Cipher    string `json:"c"` // Base64-encoded ciphertext
 }
 
 // EncryptedLogger wraps Logger with encryption support
 type EncryptedLogger struct {
-	mu      sync.Mutex
-	logger  *Logger
-	cipher  interface {
+	mu     sync.Mutex
+	logger *Logger
+	cipher interface {
 		Seal(dst, nonce, plaintext, additionalData []byte) []byte
 		Open(dst, nonce, ciphertext, additionalData []byte) ([]byte, error)
 		NonceSize() int
@@ -84,17 +84,17 @@ func NewEncryptedLogger(passphrase string) (*EncryptedLogger, error) {
 	if passphrase == "" {
 		return nil, fmt.Errorf("passphrase required for encryption")
 	}
-	
+
 	// Use secure buffer for passphrase
 	passBuf := securemem.NewSecurePassphrase(passphrase)
 	defer passBuf.Destroy() // Zero passphrase after use
-	
+
 	// Generate random salt
 	salt := make([]byte, saltSize)
 	if _, err := rand.Read(salt); err != nil {
 		return nil, fmt.Errorf("generating salt: %w", err)
 	}
-	
+
 	// Derive key from passphrase using PBKDF2-SHA256
 	// PassBuf.ToBytes() returns the passphrase bytes securely
 	var key []byte
@@ -105,25 +105,25 @@ func NewEncryptedLogger(passphrase string) (*EncryptedLogger, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Create ChaCha20-Poly1305 AEAD cipher
 	aead, err := chacha20poly1305.NewX(key)
 	if err != nil {
 		return nil, fmt.Errorf("creating cipher: %w", err)
 	}
-	
+
 	// Create underlying logger
 	dir := filepath.Dir(defaultAuditLogPath())
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return nil, fmt.Errorf("create audit log dir: %w", err)
 	}
-	
+
 	logPath := defaultAuditLogPath() + ".enc"
 	f, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
 	if err != nil {
 		return nil, fmt.Errorf("open audit log: %w", err)
 	}
-	
+
 	logger := &Logger{
 		file:    f,
 		path:    logPath,
@@ -131,7 +131,7 @@ func NewEncryptedLogger(passphrase string) (*EncryptedLogger, error) {
 		writer:  f,
 		nowFunc: time.Now,
 	}
-	
+
 	return &EncryptedLogger{
 		logger:  logger,
 		cipher:  aead,
@@ -145,7 +145,7 @@ func NewEncryptedLogger(passphrase string) (*EncryptedLogger, error) {
 func (el *EncryptedLogger) Log(e Entry) error {
 	el.mu.Lock()
 	defer el.mu.Unlock()
-	
+
 	// Check rotation
 	if el.logger.file != nil {
 		if info, err := el.logger.file.Stat(); err == nil && info.Size() > el.logger.maxSize {
@@ -155,24 +155,24 @@ func (el *EncryptedLogger) Log(e Entry) error {
 			}
 		}
 	}
-	
+
 	e.Timestamp = el.logger.nowFunc()
-	
+
 	// Marshal entry to JSON
 	plaintext, err := json.Marshal(e)
 	if err != nil {
 		return fmt.Errorf("marshal audit entry: %w", err)
 	}
-	
+
 	// Generate random nonce (96 bits for ChaCha20)
 	nonce := make([]byte, el.cipher.NonceSize())
 	if _, err := rand.Read(nonce); err != nil {
 		return fmt.Errorf("generating nonce: %w", err)
 	}
-	
+
 	// Encrypt with authenticated encryption
 	ciphertext := el.cipher.Seal(nil, nonce, plaintext, nil)
-	
+
 	// Wrap in encrypted entry structure
 	encrypted := EncryptedEntry{
 		Version:   el.version,
@@ -181,19 +181,19 @@ func (el *EncryptedLogger) Log(e Entry) error {
 		Nonce:     base64.StdEncoding.EncodeToString(nonce),
 		Cipher:    base64.StdEncoding.EncodeToString(ciphertext),
 	}
-	
+
 	// Marshal encrypted entry
 	line, err := json.Marshal(encrypted)
 	if err != nil {
 		return fmt.Errorf("marshal encrypted entry: %w", err)
 	}
-	
+
 	line = append(line, '\n')
-	
+
 	if _, err := el.logger.writer.Write(line); err != nil {
 		return fmt.Errorf("write encrypted audit entry: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -224,33 +224,33 @@ func (d *Decryptor) DecryptFile(encryptedPath, outputPath string) error {
 	if err != nil {
 		return fmt.Errorf("reading encrypted file: %w", err)
 	}
-	
+
 	// Create output file
 	outFile, err := os.Create(outputPath)
 	if err != nil {
 		return fmt.Errorf("creating output file: %w", err)
 	}
 	defer outFile.Close()
-	
+
 	// Process each line (JSONL format)
 	lines := splitLines(encryptedData)
 	for i, line := range lines {
 		if len(line) == 0 {
 			continue
 		}
-		
+
 		// Parse encrypted entry
 		var encrypted EncryptedEntry
 		if err := json.Unmarshal(line, &encrypted); err != nil {
 			return fmt.Errorf("line %d: parsing encrypted entry: %w", i+1, err)
 		}
-		
+
 		// Decrypt entry
 		plaintext, err := d.decryptEntry(encrypted)
 		if err != nil {
 			return fmt.Errorf("line %d: decryption failed: %w", i+1, err)
 		}
-		
+
 		// Write plaintext
 		if _, err := outFile.Write(plaintext); err != nil {
 			return fmt.Errorf("line %d: writing plaintext: %w", i+1, err)
@@ -259,7 +259,7 @@ func (d *Decryptor) DecryptFile(encryptedPath, outputPath string) error {
 			return fmt.Errorf("line %d: writing newline: %w", i+1, err)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -269,45 +269,45 @@ func (d *Decryptor) decryptEntry(encrypted EncryptedEntry) ([]byte, error) {
 	if encrypted.Version != encryptionVersion {
 		return nil, fmt.Errorf("unsupported encryption version: %d", encrypted.Version)
 	}
-	
+
 	// Verify algorithm
 	if encrypted.Algorithm != encryptionAlgorithm {
 		return nil, fmt.Errorf("unsupported algorithm: %s", encrypted.Algorithm)
 	}
-	
+
 	// Decode salt
 	salt, err := base64.StdEncoding.DecodeString(encrypted.Salt)
 	if err != nil {
 		return nil, fmt.Errorf("decoding salt: %w", err)
 	}
-	
+
 	// Decode nonce
 	nonce, err := base64.StdEncoding.DecodeString(encrypted.Nonce)
 	if err != nil {
 		return nil, fmt.Errorf("decoding nonce: %w", err)
 	}
-	
+
 	// Decode ciphertext
 	ciphertext, err := base64.StdEncoding.DecodeString(encrypted.Cipher)
 	if err != nil {
 		return nil, fmt.Errorf("decoding ciphertext: %w", err)
 	}
-	
+
 	// Derive key from passphrase (same derivation as encryption)
 	key := pbkdf2.Key([]byte(d.passphrase), salt, pbkdf2Iterations, keySize, sha256.New)
-	
+
 	// Create cipher
 	aead, err := chacha20poly1305.NewX(key)
 	if err != nil {
 		return nil, fmt.Errorf("creating cipher: %w", err)
 	}
-	
+
 	// Decrypt
 	plaintext, err := aead.Open(nil, nonce, ciphertext, nil)
 	if err != nil {
 		return nil, fmt.Errorf("decryption failed (wrong passphrase?): %w", err)
 	}
-	
+
 	return plaintext, nil
 }
 
@@ -317,17 +317,17 @@ func (d *Decryptor) DecryptEntry(line []byte) (*Entry, error) {
 	if err := json.Unmarshal(line, &encrypted); err != nil {
 		return nil, fmt.Errorf("parsing encrypted entry: %w", err)
 	}
-	
+
 	plaintext, err := d.decryptEntry(encrypted)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	var entry Entry
 	if err := json.Unmarshal(plaintext, &entry); err != nil {
 		return nil, fmt.Errorf("parsing entry: %w", err)
 	}
-	
+
 	return &entry, nil
 }
 
@@ -369,17 +369,17 @@ func NewEncryptedLoggerWithPath(path, passphrase string, maxSize int64) (*Encryp
 	if passphrase == "" {
 		return nil, fmt.Errorf("passphrase required for encryption")
 	}
-	
+
 	// Use secure buffer for passphrase
 	passBuf := securemem.NewSecurePassphrase(passphrase)
 	defer passBuf.Destroy() // Zero passphrase after use
-	
+
 	// Generate random salt
 	salt := make([]byte, saltSize)
 	if _, err := rand.Read(salt); err != nil {
 		return nil, fmt.Errorf("generating salt: %w", err)
 	}
-	
+
 	// Derive key from passphrase using PBKDF2-SHA256
 	var key []byte
 	err := passBuf.Use(func(passBytes []byte) error {
@@ -389,24 +389,24 @@ func NewEncryptedLoggerWithPath(path, passphrase string, maxSize int64) (*Encryp
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Create ChaCha20-Poly1305 AEAD cipher
 	aead, err := chacha20poly1305.NewX(key)
 	if err != nil {
 		return nil, fmt.Errorf("creating cipher: %w", err)
 	}
-	
+
 	// Create directory if needed
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return nil, fmt.Errorf("create audit log dir: %w", err)
 	}
-	
+
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
 	if err != nil {
 		return nil, fmt.Errorf("open audit log: %w", err)
 	}
-	
+
 	logger := &Logger{
 		file:    f,
 		path:    path,
@@ -414,7 +414,7 @@ func NewEncryptedLoggerWithPath(path, passphrase string, maxSize int64) (*Encryp
 		writer:  f,
 		nowFunc: time.Now,
 	}
-	
+
 	return &EncryptedLogger{
 		logger:  logger,
 		cipher:  aead,

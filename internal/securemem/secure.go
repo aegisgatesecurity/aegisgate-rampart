@@ -68,16 +68,16 @@ func (sb *SecureBuffer) Len() int {
 func (sb *SecureBuffer) Destroy() {
 	sb.mu.Lock()
 	defer sb.mu.Unlock()
-	
+
 	if sb.data != nil {
 		// Explicitly zero the memory
 		for i := range sb.data {
 			sb.data[i] = 0
 		}
-		
+
 		// Prevent compiler from optimizing away the zeroing
 		runtime.KeepAlive(sb.data)
-		
+
 		// Clear the reference
 		sb.data = nil
 	}
@@ -115,7 +115,7 @@ func (ss *SecureString) String() string {
 func (ss *SecureString) Destroy() {
 	ss.mu.Lock()
 	defer ss.mu.Unlock()
-	
+
 	if ss.data != nil {
 		for i := range ss.data {
 			ss.data[i] = 0
@@ -131,11 +131,11 @@ func ZeroBytes(data []byte) {
 	if data == nil {
 		return
 	}
-	
+
 	for i := range data {
 		data[i] = 0
 	}
-	
+
 	// Prevent compiler optimization
 	runtime.KeepAlive(data)
 }
@@ -146,7 +146,7 @@ func ZeroString(s string) {
 	if s == "" {
 		return
 	}
-	
+
 	data := []byte(s)
 	ZeroBytes(data)
 }
@@ -157,11 +157,11 @@ func Memset(data []byte, value byte) {
 	if data == nil {
 		return
 	}
-	
+
 	for i := range data {
 		data[i] = value
 	}
-	
+
 	runtime.KeepAlive(data)
 }
 
@@ -190,11 +190,11 @@ func (sp *SecurePassphrase) Use(fn func([]byte) error) error {
 	data := make([]byte, len(sp.data))
 	copy(data, sp.data)
 	sp.mu.Unlock()
-	
+
 	defer func() {
 		ZeroBytes(data)
 	}()
-	
+
 	return fn(data)
 }
 

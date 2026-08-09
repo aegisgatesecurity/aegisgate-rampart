@@ -149,7 +149,7 @@ func (c *Checker) sendNotification(info *UpdateInfo) {
 	
 	// Use system notification
 	n := notify.New("")
-	n.Send(notify.Notification{
+	_ = n.Send(notify.Notification{
 		Title:   title,
 		Body:    message,
 		Actions: []string{"Download: " + info.URL},
@@ -172,7 +172,7 @@ func (c *Checker) Run(ctx context.Context) {
 	defer ticker.Stop()
 
 	// Check immediately on start
-	c.CheckForUpdates(ctx)
+	_ = c.CheckForUpdates(ctx)
 
 	for {
 		select {

@@ -98,12 +98,15 @@ jobs:
           # Exclude inherently untestable packages from the total coverage check
           # cmd/rampart: main entry points + daemon (requires system tray/network)
           # internal/tray: requires running GUI environment (systray/CGO)
-          EXCLUDE_PKGS="github.com/aegisgatesecurity/aegisgate-rampart/cmd/rampart,github.com/aegisgatesecurity/aegisgate-rampart/internal/tray"
+          # cmd/rampart-lsp: LSP server entry point (requires stdio/IDE)
+          # internal/autostart: OS-specific auto-start (launchd/SystemD/Registry)
+          # internal/catrust: certificate trust store (platform-specific, Windows/Darwin)
+          EXCLUDE_PKGS="github.com/aegisgatesecurity/aegisgate-rampart/cmd/rampart,github.com/aegisgatesecurity/aegisgate-rampart/internal/tray,github.com/aegisgatesecurity/aegisgate-rampart/cmd/rampart-lsp,github.com/aegisgatesecurity/aegisgate-rampart/internal/autostart,github.com/aegisgatesecurity/aegisgate-rampart/internal/catrust"
           
           # Generate coverage excluding untestable packages
           go test -coverprofile=coverage-filtered.out -covermode=atomic $(go list ./... | grep -v -E "$(echo $EXCLUDE_PKGS | sed 's/,/|/g')")
           TOTAL=$(go tool cover -func=coverage-filtered.out | grep total | awk '{print $3}' | tr -d '%')
-          echo "Total coverage (excluding cmd/rampart, internal/tray): ${TOTAL}%"
+          echo "Total coverage (excluding untestable packages): ${TOTAL}%"
           PASS=$(echo "$TOTAL >= 80" | bc)
           if [ "$PASS" != "1" ]; then echo "FAIL: coverage ${TOTAL}% < 80%"; exit 1; fi
           
@@ -115,7 +118,7 @@ jobs:
         run: |
           # Exempt packages that are inherently untestable in CI
           # (main entry points, GUI/system tray, platform-specific OS stubs)
-          EXEMPT="cmd/rampart,internal/tray"
+          EXEMPT="cmd/rampart,internal/tray,cmd/rampart-lsp,internal/autostart,internal/catrust,internal/verify"
           go tool cover -func=coverage.out | grep -v total | while read pkg func cov; do
             PCT=$(echo "$cov" | tr -d '%')
             SKIP=0

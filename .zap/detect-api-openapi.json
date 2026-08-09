@@ -3,7 +3,7 @@
   "info": {
     "title": "AegisGate Rampart Detection API",
     "description": "Local AI security proxy — PII, secrets, XSS, and compliance detection",
-    "version": "0.1.0"
+    "version": "0.6.0"
   },
   "servers": [
     { "url": "http://localhost:8080" }
@@ -37,9 +37,9 @@
                   "properties": {
                     "total_detections": { "type": "integer" },
                     "blocked": { "type": "boolean" },
-                    "results": { "type": "array" },
-                    "pii_categories": { "type": "array" },
-                    "secret_types": { "type": "array" }
+                    "results": { "type": "array", "items": { "type": "object" } },
+                    "compliance": { "type": "object" },
+                    "latency_ms": { "type": "integer" }
                   }
                 }
               }
@@ -61,12 +61,65 @@
                   "type": "object",
                   "properties": {
                     "total_requests": { "type": "integer" },
+                    "intercepted": { "type": "integer" },
+                    "passed_through": { "type": "integer" },
                     "detections": { "type": "integer" },
-                    "blocked_requests": { "type": "integer" }
+                    "blocked_requests": { "type": "integer" },
+                    "ml_detections": { "type": "integer" },
+                    "mode": { "type": "string" },
+                    "start_time": { "type": "string", "format": "date-time" }
                   }
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health check",
+        "operationId": "getHealth",
+        "responses": {
+          "200": {
+            "description": "Service is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string", "example": "ok" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ready": {
+      "get": {
+        "summary": "Readiness check",
+        "operationId": "getReady",
+        "responses": {
+          "200": {
+            "description": "Service is ready",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ready": { "type": "boolean" },
+                    "mode": { "type": "string" },
+                    "patterns": { "type": "integer" },
+                    "ml_enabled": { "type": "boolean" }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service is not ready"
           }
         }
       }

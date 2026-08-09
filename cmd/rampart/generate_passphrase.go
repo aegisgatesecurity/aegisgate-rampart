@@ -48,6 +48,7 @@ func runGeneratePassphrase(length int) error {
 	// Intentionally printed to stdout — this is a passphrase generation
 	// command. The user must see the passphrase to use it. This is NOT
 	// logging of sensitive data; it is the primary output of the command.
+	// lgtm[go/clear-text-logging]
 	// codeql[go/clear-text-logging]
 	fmt.Printf("%s\n\n", passphrase)
 	fmt.Printf("⚠️  CRITICAL SECURITY INSTRUCTIONS:\n")
@@ -57,6 +58,7 @@ func runGeneratePassphrase(length int) error {
 	fmt.Printf("   4. Decryption requires THIS EXACT passphrase\n")
 	fmt.Printf("   5. If lost, encrypted logs CANNOT be recovered\n")
 	fmt.Printf("\nExample usage:\n")
+	// lgtm[go/clear-text-logging]
 	// codeql[go/clear-text-logging]
 	fmt.Printf("   rampart --audit-key-passphrase=\"%s\"\n", passphrase)
 

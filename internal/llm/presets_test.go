@@ -176,11 +176,11 @@ func TestGetPresets_ReturnsNewSlice(t *testing.T) {
 	if len(presets1) > 0 {
 		originalName := presets1[0].Name
 		presets1[0].Name = "modified"
-		
+
 		if presets2[0].Name == "modified" {
 			t.Error("GetPresets should return a new slice, not a shared reference")
 		}
-		
+
 		// Restore for other tests
 		presets1[0].Name = originalName
 	}

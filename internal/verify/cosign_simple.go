@@ -83,7 +83,7 @@ func GenerateKeyPair(outputDir string) (pubKeyPath, privKeyPath string, err erro
 	// Generate keypair
 	// cosign generate-key-pair [directory]
 	cmd := exec.Command("cosign", "generate-key-pair", outputDir)
-	
+
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr

@@ -767,4 +767,3 @@ func TestBlockModeMITM_DetectAPIBlocking(t *testing.T) {
 		})
 	}
 }
-

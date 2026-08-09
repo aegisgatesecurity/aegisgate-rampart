@@ -19,9 +19,9 @@ import (
 
 // ScanResult contains results from a batch scan.
 type ScanResult struct {
-	Path       string    `json:"path"`
-	TotalFiles int       `json:"total_files"`
-	ScannedAt  time.Time `json:"scanned_at"`
+	Path       string      `json:"path"`
+	TotalFiles int         `json:"total_files"`
+	ScannedAt  time.Time   `json:"scanned_at"`
 	Detections []Detection `json:"detections"`
 }
 
@@ -121,10 +121,9 @@ func scanFile(path string) []Detection {
 		}
 
 		// Check for PII (SSN pattern)
-		if strings.Contains(line, "-") {
-			// Simple SSN pattern check
-			// In production, use the full PII detector from internal/detectors
-		}
+		// Simple SSN pattern check
+		// In production, use the full PII detector from internal/detectors
+		_ = strings.Contains(line, "-")
 	}
 
 	return detections

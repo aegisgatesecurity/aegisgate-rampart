@@ -29,11 +29,11 @@ type LensStats struct {
 	ProxyStats
 
 	// Lens-specific fields
-	UptimeSeconds     int64                  `json:"uptime_seconds"`
-	DetectionsByCategory map[string]int64   `json:"detections_by_category"`
+	UptimeSeconds        int64                     `json:"uptime_seconds"`
+	DetectionsByCategory map[string]int64          `json:"detections_by_category"`
 	ComplianceStatus     response.ComplianceStatus `json:"compliance_status"`
-	LastDetectionTime    time.Time           `json:"last_detection_time,omitempty"`
-	AvgLatencyMs         float64             `json:"avg_latency_ms,omitempty"`
+	LastDetectionTime    time.Time                 `json:"last_detection_time,omitempty"`
+	AvgLatencyMs         float64                   `json:"avg_latency_ms,omitempty"`
 }
 
 // HandleStatsAPILens serves the enhanced /stats endpoint for Lens integration

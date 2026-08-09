@@ -17,11 +17,11 @@ import (
 
 // Gate controls access to enterprise features.
 type Gate struct {
-	mu           sync.RWMutex
-	platformURL  string
-	apiToken     string
-	isConnected  bool
-	configPath   string
+	mu          sync.RWMutex
+	platformURL string
+	apiToken    string
+	isConnected bool
+	configPath  string
 }
 
 // Global gate instance.
@@ -53,13 +53,13 @@ func (g *Gate) IsEnabled(feature string) bool {
 
 	// Core features always enabled
 	coreFeatures := map[string]bool{
-		"lsp":       true,
-		"proxy":     true,
-		"webhooks":  true,
-		"ml":        true,
+		"lsp":        true,
+		"proxy":      true,
+		"webhooks":   true,
+		"ml":         true,
 		"audit_tail": true,
-		"llm":       true,
-		"scan":      true,
+		"llm":        true,
+		"scan":       true,
 	}
 
 	if coreFeatures[feature] {

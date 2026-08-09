@@ -133,10 +133,10 @@ func runConfigVerify(args []string) error {
 		fmt.Fprint(os.Stderr, configVerifyHelp)
 		return fmt.Errorf("config file path required")
 	}
-	
+
 	configPath := ""
 	flagArgs := make([]string, 0)
-	
+
 	for i, arg := range args {
 		if i == 0 && len(arg) > 0 && arg[0] != '-' {
 			configPath = arg
@@ -144,7 +144,7 @@ func runConfigVerify(args []string) error {
 		}
 		flagArgs = append(flagArgs, arg)
 	}
-	
+
 	if configPath == "" {
 		fmt.Fprint(os.Stderr, configVerifyHelp)
 		return fmt.Errorf("config file path required")
@@ -180,8 +180,8 @@ func runConfigVerify(args []string) error {
 		// Find matching config in record
 		found := false
 		for _, config := range record.Configs {
-			if config.FilePath == configPath || 
-			   strings.HasSuffix(configPath, config.FilePath) {
+			if config.FilePath == configPath ||
+				strings.HasSuffix(configPath, config.FilePath) {
 				hashToVerify = config.Hash
 				found = true
 				break

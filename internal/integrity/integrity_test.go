@@ -72,8 +72,8 @@ func TestGenerateHashRecord(t *testing.T) {
 	// Create test configs
 	config1 := filepath.Join(tmpDir, "config1.json")
 	config2 := filepath.Join(tmpDir, "config2.json")
-	os.WriteFile(config1, []byte(`{"mode": "block"}`), 0644)
-	os.WriteFile(config2, []byte(`{"mode": "monitor"}`), 0644)
+	_ = os.WriteFile(config1, []byte(`{"mode": "block"}`), 0644)
+	_ = os.WriteFile(config2, []byte(`{"mode": "monitor"}`), 0644)
 
 	v := NewVerifier(false)
 	record, err := v.GenerateHashRecord([]string{config1, config2}, "test record")
@@ -111,7 +111,7 @@ func TestGenerateHashRecord(t *testing.T) {
 func TestGenerateHashRecord_MissingFile(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.json")
-	os.WriteFile(configPath, []byte(`{}`), 0644)
+	_ = os.WriteFile(configPath, []byte(`{}`), 0644)
 
 	// Non-strict mode: skip missing files
 	v := NewVerifier(false)
@@ -137,7 +137,7 @@ func TestVerifyHash_Valid(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.json")
 	testConfig := `{"mode": "block"}`
-	os.WriteFile(configPath, []byte(testConfig), 0644)
+	_ = os.WriteFile(configPath, []byte(testConfig), 0644)
 
 	v := NewVerifier(false)
 	expectedHash, _ := v.ComputeHash(configPath)
@@ -161,7 +161,7 @@ func TestVerifyHash_Valid(t *testing.T) {
 func TestVerifyHash_Invalid(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.json")
-	os.WriteFile(configPath, []byte(`{"mode": "block"}`), 0644)
+	_ = os.WriteFile(configPath, []byte(`{"mode": "block"}`), 0644)
 
 	v := NewVerifier(false)
 	wrongHash := "0000000000000000000000000000000000000000000000000000000000000000"
@@ -183,7 +183,7 @@ func TestSaveAndLoadHashRecord(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.json")
 	recordPath := filepath.Join(tmpDir, "hashes.json")
-	os.WriteFile(configPath, []byte(`{}`), 0644)
+	_ = os.WriteFile(configPath, []byte(`{}`), 0644)
 
 	v := NewVerifier(false)
 	record, _ := v.GenerateHashRecord([]string{configPath}, "test")
@@ -223,7 +223,7 @@ func TestLoadHashRecord_InvalidVersion(t *testing.T) {
 		"configs":   []interface{}{},
 	}
 	data, _ := json.Marshal(invalid)
-	os.WriteFile(recordPath, data, 0644)
+	_ = os.WriteFile(recordPath, data, 0644)
 
 	v := NewVerifier(false)
 	_, err := v.LoadHashRecord(recordPath)
@@ -239,7 +239,7 @@ func TestLoadHashRecord_InvalidVersion(t *testing.T) {
 func TestDetectChanges_Unchanged(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.json")
-	os.WriteFile(configPath, []byte(`{"mode": "block"}`), 0644)
+	_ = os.WriteFile(configPath, []byte(`{"mode": "block"}`), 0644)
 
 	v := NewVerifier(false)
 	record, _ := v.GenerateHashRecord([]string{configPath}, "")
@@ -263,13 +263,13 @@ func TestDetectChanges_Unchanged(t *testing.T) {
 func TestDetectChanges_Modified(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.json")
-	os.WriteFile(configPath, []byte(`{"mode": "block"}`), 0644)
+	_ = os.WriteFile(configPath, []byte(`{"mode": "block"}`), 0644)
 
 	v := NewVerifier(false)
 	record, _ := v.GenerateHashRecord([]string{configPath}, "")
 
 	// Modify config
-	os.WriteFile(configPath, []byte(`{"mode": "monitor"}`), 0644)
+	_ = os.WriteFile(configPath, []byte(`{"mode": "monitor"}`), 0644)
 
 	report, err := v.DetectChanges(record)
 
@@ -287,7 +287,7 @@ func TestDetectChanges_Modified(t *testing.T) {
 func TestDetectChanges_Missing(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.json")
-	os.WriteFile(configPath, []byte(`{}`), 0644)
+	_ = os.WriteFile(configPath, []byte(`{}`), 0644)
 
 	v := NewVerifier(false)
 	record, _ := v.GenerateHashRecord([]string{configPath}, "")
@@ -330,7 +330,7 @@ func TestChangeStatus_String(t *testing.T) {
 func TestHashRecord_JSON(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.json")
-	os.WriteFile(configPath, []byte(`{}`), 0644)
+	_ = os.WriteFile(configPath, []byte(`{}`), 0644)
 
 	v := NewVerifier(false)
 	record, _ := v.GenerateHashRecord([]string{configPath}, "test")
@@ -361,7 +361,7 @@ func TestHashRecord_JSON(t *testing.T) {
 func TestVerifyHash_CaseInsensitive(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.json")
-	os.WriteFile(configPath, []byte(`{}`), 0644)
+	_ = os.WriteFile(configPath, []byte(`{}`), 0644)
 
 	v := NewVerifier(false)
 	hash, _ := v.ComputeHash(configPath)
@@ -404,15 +404,15 @@ func TestDetectChanges_MultipleConfigs(t *testing.T) {
 	configs := make([]string, 5)
 	for i := 0; i < 5; i++ {
 		configs[i] = filepath.Join(tmpDir, "config"+string(rune('0'+i))+".json")
-		os.WriteFile(configs[i], []byte(`{}`), 0644)
+		_ = os.WriteFile(configs[i], []byte(`{}`), 0644)
 	}
 
 	v := NewVerifier(false)
 	record, _ := v.GenerateHashRecord(configs, "")
 
 	// Modify 2, delete 1, leave 2 unchanged
-	os.WriteFile(configs[0], []byte(`{"changed": true}`), 0644)
-	os.WriteFile(configs[1], []byte(`{"changed": true}`), 0644)
+	_ = os.WriteFile(configs[0], []byte(`{"changed": true}`), 0644)
+	_ = os.WriteFile(configs[1], []byte(`{"changed": true}`), 0644)
 	os.Remove(configs[2])
 
 	report, err := v.DetectChanges(record)

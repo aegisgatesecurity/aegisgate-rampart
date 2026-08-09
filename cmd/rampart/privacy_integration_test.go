@@ -212,10 +212,10 @@ func TestMetricsCollector_Integration(t *testing.T) {
 func TestProxy_WithEncryptionAndMetrics(t *testing.T) {
 	// Create config with encryption and metrics enabled
 	cfg := &config.Config{
-		ProxyPort:        8999, // Use different port to avoid conflicts
-		DaemonMode:       false,
-		Verbose:          false,
-		Mode:             config.ModeMonitor,
+		ProxyPort:          8999, // Use different port to avoid conflicts
+		DaemonMode:         false,
+		Verbose:            false,
+		Mode:               config.ModeMonitor,
 		AuditKeyPassphrase: "test-passphrase-for-proxy",
 		AnonymizedMetrics:  true,
 		MetricsEndpoint:    "https://test.example.com/metrics",
@@ -262,16 +262,16 @@ func TestDecryptAudit_Command(t *testing.T) {
 	if err := logger.Log(entry); err != nil {
 		t.Fatalf("Failed to log entry: %v", err)
 	}
-	
+
 	// Get path before closing
 	inputPath := logger.Path()
 	t.Logf("Encrypted log path: %s", inputPath)
-	
+
 	// Close to flush
 	if err := logger.Close(); err != nil {
 		t.Fatalf("Failed to close logger: %v", err)
 	}
-	
+
 	// Verify file exists and has content
 	rawData, err := os.ReadFile(inputPath)
 	if err != nil {

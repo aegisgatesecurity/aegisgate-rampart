@@ -149,16 +149,16 @@ func TestHandleStatsAPILens_WrongMethod(t *testing.T) {
 func TestLensStats_JSON(t *testing.T) {
 	stats := LensStats{
 		ProxyStats: ProxyStats{
-			TotalRequests:   1000,
-			Intercepted:     500,
-			Detections:      50,
-			Mode:            "monitor",
-			StartTime:       time.Now().Add(-1 * time.Hour),
+			TotalRequests: 1000,
+			Intercepted:   500,
+			Detections:    50,
+			Mode:          "monitor",
+			StartTime:     time.Now().Add(-1 * time.Hour),
 		},
-		UptimeSeconds:   3600,
+		UptimeSeconds: 3600,
 		DetectionsByCategory: map[string]int64{
-			"pii":      30,
-			"secrets":  20,
+			"pii":     30,
+			"secrets": 20,
 		},
 		ComplianceStatus: response.ComplianceStatus{
 			SOC2Violations:   5,
@@ -218,11 +218,11 @@ func TestComplianceStatus_Structure(t *testing.T) {
 // TestHandleStatsAPILens_RateLimit tests rate limiting
 func TestHandleStatsAPILens_RateLimit(t *testing.T) {
 	cfg := &config.Config{
-		ProxyPort:      8080,
-		DaemonMode:     false,
-		Mode:           "monitor",
-		RateLimitRPS:   1, // Very low for testing
-		Targets:        config.DefaultTargets(),
+		ProxyPort:    8080,
+		DaemonMode:   false,
+		Mode:         "monitor",
+		RateLimitRPS: 1, // Very low for testing
+		Targets:      config.DefaultTargets(),
 	}
 
 	p, err := New(cfg)

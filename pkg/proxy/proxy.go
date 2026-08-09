@@ -72,8 +72,8 @@ type Proxy struct {
 	rateLimiter *rate.Limiter
 
 	// Audit logging
-	auditLog      *auditlog.Logger
-	auditLogEnc   *auditlog.EncryptedLogger // encrypted audit logger (if enabled)
+	auditLog    *auditlog.Logger
+	auditLogEnc *auditlog.EncryptedLogger // encrypted audit logger (if enabled)
 
 	// Anonymized metrics
 	metricsCollector *metrics.Collector
@@ -271,14 +271,14 @@ func (p *Proxy) Shutdown() {
 			log.Printf("rampart: audit log close: %v", err)
 		}
 	}
-	
+
 	// Close encrypted audit log (if enabled)
 	if p.auditLogEnc != nil {
 		if err := p.auditLogEnc.Close(); err != nil {
 			log.Printf("rampart: encrypted audit log close: %v", err)
 		}
 	}
-	
+
 	// Flush and close metrics collector (if enabled)
 	if p.metricsCollector != nil {
 		p.metricsCollector.Flush()
@@ -286,7 +286,7 @@ func (p *Proxy) Shutdown() {
 			log.Printf("rampart: metrics collector close: %v", err)
 		}
 	}
-	
+
 	// Shut down pprof debug server
 	if p.pprofServer != nil {
 		pprofCtx, pprofCancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -338,7 +338,7 @@ func (p *Proxy) auditLogEntry(direction, host, path string, result *detector.Sum
 	// Determine highest severity for metrics
 	highestSeverity := "low"
 	severityOrder := map[string]int{"low": 1, "medium": 2, "high": 3, "critical": 4}
-	
+
 	categories := make([]string, 0, len(result.Results))
 	severities := make([]string, 0, len(result.Results))
 	rules := make([]string, 0, len(result.Results))

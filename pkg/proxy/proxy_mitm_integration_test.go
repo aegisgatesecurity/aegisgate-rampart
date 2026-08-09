@@ -210,7 +210,7 @@ func startMockBackend(t *testing.T, ca *TestCA, triggerDetection bool, responseB
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
+		_ = json.NewEncoder(w).Encode(response)
 	})
 
 	server := httptest.NewUnstartedServer(handler)
@@ -575,7 +575,7 @@ func TestMITM_Integration_DetectAPI(t *testing.T) {
 				t.Errorf("%s: expected detected=%v, got detected=%v (body: %s)",
 					tc.description, tc.expectDetected, detected, string(body))
 			} else {
-				t.Logf("✓ %s: correctly %s (detections: %.0f)", tc.description, 
+				t.Logf("✓ %s: correctly %s (detections: %.0f)", tc.description,
 					map[bool]string{true: "detected", false: "not detected"}[detected], totalDetections)
 			}
 		})

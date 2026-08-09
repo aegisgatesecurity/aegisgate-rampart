@@ -8,8 +8,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"text/tabwriter"
 	"path/filepath"
+	"text/tabwriter"
 	"time"
 
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/scanner"

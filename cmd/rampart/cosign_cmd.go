@@ -7,7 +7,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/verify"
 )
@@ -167,13 +166,4 @@ func runCosignVersion(args []string) error {
 
 	fmt.Printf("cosign version: %s\n", version)
 	return nil
-}
-
-// Helper function to get user's home directory for key storage
-func getDefaultKeyDir() string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "."
-	}
-	return filepath.Join(home, ".aegisgate-rampart", "keys")
 }

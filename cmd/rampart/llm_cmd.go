@@ -45,24 +45,3 @@ func runLLMList(args []string) error {
 
 	return nil
 }
-
-func runLLMAdd(args []string) error {
-	if len(args) == 0 {
-		return fmt.Errorf("preset name required")
-	}
-
-	presetName := args[0]
-	preset, err := llm.GetPreset(presetName)
-	if err != nil {
-		return err
-	}
-
-	// TODO: Save to config file
-	fmt.Printf("✅ Added LLM preset: %s\n", preset.Name)
-	fmt.Printf("   URL: %s\n", preset.URL)
-	fmt.Printf("   Type: %s\n", preset.Type)
-	fmt.Printf("\nConfigure your AI service to use this endpoint.\n")
-	fmt.Printf("Default models: %v\n", preset.DefaultModels)
-
-	return nil
-}

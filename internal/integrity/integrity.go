@@ -243,9 +243,9 @@ func (v *Verifier) LoadHashRecord(recordPath string) (*HashRecord, error) {
 // DetectChanges compares current config state against a hash record
 func (v *Verifier) DetectChanges(record *HashRecord) (*ChangeReport, error) {
 	report := &ChangeReport{
-		Timestamp:   time.Now(),
-		Configs:     make([]ConfigChange, 0),
-		Summary:     ChangeSummary{},
+		Timestamp: time.Now(),
+		Configs:   make([]ConfigChange, 0),
+		Summary:   ChangeSummary{},
 	}
 
 	for _, expected := range record.Configs {
@@ -344,12 +344,12 @@ func (s ChangeStatus) String() string {
 
 // ConfigChange represents a change detected in a config file
 type ConfigChange struct {
-	Path       string            `json:"path"`
-	Status     ChangeStatus      `json:"status"`
-	Expected   ConfigMetadata    `json:"expected"`
-	Detected   *ConfigMetadata   `json:"detected,omitempty"`
-	Error      error             `json:"error,omitempty"`
-	DetectedAt time.Time         `json:"detected_at"`
+	Path       string          `json:"path"`
+	Status     ChangeStatus    `json:"status"`
+	Expected   ConfigMetadata  `json:"expected"`
+	Detected   *ConfigMetadata `json:"detected,omitempty"`
+	Error      error           `json:"error,omitempty"`
+	DetectedAt time.Time       `json:"detected_at"`
 }
 
 // ChangeSummary provides a summary of changes
@@ -363,9 +363,9 @@ type ChangeSummary struct {
 
 // ChangeReport represents a complete change detection report
 type ChangeReport struct {
-	Timestamp time.Time       `json:"timestamp"`
-	Configs   []ConfigChange  `json:"configs"`
-	Summary   ChangeSummary   `json:"summary"`
+	Timestamp time.Time      `json:"timestamp"`
+	Configs   []ConfigChange `json:"configs"`
+	Summary   ChangeSummary  `json:"summary"`
 }
 
 // IsSecure returns true if no unauthorized changes detected

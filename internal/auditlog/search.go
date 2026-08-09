@@ -181,7 +181,7 @@ func matchesQuery(entry Entry, query SearchQuery) bool {
 	// Pattern search (case-insensitive, searches all fields)
 	if query.Pattern != "" {
 		pattern := strings.ToLower(query.Pattern)
-		
+
 		// Search in string fields
 		if strings.Contains(strings.ToLower(entry.Direction), pattern) {
 			return true

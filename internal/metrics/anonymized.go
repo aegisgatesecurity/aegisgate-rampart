@@ -37,16 +37,16 @@ import (
 const (
 	// DefaultMetricsEndpoint is the collection endpoint
 	DefaultMetricsEndpoint = "https://rampart.aegisgatesecurity.io/metrics"
-	
+
 	// BatchSize is the number of metrics to batch before sending
 	BatchSize = 10
-	
+
 	// BatchTimeout is the maximum time to wait before sending a partial batch
 	BatchTimeout = 5 * time.Minute
-	
+
 	// HTTPTimeout for metric uploads
 	HTTPTimeout = 10 * time.Second
-	
+
 	// Domain hash length (16 hex chars = 64 bits)
 	DomainHashLength = 16
 )
@@ -55,44 +55,44 @@ const (
 type AnonymizedMetric struct {
 	// Rampart version (e.g., "0.5.0")
 	Version string `json:"rampart_version"`
-	
+
 	// Platform (e.g., "linux-amd64")
 	Platform string `json:"platform"`
-	
+
 	// Hashed domain (SHA-256 truncated to 16 hex chars)
 	DomainHash string `json:"domain_hash"`
-	
+
 	// Detection category (e.g., "pii_ssn", "secret_aws_key")
 	Category string `json:"category"`
-	
+
 	// Severity (low, medium, high, critical)
 	Severity string `json:"severity"`
-	
+
 	// Whether the request was blocked
 	Blocked bool `json:"blocked"`
-	
+
 	// Timestamp rounded to hour (prevents correlation)
 	Hour time.Time `json:"hour"`
-	
+
 	// False positive flag (only sent if user confirms FP)
 	FalsePositive bool `json:"false_positive,omitempty"`
-	
+
 	// User action taken (only for false positives)
 	UserAction string `json:"user_action,omitempty"`
 }
 
 // Collector collects and sends anonymized metrics
 type Collector struct {
-	mu            sync.Mutex
-	enabled       bool
-	endpoint      string
-	client        *http.Client
-	queue         []AnonymizedMetric
-	batchTimer    *time.Timer
-	domainCache   map[string]string
-	ctx           context.Context
-	cancel        context.CancelFunc
-	
+	mu          sync.Mutex
+	enabled     bool
+	endpoint    string
+	client      *http.Client
+	queue       []AnonymizedMetric
+	batchTimer  *time.Timer
+	domainCache map[string]string
+	ctx         context.Context
+	cancel      context.CancelFunc
+
 	// For testing
 	sendFunc func([]AnonymizedMetric) error
 }
@@ -102,9 +102,9 @@ func NewCollector(enabled bool, endpoint string) *Collector {
 	if endpoint == "" {
 		endpoint = DefaultMetricsEndpoint
 	}
-	
+
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	c := &Collector{
 		enabled:     enabled,
 		endpoint:    endpoint,
@@ -116,10 +116,10 @@ func NewCollector(enabled bool, endpoint string) *Collector {
 		},
 		queue: make([]AnonymizedMetric, 0, BatchSize),
 	}
-	
+
 	// Start batch timer
 	c.batchTimer = time.AfterFunc(BatchTimeout, c.sendBatch)
-	
+
 	return c
 }
 
@@ -127,29 +127,29 @@ func NewCollector(enabled bool, endpoint string) *Collector {
 func (c *Collector) RecordDetection(host, category, severity string, blocked bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	if !c.enabled {
 		return
 	}
-	
+
 	// Hash domain
 	domainHash := c.hashDomain(host)
-	
+
 	// Round timestamp to hour
 	hour := time.Now().Truncate(time.Hour)
-	
+
 	metric := AnonymizedMetric{
-		Version:  version.Version,
-		Platform: getPlatform(),
+		Version:    version.Version,
+		Platform:   getPlatform(),
 		DomainHash: domainHash,
-		Category: category,
-		Severity: severity,
-		Blocked:  blocked,
-		Hour:     hour,
+		Category:   category,
+		Severity:   severity,
+		Blocked:    blocked,
+		Hour:       hour,
 	}
-	
+
 	c.queue = append(c.queue, metric)
-	
+
 	// Send if batch is full
 	if len(c.queue) >= BatchSize {
 		c.sendBatchLocked()
@@ -160,14 +160,14 @@ func (c *Collector) RecordDetection(host, category, severity string, blocked boo
 func (c *Collector) RecordFalsePositive(host, category, severity string, action string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	if !c.enabled {
 		return
 	}
-	
+
 	domainHash := c.hashDomain(host)
 	hour := time.Now().Truncate(time.Hour)
-	
+
 	metric := AnonymizedMetric{
 		Version:       version.Version,
 		Platform:      getPlatform(),
@@ -179,9 +179,9 @@ func (c *Collector) RecordFalsePositive(host, category, severity string, action 
 		FalsePositive: true,
 		UserAction:    action,
 	}
-	
+
 	c.queue = append(c.queue, metric)
-	
+
 	if len(c.queue) >= BatchSize {
 		c.sendBatchLocked()
 	}
@@ -193,17 +193,17 @@ func (c *Collector) hashDomain(domain string) string {
 	if hash, ok := c.domainCache[domain]; ok {
 		return hash
 	}
-	
+
 	// Normalize domain (lowercase, strip port)
 	normalized := normalizeDomain(domain)
-	
+
 	// Compute SHA-256
 	h := sha256.Sum256([]byte(normalized))
 	hash := hex.EncodeToString(h[:])[:DomainHashLength]
-	
+
 	// Cache for future use
 	c.domainCache[domain] = hash
-	
+
 	return hash
 }
 
@@ -211,17 +211,15 @@ func (c *Collector) hashDomain(domain string) string {
 func normalizeDomain(domain string) string {
 	// Lowercase
 	domain = strings.ToLower(domain)
-	
+
 	// Strip port if present
 	if idx := strings.IndexByte(domain, ':'); idx != -1 {
 		domain = domain[:idx]
 	}
-	
+
 	// Strip leading www.
-	if strings.HasPrefix(domain, "www.") {
-		domain = domain[4:]
-	}
-	
+	domain = strings.TrimPrefix(domain, "www.")
+
 	return domain
 }
 
@@ -237,20 +235,20 @@ func (c *Collector) sendBatchLocked() {
 	if len(c.queue) == 0 {
 		return
 	}
-	
+
 	batch := make([]AnonymizedMetric, len(c.queue))
 	copy(batch, c.queue)
 	c.queue = c.queue[:0]
-	
+
 	// Reset timer
 	c.batchTimer.Reset(BatchTimeout)
-	
+
 	// Send (or use test function)
 	if c.sendFunc != nil {
-		c.sendFunc(batch)
+		_ = c.sendFunc(batch)
 		return
 	}
-	
+
 	// Send to endpoint
 	go c.sendToEndpoint(batch)
 }
@@ -262,22 +260,22 @@ func (c *Collector) sendToEndpoint(batch []AnonymizedMetric) {
 		// Marshal failed, drop metrics (don't block)
 		return
 	}
-	
+
 	req, err := http.NewRequestWithContext(c.ctx, http.MethodPost, c.endpoint, bytes.NewReader(data))
 	if err != nil {
 		return
 	}
-	
+
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", "AegisGate-Rampart/"+version.Version)
-	
+
 	resp, err := c.client.Do(req)
 	if err != nil {
 		// Network error, drop metrics (don't retry to preserve privacy)
 		return
 	}
 	defer resp.Body.Close()
-	
+
 	// Don't check response status - we want to preserve privacy
 	// even if the server rejects the metrics
 }

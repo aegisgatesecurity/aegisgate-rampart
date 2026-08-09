@@ -16,7 +16,7 @@ import (
 func runLLMList(args []string) error {
 	fs := flag.NewFlagSet("llm list", flag.ExitOnError)
 	format := fs.String("format", "table", "Output format: table, json")
-	fs.Parse(args)
+	_ = fs.Parse(args)
 
 	presets := llm.GetPresets()
 

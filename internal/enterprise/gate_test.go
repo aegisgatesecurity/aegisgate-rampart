@@ -114,7 +114,7 @@ func TestConnect_EmptyToken(t *testing.T) {
 }
 
 func TestStatus_NoConnection(t *testing.T) {
-	Disconnect()
+	_ = Disconnect()
 
 	connected, url := Status()
 	if connected {

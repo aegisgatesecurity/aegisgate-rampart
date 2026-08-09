@@ -23,7 +23,7 @@ func runScan(args []string) error {
 	fs := flag.NewFlagSet("scan", flag.ExitOnError)
 	output := fs.String("output", "", "Output file (JSON format)")
 	format := fs.String("format", "table", "Output format: table, json")
-	fs.Parse(args)
+	_ = fs.Parse(args)
 
 	path := fs.Arg(0)
 

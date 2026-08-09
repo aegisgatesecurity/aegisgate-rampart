@@ -179,7 +179,7 @@ func (c *Checker) Run(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			c.CheckForUpdates(ctx)
+			_, _ = c.CheckForUpdates(ctx)
 		}
 	}
 }

@@ -172,7 +172,7 @@ func (c *Checker) Run(ctx context.Context) {
 	defer ticker.Stop()
 
 	// Check immediately on start
-	_ = c.CheckForUpdates(ctx)
+	_, _ = c.CheckForUpdates(ctx)
 
 	for {
 		select {

@@ -36,7 +36,7 @@ jobs:
           go build -ldflags "-s -w -X main.versionFlag=$VERSION" \
             -o rampart ./cmd/rampart/
       - name: Upload binary
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: rampart-linux-amd64-pkg
           path: rampart
@@ -81,7 +81,7 @@ jobs:
           cd packaging/debian
           dpkg-deb --build aegisgate-rampart_${{ steps.version.outputs.version }}_amd64
       - name: Upload .deb
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: aegisgate-rampart-deb
           path: packaging/debian/aegisgate-rampart_${{ steps.version.outputs.version }}_amd64.deb
@@ -125,7 +125,7 @@ jobs:
             --define "version ${{ steps.version.outputs.version }}" \
             -bb packaging/redhat/SPECS/aegisgate-rampart.spec
       - name: Upload RPM
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: aegisgate-rampart-rpm
           path: packaging/redhat/RPMS/x86_64/aegisgate-rampart-${{ steps.version.outputs.version }}-1.x86_64.rpm

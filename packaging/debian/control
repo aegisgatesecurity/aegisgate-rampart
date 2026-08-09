@@ -2,6 +2,7 @@ Package: aegisgate-rampart
 Section: net
 Priority: optional
 Architecture: amd64
+Version: 0.6.0
 Depends: ca-certificates
 Maintainer: AegisGate Security <security@aegisgatesecurity.io>
 Homepage: https://github.com/aegisgatesecurity/aegisgate-rampart

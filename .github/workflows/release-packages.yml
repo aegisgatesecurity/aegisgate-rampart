@@ -186,7 +186,7 @@ jobs:
           sed -i 's|url ".*"|url "https://github.com/aegisgatesecurity/aegisgate-rampart/archive/v${{ steps.version.outputs.version }}.tar.gz"|' packaging/homebrew/aegisgate-rampart.rb
           sed -i 's|sha256 ".*"|sha256 "${{ steps.sha.outputs.sha256 }}"|' packaging/homebrew/aegisgate-rampart.rb
       - name: Commit formula update
-        uses: stefanzweifel/git-auto-commit-action@v5
+        uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: 'chore: update homebrew formula to v${{ steps.version.outputs.version }}'
           file_pattern: packaging/homebrew/*.rb

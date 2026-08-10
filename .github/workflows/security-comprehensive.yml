@@ -97,7 +97,7 @@ jobs:
           fail_action: false
         continue-on-error: true
       - name: ZAP API Scan — /detect
-        uses: zaproxy/action-api-scan@v0.2.0
+        uses: zaproxy/action-api-scan@v0.10.0
         with:
           target: 'http://localhost:8080'
           api_file: '.zap/detect-api-openapi.json'

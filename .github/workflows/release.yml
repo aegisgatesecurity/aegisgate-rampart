@@ -135,6 +135,9 @@ jobs:
   sbom-attest:
     needs: [build-static, build-macos]
     runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
     steps:
       - uses: actions/checkout@v5
       - name: Generate CycloneDX SBOM
@@ -164,6 +167,8 @@ jobs:
     permissions:
       packages: write
       id-token: write
+      actions: read
+      contents: read
     steps:
       - uses: actions/checkout@v5
       - name: Download Linux amd64 binary

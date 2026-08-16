@@ -1,5 +1,5 @@
 Name:           aegisgate-rampart
-Version:        0.6.0
+Version:        %{?version_override}%{!?version_override:0.6.1}
 Release:        1%{?dist}
 Summary:        Local AI security proxy for intercepting and detecting threats
 License:        Apache-2.0

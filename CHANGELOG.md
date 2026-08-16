@@ -5,6 +5,32 @@ All notable changes to AegisGate Rampart are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.6.1] - 2026-08-16
+
+### Added — 18 High-Value SOC Detection Patterns
+
+Detection additions (parity with Platform v4.1.0, Lens v0.3.1):
+- **SWIFT/BIC banking codes** (3 patterns): International wire fraud detection
+- **CPT/HCPCS medical billing codes** (11 patterns): Healthcare billing fraud detection
+- **OT/ICS protocols** (9 patterns): Modbus, DNP3, OPC-UA control manipulation detection
+
+Files modified:
+- `pii_financial.go`: +3 SWIFT/BIC patterns
+- `pii_us_core.go`: +11 CPT/HCPCS patterns
+- `ot_protocols.go`: New file with 9 OT patterns
+- `engine.go`: Register `DetectOTProtocols` in detection pipeline
+
+SOC relevance:
+- Banking: SWIFT codes for international wire monitoring
+- Healthcare: CPT/HCPCS for billing fraud detection
+- Manufacturing/Energy: OT protocol manipulation detection
+
+### Changed — Go Runtime Bump
+
+- Go 1.25.0 → 1.26.6 (fixes 5 stdlib vulnerabilities: GO-2026-6218, GO-2026-6090, GO-2026-6089, GO-2026-5972, GO-2026-5026)
+- All CI/Security/Release workflows updated to `go-version: '1.26.6'`
+- Dockerfile builder image: `golang:1.26.6-alpine`
+
 ## [0.5.0] - 2026-08-07
 
 ### Added — Phase 7: Security Hardening + Operational Endpoints

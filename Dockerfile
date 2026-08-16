@@ -5,7 +5,7 @@
 # No shell, no runtime, no attack surface.
 # =========================================================================
 
-FROM --platform=$BUILDPLATFORM golang:1.24-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:1.26.6-alpine AS builder
 
 ARG TARGETPLATFORM
 ARG TARGETOS

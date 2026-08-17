@@ -40,11 +40,11 @@ Rampart is a local HTTPS MITM proxy that inspects AI API traffic for PII, secret
 | Threat | Impact | Mitigation |
 |--------|--------|-----------|
 | CA private key theft | Attacker can intercept ALL HTTPS traffic | 0600 file permissions, recommend FIM |
-| Config tampering (block→monitor) | Silent security downgrade | Recommend FIM, future: config hash verification |
+| Config tampering (block→monitor) | Silent security downgrade | Recommend FIM, config hash verification (implemented v0.5.0) |
 | Detection engine DoS | CPU exhaustion via crafted input | Rate limiting, request size limits |
 | Audit log tampering | Loss of forensic evidence | Append-only log, recommend FIM |
 | Binary supply chain attack | Compromised Rampart binary | Cosign/Sigstore signing, SBOMs in releases |
-| ReDoS on regex patterns | CPU exhaustion on crafted input | RE2-compliant regex (no lookbehind/lookahead), future: input size limits |
+| ReDoS on regex patterns | CPU exhaustion on crafted input | RE2-compliant regex (no lookbehind/lookahead), input size limits (10MB, implemented v0.5.0) |
 
 ## Security Assumptions
 
@@ -52,7 +52,7 @@ Rampart is a local HTTPS MITM proxy that inspects AI API traffic for PII, secret
 2. The user running Rampart is authorized to intercept HTTPS traffic
 3. The CA private key is stored securely (0600 permissions)
 4. The audit log directory is protected from unauthorized access
-5. The ONNX model file is not tampered with (future: integrity check)
+5. The ONNX model file is not tampered with (future: model integrity check)
 
 ## Reporting
 

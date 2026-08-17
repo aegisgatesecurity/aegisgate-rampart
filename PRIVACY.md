@@ -97,7 +97,7 @@ Rampart includes **opt-in, privacy-preserving telemetry** to help improve the pr
 **Anonymized Metric Fields:**
 ```json
 {
-  "rampart_version": "0.5.0",
+  "rampart_version": "0.6.1",
   "platform": "linux-amd64",
   "domain_hash": "a3f2c8d91e4b5f67",  // 16 hex chars (can't reverse)
   "category": "pii_ssn",
@@ -277,5 +277,5 @@ We may update this privacy policy as features evolve. Changes will be documented
 
 ---
 
-**Last updated**: August 8, 2026  
-**Version**: 1.0 (v0.5.1 release)
+**Last updated**: August 17, 2026  
+**Version**: 1.1 (v0.6.1 release)

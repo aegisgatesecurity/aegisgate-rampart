@@ -68,7 +68,7 @@ Look for issues labeled:
 
 ### Prerequisites
 
-- **Go 1.21+** (we use latest Go features)
+- **Go 1.26+** (we use latest Go features)
 - **Git** for version control
 - **Make** for build automation (optional but recommended)
 - **Docker** for containerized testing (optional)
@@ -419,5 +419,5 @@ Together, we're building better AI security for everyone.
 
 ---
 
-**Last updated:** August 8, 2026  
-**Version:** 1.0 (v0.5.1 release)
+**Last updated:** August 17, 2026  
+**Version:** 1.1 (v0.6.1 release)

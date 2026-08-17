@@ -88,7 +88,7 @@ jobs:
             exit 0
           fi
       - name: ZAP Baseline Scan
-        uses: zaproxy/action-baseline@v0.12.0
+        uses: zaproxy/action-baseline@v0.15.0
         with:
           target: 'http://localhost:8080'
           rules_file: '.zap/rules.tsv'

@@ -4,8 +4,8 @@
 class AegisgateRampart < Formula
   desc "Local AI security proxy — intercept, detect, block"
   homepage "https://github.com/aegisgatesecurity/aegisgate-rampart"
-  url "https://github.com/aegisgatesecurity/aegisgate-rampart/archive/v0.6.0.tar.gz"
-  sha256 "f31e82b3354bc84a7811a3c84d2c18f6b1d52dd4fefe915637fd1fad13500955"  # Update with actual SHA256 of tarball
+  url "https://github.com/aegisgatesecurity/aegisgate-rampart/archive/v0.6.1.tar.gz"
+  sha256 "2364e793c61957f27530ce0dff24f6a99225ae55ac15ef3f176cc6ea3d36adcf"  # Update with actual SHA256 of tarball
   license "Apache-2.0"
 
   depends_on "go" => :build

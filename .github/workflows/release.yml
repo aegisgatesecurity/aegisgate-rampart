@@ -111,7 +111,7 @@ jobs:
           - goos: windows
             goarch: amd64
     steps:
-      - uses: sigstore/cosign-installer@v3.0.0
+      - uses: sigstore/cosign-installer@v4.1.2
       - name: Download binary
         uses: actions/download-artifact@v6.0.0
         with:
@@ -138,15 +138,16 @@ jobs:
     permissions:
       actions: read
       contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v5.0.0
       - name: Generate CycloneDX SBOM
-        uses: anchore/sbom-action@v0.20.0
+        uses: anchore/sbom-action@v0.24.2
         with:
           format: cyclonedx
           output-file: sbom-cyclonedx.json
       - name: Generate SPDX SBOM
-        uses: anchore/sbom-action@v0.20.0
+        uses: anchore/sbom-action@v0.24.2
         with:
           format: spdx-json
           output-file: sbom-spdx.json
@@ -182,7 +183,7 @@ jobs:
           name: rampart-linux-arm64
           path: build/
       - name: Install Cosign
-        uses: sigstore/cosign-installer@v3.0.0
+        uses: sigstore/cosign-installer@v4.1.2
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3.0.0
       - name: Login to GHCR

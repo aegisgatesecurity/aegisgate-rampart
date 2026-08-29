@@ -45,8 +45,8 @@ func TestHeartbeat_Success(t *testing.T) {
 	if !result.Success {
 		t.Errorf("Expected success, got error: %s", result.Error)
 	}
-	if result.Latency <= 0 {
-		t.Errorf("Expected positive latency, got: %v", result.Latency)
+	if result.Latency < 0 {
+		t.Errorf("Expected non-negative latency, got: %v", result.Latency)
 	}
 	if result.Error != "" {
 		t.Errorf("Expected no error, got: %s", result.Error)

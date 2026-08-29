@@ -93,7 +93,6 @@ type Proxy struct {
 
 	// HIGH-7/MEDIUM-6: shared transport for outbound requests (explicit TLS config)
 	sharedTransport *http.Transport
-
 }
 
 // ProxyStats tracks interception statistics.

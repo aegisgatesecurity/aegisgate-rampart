@@ -86,7 +86,7 @@ func (m *Manager) GenerateSelfSigned() (*Certificate, error) {
 		BasicConstraintsValid: true,
 		IsCA:                  true,
 		// HIGH-6 FIX: restrict CA to only sign end-entity certs, not subordinate CAs
-		MaxPathLen: 0,
+		MaxPathLen:     0,
 		MaxPathLenZero: true,
 	}
 

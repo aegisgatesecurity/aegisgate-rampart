@@ -4,14 +4,14 @@ go 1.26.6
 
 // Onnxruntime for ML inference (CGO build tag)
 // Only needed when CGO_ENABLED=1 — the non-CGO build uses heuristic fallback
-require github.com/yalue/onnxruntime_go v1.27.0
+require github.com/yalue/onnxruntime_go v1.35.0
 
 require (
 	fyne.io/systray v1.12.2
 	github.com/gen2brain/beeep v0.11.2
 	golang.org/x/crypto v0.55.0
 	golang.org/x/sys v0.47.0
-	golang.org/x/time v0.14.0
+	golang.org/x/time v0.15.0
 )
 
 require (

@@ -21,8 +21,8 @@ jobs:
   govulncheck:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-go@v7
+      - uses: actions/checkout@v5.0.0
+      - uses: actions/setup-go@v7.0.0
         with:
           go-version: '1.26.6'
       - name: govulncheck
@@ -36,8 +36,8 @@ jobs:
   gosec:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-go@v7
+      - uses: actions/checkout@v5.0.0
+      - uses: actions/setup-go@v7.0.0
         with:
           go-version: '1.26.6'
       - name: Run Gosec
@@ -57,7 +57,7 @@ jobs:
             -exclude G103,G117,G118,G112,G204,G301,G302,G304,G306,G402,G703,G704,G706 \
             ./... || true
       - name: Upload SARIF
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@v4.0.0
         if: always() && github.repository_visibility != 'private'
         with:
           sarif_file: gosec.sarif
@@ -69,12 +69,12 @@ jobs:
   trivy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v5.0.0
       - name: Build binary for scanning
         run: |
           CGO_ENABLED=0 go build -o rampart ./cmd/rampart/
       - name: Trivy filesystem scan
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.30.0
         with:
           scan-type: 'fs'
           scan-ref: '.'
@@ -88,7 +88,7 @@ jobs:
   gitleaks:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v5.0.0
         with:
           fetch-depth: 0
       - name: Install Gitleaks
@@ -102,7 +102,7 @@ jobs:
           gitleaks detect --source . --config .gitleaks.toml --verbose --report-format sarif --report-path gitleaks.sarif || true
         continue-on-error: true
       - name: Upload SARIF
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@v4.0.0
         if: always() && github.repository_visibility != 'private'
         with:
           sarif_file: gitleaks.sarif
@@ -114,11 +114,11 @@ jobs:
   trufflehog:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v5.0.0
         with:
           fetch-depth: 0
       - name: TruffleHog
-        uses: trufflesecurity/trufflehog@main
+        uses: trufflesecurity/trufflehog@v3.90.0
         with:
           extra_args: '--only-verified'
 
@@ -128,8 +128,8 @@ jobs:
   standard-tools:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-go@v7
+      - uses: actions/checkout@v5.0.0
+      - uses: actions/setup-go@v7.0.0
         with:
           go-version: '1.26.6'
       - name: go vet
@@ -150,19 +150,19 @@ jobs:
     needs: [govulncheck, gosec]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v5.0.0
       - name: Generate CycloneDX SBOM
-        uses: anchore/sbom-action@v0
+        uses: anchore/sbom-action@v0.20.0
         with:
           format: cyclonedx
           output-file: sbom-cyclonedx.json
       - name: Generate SPDX SBOM
-        uses: anchore/sbom-action@v0
+        uses: anchore/sbom-action@v0.20.0
         with:
           format: spdx-json
           output-file: sbom-spdx.json
       - name: Upload SBOMs
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.0
         with:
           name: sbom
           path: |

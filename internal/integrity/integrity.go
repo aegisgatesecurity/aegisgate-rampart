@@ -17,6 +17,7 @@ package integrity
 
 import (
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -165,7 +166,11 @@ func (v *Verifier) VerifyHash(configPath, expectedHash string) (*IntegrityResult
 	}
 
 	// Compare hashes (case-insensitive)
-	if !strings.EqualFold(expectedHash, computedHash) {
+	// MEDIUM-12 FIX: use constant-time comparison to prevent timing side-channels
+	if subtle.ConstantTimeCompare(
+		[]byte(strings.ToLower(expectedHash)),
+		[]byte(strings.ToLower(computedHash)),
+	) != 1 {
 		result.Valid = false
 		result.Error = fmt.Errorf("integrity check failed: config file has been modified")
 		return result, result.Error
@@ -208,7 +213,7 @@ func (v *Verifier) SaveHashRecord(record *HashRecord, outputPath string) error {
 		return fmt.Errorf("creating directory: %w", err)
 	}
 
-	if err := os.WriteFile(outputPath, data, 0644); err != nil {
+	if err := os.WriteFile(outputPath, data, 0600); err != nil { // LOW-6 FIX: restrict to owner-only
 		return fmt.Errorf("writing record: %w", err)
 	}
 
@@ -285,7 +290,11 @@ func (v *Verifier) DetectChanges(record *HashRecord) (*ChangeReport, error) {
 		}
 
 		// Compare
-		if strings.EqualFold(expected.Hash, currentHash) {
+		// MEDIUM-12 FIX: use constant-time comparison
+		if subtle.ConstantTimeCompare(
+			[]byte(strings.ToLower(expected.Hash)),
+			[]byte(strings.ToLower(currentHash)),
+		) == 1 {
 			change.Status = ChangeUnchanged
 			change.Detected = &ConfigMetadata{
 				FilePath:    expected.FilePath,

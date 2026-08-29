@@ -85,7 +85,7 @@ Rampart includes **config file integrity verification** to detect unauthorized m
 rampart config-hash ~/.config/aegisgate-rampart/config.json --output config-hashes.json
 
 # With comment for versioning
-rampart config-hash config.json --comment "Production config v0.6.1"
+rampart config-hash config.json --comment "Production config v0.6.2"
 ```
 
 **Verify Config Integrity:**
@@ -111,7 +111,7 @@ rampart config-check --hash-record config-hashes.json
 
 ### Memory Security Limitations (P2#10)
 
-**Current State:** Rampart v0.6.1 does not implement secure memory zeroing for passphrases and secrets. This is a **known limitation** planned for v0.7.0.
+**Current State:** Rampart v0.6.2 does not implement secure memory zeroing for passphrases and secrets. This is a **known limitation** planned for v0.7.0.
 
 **Risk:** Sensitive data (CA key passphrases, audit log encryption passphrases, API keys) may persist in RAM after use and could potentially be recovered through:
 - Memory dumps (core files)
@@ -185,9 +185,9 @@ rampart config-check --hash-record config-hashes.json
 - Root/administrator access, OR
 - System crash with core dumps enabled
 
-These are **less common** than disk theft or config tampering (which ARE protected in v0.6.1).
+These are **less common** than disk theft or config tampering (which ARE protected in v0.6.2).
 
-**Status:** ⏳ Deferred to v0.7.0 for proper implementation. v0.6.1 is production-ready with OS-level mitigations.
+**Status:** ⏳ Deferred to v0.7.0 for proper implementation. v0.6.2 is production-ready with OS-level mitigations.
 
 ### Anonymized Metrics (P2#12)
 

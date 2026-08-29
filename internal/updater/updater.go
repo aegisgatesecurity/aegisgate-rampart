@@ -123,7 +123,8 @@ func (c *Checker) getLatestRelease(ctx context.Context) (*GitHubRelease, error) 
 		return nil, fmt.Errorf("GitHub API returned status %d", resp.StatusCode)
 	}
 
-	body, err := io.ReadAll(resp.Body)
+	// MEDIUM-19 FIX: limit response body to prevent OOM
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20)) // 1MB max
 	if err != nil {
 		return nil, err
 	}

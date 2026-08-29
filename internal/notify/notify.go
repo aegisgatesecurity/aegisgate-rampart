@@ -61,19 +61,31 @@ func New(iconPath string) *Notifier {
 	return n
 }
 
-// ensureDefaultIcon writes the embedded icon to a temp file and returns its path.
+// ensureDefaultIcon writes the embedded icon to a user-specific cache dir and returns its path.
+// MEDIUM-11 FIX: use user cache dir instead of shared /tmp, and O_EXCL to prevent symlink attacks.
 func (n *Notifier) ensureDefaultIcon() string {
-	iconDir := filepath.Join(os.TempDir(), "aegisgate-rampart")
+	// Use user-specific cache directory instead of shared /tmp
+	cacheDir, err := os.UserCacheDir()
+	if err != nil {
+		cacheDir = os.TempDir()
+	}
+	iconDir := filepath.Join(cacheDir, "aegisgate-rampart")
 	iconFile := filepath.Join(iconDir, "rampart-shield-64.png")
 
-	if _, err := os.Stat(iconFile); err == nil {
-		return iconFile
-	}
-
+	// Try to create the file exclusively (O_EXCL prevents symlink/TOCTOU attacks)
 	if err := os.MkdirAll(iconDir, 0755); err != nil {
 		return ""
 	}
-	if err := os.WriteFile(iconFile, defaultIconData, 0644); err != nil {
+	fh, err := os.OpenFile(iconFile, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
+	if err != nil {
+		if os.IsExist(err) {
+			// File already exists — return it (no TOCTOU risk with O_EXCL)
+			return iconFile
+		}
+		return ""
+	}
+	defer fh.Close()
+	if _, err := fh.Write(defaultIconData); err != nil {
 		return ""
 	}
 	return iconFile
@@ -180,9 +192,14 @@ func (n *Notifier) notifyLinux(notif Notification, icon string) error {
 
 // notifyDarwin uses osascript for macOS desktop notifications.
 func (n *Notifier) notifyDarwin(notif Notification) error {
-	// Escape double quotes in the body
-	body := strings.ReplaceAll(notif.Body, `"`, `\"`)
-	title := strings.ReplaceAll(notif.Title, `"`, `\"`)
+	// CRITICAL FIX (C1): Escape backslashes FIRST, then double quotes.
+	// Without escaping backslashes, an attacker who controls notification
+	// content can break out of the AppleScript string context and execute
+	// arbitrary commands via `do shell script`.
+	body := strings.ReplaceAll(notif.Body, `\`, `\\`)
+	body = strings.ReplaceAll(body, `"`, `\"`)
+	title := strings.ReplaceAll(notif.Title, `\`, `\\`)
+	title = strings.ReplaceAll(title, `"`, `\"`)
 
 	script := fmt.Sprintf(`display notification "%s" with title "%s"`, body, title)
 	cmd := exec.Command("osascript", "-e", script)

@@ -23,8 +23,8 @@ jobs:
     name: Build Linux Binary
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-go@v7
+      - uses: actions/checkout@v5.0.0
+      - uses: actions/setup-go@v7.0.0
         with:
           go-version: '1.26.6'
       - name: Build binary
@@ -33,11 +33,12 @@ jobs:
           GOARCH: amd64
           CGO_ENABLED: 0
         run: |
-          VERSION=${{ github.event.inputs.version || github.event.release.tag_name }}
           go build -ldflags "-s -w -X main.versionFlag=$VERSION" \
             -o rampart ./cmd/rampart/
+        env:
+          VERSION: ${{ github.event.inputs.version || github.event.release.tag_name }}
       - name: Upload binary
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.0
         with:
           name: rampart-linux-amd64-pkg
           path: rampart
@@ -50,9 +51,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: build-linux
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v5.0.0
       - name: Download binary
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v6.0.0
         with:
           name: rampart-linux-amd64-pkg
           path: .
@@ -82,7 +83,7 @@ jobs:
           cd packaging/debian
           dpkg-deb --build aegisgate-rampart_${{ steps.version.outputs.version }}_amd64
       - name: Upload .deb
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.0
         with:
           name: aegisgate-rampart-deb
           path: packaging/debian/aegisgate-rampart_${{ steps.version.outputs.version }}_amd64.deb
@@ -95,9 +96,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: build-linux
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v5.0.0
       - name: Download binary
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v6.0.0
         with:
           name: rampart-linux-amd64-pkg
           path: .
@@ -127,7 +128,7 @@ jobs:
             --define "version_override ${{ steps.version.outputs.version }}" \
             -bb packaging/redhat/SPECS/aegisgate-rampart.spec
       - name: Upload RPM
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.0
         with:
           name: aegisgate-rampart-rpm
           path: packaging/redhat/RPMS/x86_64/aegisgate-rampart-${{ steps.version.outputs.version }}-1.x86_64.rpm
@@ -142,7 +143,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v5.0.0
       - name: Get version
         id: version
         run: |
@@ -150,13 +151,13 @@ jobs:
           VERSION=${VERSION#v}
           echo "version=$VERSION" >> $GITHUB_OUTPUT
       - name: Download packages
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v6.0.0
         with:
           pattern: aegisgate-rampart-*
           merge-multiple: true
           path: packages/
       - name: Upload to release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v2.0.0
         with:
           tag_name: v${{ steps.version.outputs.version }}
           files: packages/*
@@ -171,7 +172,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: build-linux
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v5.0.0
         with:
           ref: main
       - name: Get version
@@ -191,7 +192,7 @@ jobs:
           sed -i 's|url ".*"|url "https://github.com/aegisgatesecurity/aegisgate-rampart/archive/v${{ steps.version.outputs.version }}.tar.gz"|' packaging/homebrew/aegisgate-rampart.rb
           sed -i 's|sha256 ".*"|sha256 "${{ steps.sha.outputs.sha256 }}"|' packaging/homebrew/aegisgate-rampart.rb
       - name: Commit formula update
-        uses: stefanzweifel/git-auto-commit-action@v7
+        uses: stefanzweifel/git-auto-commit-action@v7.0.0
         with:
           commit_message: 'chore: update homebrew formula to v${{ steps.version.outputs.version }}'
           file_pattern: packaging/homebrew/*.rb

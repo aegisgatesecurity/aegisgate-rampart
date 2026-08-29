@@ -324,8 +324,8 @@ func TestSplitLines(t *testing.T) {
 
 // Test encryption constants
 func TestEncryptionConstants(t *testing.T) {
-	if pbkdf2Iterations != 100000 {
-		t.Errorf("PBKDF2 iterations = %d, want 100000", pbkdf2Iterations)
+	if pbkdf2Iterations != 600000 {
+		t.Errorf("PBKDF2 iterations = %d, want 600000", pbkdf2Iterations)
 	}
 	if saltSize != 16 {
 		t.Errorf("Salt size = %d, want 16", saltSize)

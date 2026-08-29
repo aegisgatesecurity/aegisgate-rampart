@@ -118,16 +118,16 @@ jobs:
           name: rampart-${{ matrix.goos }}-${{ matrix.goarch }}
       - name: Sign binary (keyless)
         run: |
-          cosign sign-blob --yes rampart* \
-            --output-certificate rampart.cert \
-            --output-signature rampart.sig
+          for f in rampart*; do
+            cosign sign-blob --yes "$f" \
+              --bundle "$f.cosign.bundle"
+          done
       - name: Upload signature
         uses: actions/upload-artifact@v7.0.0
         with:
           name: rampart-${{ matrix.goos }}-${{ matrix.goarch }}-sig
           path: |
-            rampart.cert
-            rampart.sig
+            rampart*.cosign.bundle
 
   # ========================================
   # SBOM — CycloneDX + SPDX (Syft)
@@ -137,7 +137,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       actions: read
-      contents: read
+      contents: write
       id-token: write
     steps:
       - uses: actions/checkout@v5.0.0

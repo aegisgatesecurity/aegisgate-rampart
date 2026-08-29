@@ -25,6 +25,8 @@ import (
 	"bufio"
 	"context"
 	"crypto/ecdsa"
+	"crypto/rand"
+	"crypto/subtle"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
@@ -87,6 +89,11 @@ type Proxy struct {
 
 	// pprof debug server
 	pprofServer *http.Server
+	pprofToken  string // CRITICAL-4: auth token for pprof
+
+	// HIGH-7/MEDIUM-6: shared transport for outbound requests (explicit TLS config)
+	sharedTransport *http.Transport
+
 }
 
 // ProxyStats tracks interception statistics.
@@ -162,12 +169,46 @@ func New(cfg *config.Config) (*Proxy, error) {
 		log.Printf("rampart: Using existing CA certificate")
 	}
 
-	// Create certificate manager for dynamic MITM cert generation
+	// CRITICAL-2 FIX: Load the file-based CA (from certinit) into the manager
+	// instead of generating a separate in-memory CA. The user installs the
+	// file-based CA in their trust store, so MITM certs must be signed by it.
 	p.certMgr = certificate.NewManager()
-	// Pre-generate the self-signed CA (certinit already wrote files, but we need in-memory)
-	if _, err := p.certMgr.GenerateSelfSigned(); err != nil {
-		log.Printf("rampart: warning: could not generate in-memory CA: %v", err)
+	if err := p.certMgr.LoadCAFromFiles(result.CACertPath, result.CAKeyPath); err != nil {
+		// Fallback: generate new self-signed CA (for first-run without files)
+		log.Printf("rampart: warning: could not load CA from files (%v), generating new CA", err)
+		if _, err := p.certMgr.GenerateSelfSigned(); err != nil {
+			log.Printf("rampart: warning: could not generate in-memory CA: %v", err)
+		}
+	} else {
+		log.Printf("rampart: loaded CA from %s for MITM certificate signing", result.CACertPath)
 	}
+
+	// HIGH-7/MEDIUM-6: create a shared transport with explicit TLS config
+	p.sharedTransport = &http.Transport{
+		TLSClientConfig: &tls.Config{
+			MinVersion: tls.VersionTLS12,
+			CipherSuites: []uint16{
+				tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+				tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+				tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,
+				tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+				tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+				tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
+			},
+		},
+		MaxIdleConns:        100,
+		IdleConnTimeout:     90 * time.Second,
+		TLSHandshakeTimeout: 10 * time.Second,
+	}
+
+	// CRITICAL-4: generate a random pprof auth token if pprof is enabled
+	if cfg.PprofAddr != "" {
+		p.pprofToken = generatePprofToken()
+	}
+
+	// H3: set API auth token if configured
+	// For now, use a random token printed at startup (if pprof is enabled)
+	// In production, this should be configurable via flag or config
 
 	// Initialize audit logger (best-effort, don't fail if audit log can't be created)
 	auditLog, err := auditlog.New()
@@ -221,7 +262,12 @@ func certDir() string {
 
 // Start begins listening for HTTPS connections.
 func (p *Proxy) Start(ctx context.Context) error {
-	addr := fmt.Sprintf(":%d", p.cfg.ProxyPort)
+	// CRITICAL-3 FIX: bind to localhost by default, not 0.0.0.0
+	// This prevents the proxy from being used as an open proxy by
+	// network-adjacent attackers. Users who need remote access should
+	// use a reverse proxy or SSH tunnel.
+	bindAddr := "127.0.0.1"
+	addr := fmt.Sprintf("%s:%d", bindAddr, p.cfg.ProxyPort)
 	p.stats.StartTime = time.Now()
 
 	// Create HTTP server with our handler
@@ -248,15 +294,37 @@ func (p *Proxy) Start(ctx context.Context) error {
 
 	// Start pprof debug server if configured
 	if p.cfg.PprofAddr != "" {
+		// CRITICAL-4 FIX: wrap pprof with token-based authentication
+		// and bind to localhost only
+		pprofAddr := p.cfg.PprofAddr
+		// Ensure localhost binding
+		if strings.HasPrefix(pprofAddr, ":") {
+			pprofAddr = "127.0.0.1" + pprofAddr
+		}
 		pprofMux := http.NewServeMux()
 		pprofMux.HandleFunc("/debug/pprof/", pprof.Index)
 		pprofMux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
 		pprofMux.HandleFunc("/debug/pprof/profile", pprof.Profile)
 		pprofMux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
 		pprofMux.HandleFunc("/debug/pprof/trace", pprof.Trace)
-		p.pprofServer = &http.Server{Addr: p.cfg.PprofAddr, Handler: pprofMux}
+		// Wrap with auth middleware
+		authMux := http.NewServeMux()
+		authMux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			// Check for token in Authorization header or query param
+			token := r.Header.Get("X-Pprof-Token")
+			if token == "" {
+				token = r.URL.Query().Get("token")
+			}
+			if subtle.ConstantTimeCompare([]byte(token), []byte(p.pprofToken)) != 1 {
+				w.WriteHeader(http.StatusUnauthorized)
+				_, _ = w.Write([]byte("Unauthorized — pprof requires X-Pprof-Token header or ?token= query param\n"))
+				return
+			}
+			pprofMux.ServeHTTP(w, r)
+		})
+		p.pprofServer = &http.Server{Addr: pprofAddr, Handler: authMux}
 		go func() {
-			log.Printf("rampart: pprof debug server listening on %s", p.cfg.PprofAddr)
+			log.Printf("rampart: pprof debug server listening on %s (auth token: %s)", pprofAddr, p.pprofToken)
 			if err := p.pprofServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 				log.Printf("rampart: pprof server error: %v", err)
 			}
@@ -526,8 +594,53 @@ func (p *Proxy) handleCONNECT(w http.ResponseWriter, r *http.Request) {
 	p.interceptHTTPS(w, r)
 }
 
+// isBlockedAddress checks if a host is a private/loopback/link-local address
+// that should not be tunneled to (SSRF protection).
+func isBlockedAddress(host string) bool {
+	// Parse as IP first
+	if ip := net.ParseIP(host); ip != nil {
+		return isBlockedIP(ip)
+	}
+
+	// Resolve hostname and check all resulting IPs
+	ips, err := net.LookupIP(host)
+	if err != nil {
+		return false // Can't resolve — allow but it will fail at connect
+	}
+	for _, ip := range ips {
+		if isBlockedIP(ip) {
+			return true
+		}
+	}
+	return false
+}
+
+// isBlockedIP returns true for loopback, private, link-local, and unspecified IPs.
+func isBlockedIP(ip net.IP) bool {
+	if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsUnspecified() {
+		return true
+	}
+	// Block AWS/cloud metadata endpoint 169.254.169.254
+	if ip.Equal(net.IPv4(169, 254, 169, 254)) {
+		return true
+	}
+	return false
+}
+
+// generatePprofToken generates a random 32-byte hex token for pprof auth.
+func generatePprofToken() string {
+	b := make([]byte, 32)
+	_, _ = rand.Read(b)
+	return fmt.Sprintf("%x", b)
+}
+
 // isTargetDomain checks if a host matches any of our target domains.
+// HIGH-1 FIX: acquire RLock to prevent concurrent map read/write panic
+// when ReloadConfig writes to p.targets simultaneously.
 func (p *Proxy) isTargetDomain(host string) bool {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+
 	// Exact match
 	if p.targets[host] {
 		return true
@@ -546,8 +659,23 @@ func (p *Proxy) isTargetDomain(host string) bool {
 }
 
 // tunnel passes HTTPS traffic through without interception.
+// CRITICAL-3 FIX: validate destination to prevent SSRF — block connections
+// to private/loopback/link-local addresses.
 func (p *Proxy) tunnel(w http.ResponseWriter, r *http.Request) {
-	destConn, err := net.DialTimeout("tcp", r.URL.Host, 10*time.Second)
+	host, port, err := net.SplitHostPort(r.URL.Host)
+	if err != nil {
+		// No port specified, try :443 for HTTPS
+		host = r.URL.Host
+		port = "443"
+	}
+
+	// Block connections to private/loopback/link-local addresses
+	if isBlockedAddress(host) {
+		http.Error(w, "tunnel blocked: destination is a private/internal address", http.StatusForbidden)
+		return
+	}
+
+	destConn, err := net.DialTimeout("tcp", net.JoinHostPort(host, port), 10*time.Second)
 	if err != nil {
 		http.Error(w, "tunnel connection failed", http.StatusServiceUnavailable)
 		return
@@ -594,8 +722,10 @@ func (p *Proxy) interceptHTTPS(w http.ResponseWriter, r *http.Request) {
 	// Generate a MITM certificate for this domain on the fly
 	mitmCert, err := p.certMgr.GenerateProxyCertificate(host)
 	if err != nil {
-		log.Printf("rampart: error generating MITM cert for %s: %v", host, err)
-		p.tunnel(w, r) // Fall back to pass-through
+		// HIGH-2 FIX: do NOT fall back to pass-through tunnel for target domains
+		// (that would bypass all detection). Instead, return an error to the client.
+		log.Printf("rampart: error generating MITM cert for target domain: %v", err)
+		http.Error(w, "MITM certificate generation failed — request blocked to prevent detection bypass", http.StatusServiceUnavailable)
 		return
 	}
 
@@ -612,8 +742,9 @@ func (p *Proxy) interceptHTTPS(w http.ResponseWriter, r *http.Request) {
 
 	hijackedConn, _, err := hijacker.Hijack()
 	if err != nil {
-		log.Printf("rampart: hijack failed for %s: %v", host, err)
-		p.tunnel(w, r) // Fall back to pass-through
+		// LOW-4 FIX: can't tunnel after WriteHeader(200) — just close
+		log.Printf("rampart: hijack failed for target domain: %v", err)
+		_ = hijackedConn.Close()
 		return
 	}
 
@@ -634,6 +765,15 @@ func (p *Proxy) interceptHTTPS(w http.ResponseWriter, r *http.Request) {
 	tlsConfig := &tls.Config{
 		Certificates: []tls.Certificate{tlsCert},
 		MinVersion:   tls.VersionTLS12,
+		// HIGH-5 FIX: restrict to AEAD cipher suites only
+		CipherSuites: []uint16{
+			tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+			tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,
+			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+			tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
+		},
 	}
 
 	tlsConn := tls.Server(hijackedConn, tlsConfig)
@@ -653,9 +793,11 @@ func (p *Proxy) interceptHTTPS(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Read request body for scanning
+	// MEDIUM-4 FIX: limit body size to prevent OOM
+	const maxBodySize = 100 << 20 // 100 MB
 	var bodyBytes []byte
 	if clientReq.Body != nil {
-		bodyBytes, _ = io.ReadAll(clientReq.Body)
+		bodyBytes, _ = io.ReadAll(io.LimitReader(clientReq.Body, maxBodySize))
 		_ = clientReq.Body.Close()
 	}
 
@@ -690,25 +832,20 @@ func (p *Proxy) interceptHTTPS(w http.ResponseWriter, r *http.Request) {
 		clientReq.Host = host
 	}
 
-	// Forward the request to the real AI server
-	transport := &http.Transport{
-		TLSClientConfig: &tls.Config{
-			MinVersion: tls.VersionTLS12,
-		},
-	}
-	defer transport.CloseIdleConnections()
-
-	resp, err := transport.RoundTrip(clientReq)
+	// HIGH-7/MEDIUM-6 FIX: use shared transport (explicit TLS config, connection reuse)
+	resp, err := p.sharedTransport.RoundTrip(clientReq)
 	if err != nil {
-		log.Printf("rampart: error forwarding to %s: %v", host, err)
+		// MEDIUM-5 FIX: don't log the hostname
+		log.Printf("rampart: error forwarding to target domain: %v", err)
 		return
 	}
 	defer resp.Body.Close()
 
 	// Read response body for scanning
+	// MEDIUM-4 FIX: limit body size to prevent OOM
 	var respBody []byte
 	if resp.Body != nil {
-		respBody, _ = io.ReadAll(resp.Body)
+		respBody, _ = io.ReadAll(io.LimitReader(resp.Body, maxBodySize))
 	}
 
 	// Run detection on response body (inbound = AI response)
@@ -748,9 +885,11 @@ func (p *Proxy) handleHTTP(w http.ResponseWriter, r *http.Request) {
 	isTarget := p.isTargetDomain(host)
 
 	// Read request body
+	// MEDIUM-4 FIX: limit body size
+	const maxHTTPBodySize = 100 << 20 // 100 MB
 	var bodyBytes []byte
 	if r.Body != nil {
-		bodyBytes, _ = io.ReadAll(r.Body)
+		bodyBytes, _ = io.ReadAll(io.LimitReader(r.Body, maxHTTPBodySize))
 		_ = r.Body.Close()
 	}
 
@@ -771,7 +910,8 @@ func (p *Proxy) handleHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Forward the request
 	r.Body = io.NopCloser(strings.NewReader(string(bodyBytes)))
-	resp, err := http.DefaultTransport.RoundTrip(r)
+	// HIGH-7 FIX: use shared transport with explicit TLS config
+	resp, err := p.sharedTransport.RoundTrip(r)
 	if err != nil {
 		http.Error(w, "forward failed", http.StatusBadGateway)
 		return
@@ -779,9 +919,10 @@ func (p *Proxy) handleHTTP(w http.ResponseWriter, r *http.Request) {
 	defer resp.Body.Close()
 
 	// Read response body
+	// MEDIUM-4 FIX: limit body size
 	var respBody []byte
 	if resp.Body != nil {
-		respBody, _ = io.ReadAll(resp.Body)
+		respBody, _ = io.ReadAll(io.LimitReader(resp.Body, maxHTTPBodySize))
 	}
 
 	if isTarget && len(respBody) > 0 {
@@ -835,7 +976,8 @@ func (p *Proxy) shouldBlock(result *detector.Summary) (bool, string) {
 		}
 
 		// At least one detection meets both threshold and category criteria
-		return true, fmt.Sprintf("%s: %s", r.Category, r.Text)
+		// MEDIUM-3 FIX: don't include raw detection text in block reason
+		return true, fmt.Sprintf("%s: [redacted]", r.Category)
 	}
 
 	return false, ""
@@ -920,11 +1062,12 @@ func (p *Proxy) blockResponse(w http.ResponseWriter, direction, host, path strin
 	if p.cfg.Block.IncludeDetections {
 		detail.Results = make([]BlockResult, 0, len(result.Results))
 		for _, r := range result.Results {
+			// MEDIUM-3 FIX: redact sensitive text in block responses
 			detail.Results = append(detail.Results, BlockResult{
 				Category:   r.Category,
 				Severity:   r.Severity,
 				Rule:       r.Rule,
-				Text:       r.Text,
+				Text:       redactDetectionText(r.Text),
 				Confidence: r.Confidence,
 			})
 		}
@@ -1054,7 +1197,8 @@ func (p *Proxy) printDetection(direction, host, path string, result *detector.Su
 	// Individual detection results
 	for _, r := range result.Results {
 		dColor, emoji := severityColorAndEmoji(r.Severity)
-		fmt.Printf("   %s %s[%s]%s %s: %s\n", emoji, dColor, r.Severity, colorReset, r.Category, r.Text)
+		// MEDIUM-3 FIX: redact detection text in terminal output
+		fmt.Printf("   %s %s[%s]%s %s: %s\n", emoji, dColor, r.Severity, colorReset, r.Category, redactDetectionText(r.Text))
 	}
 	fmt.Println()
 }
@@ -1145,11 +1289,12 @@ func (p *Proxy) formatBlockHTTPResponse(direction, host, path string, result *de
 	if p.cfg.Block.IncludeDetections {
 		detail.Results = make([]BlockResult, 0, len(result.Results))
 		for _, r := range result.Results {
+			// MEDIUM-3 FIX: redact sensitive text in block responses
 			detail.Results = append(detail.Results, BlockResult{
 				Category:   r.Category,
 				Severity:   r.Severity,
 				Rule:       r.Rule,
-				Text:       r.Text,
+				Text:       redactDetectionText(r.Text),
 				Confidence: r.Confidence,
 			})
 		}
@@ -1166,6 +1311,14 @@ func (p *Proxy) formatBlockHTTPResponse(direction, host, path string, result *de
 
 	data, _ := json.Marshal(detail)
 	return data
+}
+
+// redactDetectionText masks sensitive detection text for safe display/logging.
+func redactDetectionText(text string) string {
+	if len(text) <= 4 {
+		return "[REDACTED]"
+	}
+	return text[:2] + "***" + text[len(text)-2:]
 }
 
 // HandleDetectAPI serves the /detect HTTP endpoint for IDE extensions.

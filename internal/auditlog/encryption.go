@@ -37,7 +37,7 @@ import (
 
 const (
 	// PBKDF2 iterations for key derivation (OWASP recommendation for 2026)
-	pbkdf2Iterations = 100000
+	pbkdf2Iterations = 600000 // HIGH-11 FIX: OWASP 2026 recommends ≥600K for PBKDF2-SHA256
 
 	// Salt size in bytes (128 bits)
 	saltSize = 16
@@ -112,6 +112,11 @@ func NewEncryptedLogger(passphrase string) (*EncryptedLogger, error) {
 		return nil, fmt.Errorf("creating cipher: %w", err)
 	}
 
+	// HIGH-12 FIX: zero the derived key after creating the AEAD cipher
+	for i := range key {
+		key[i] = 0
+	}
+
 	// Create underlying logger
 	dir := filepath.Dir(defaultAuditLogPath())
 	if err := os.MkdirAll(dir, 0755); err != nil {
@@ -171,7 +176,9 @@ func (el *EncryptedLogger) Log(e Entry) error {
 	}
 
 	// Encrypt with authenticated encryption
-	ciphertext := el.cipher.Seal(nil, nonce, plaintext, nil)
+	// MEDIUM-9 FIX: bind metadata as AAD to prevent field-swapping attacks
+	aad := fmt.Appendf(nil, "%d:%s", el.version, encryptionAlgorithm)
+	ciphertext := el.cipher.Seal(nil, nonce, plaintext, aad)
 
 	// Wrap in encrypted entry structure
 	encrypted := EncryptedEntry{
@@ -192,6 +199,11 @@ func (el *EncryptedLogger) Log(e Entry) error {
 
 	if _, err := el.logger.writer.Write(line); err != nil {
 		return fmt.Errorf("write encrypted audit entry: %w", err)
+	}
+
+	// MEDIUM-16 FIX: sync to ensure durability of audit entries
+	if f, ok := el.logger.writer.(*os.File); ok {
+		_ = f.Sync()
 	}
 
 	return nil
@@ -226,7 +238,8 @@ func (d *Decryptor) DecryptFile(encryptedPath, outputPath string) error {
 	}
 
 	// Create output file
-	outFile, err := os.Create(outputPath)
+	// MEDIUM-10 FIX: use 0600 permissions, not default 0644
+	outFile, err := os.OpenFile(outputPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
 	if err != nil {
 		return fmt.Errorf("creating output file: %w", err)
 	}
@@ -294,6 +307,7 @@ func (d *Decryptor) decryptEntry(encrypted EncryptedEntry) ([]byte, error) {
 	}
 
 	// Derive key from passphrase (same derivation as encryption)
+	// HIGH-12 FIX: zero key after use
 	key := pbkdf2.Key([]byte(d.passphrase), salt, pbkdf2Iterations, keySize, sha256.New)
 
 	// Create cipher
@@ -302,8 +316,15 @@ func (d *Decryptor) decryptEntry(encrypted EncryptedEntry) ([]byte, error) {
 		return nil, fmt.Errorf("creating cipher: %w", err)
 	}
 
+	// Zero the key
+	for i := range key {
+		key[i] = 0
+	}
+
 	// Decrypt
-	plaintext, err := aead.Open(nil, nonce, ciphertext, nil)
+	// MEDIUM-9 FIX: use AAD matching encryption side
+	aad := fmt.Appendf(nil, "%d:%s", encrypted.Version, encrypted.Algorithm)
+	plaintext, err := aead.Open(nil, nonce, ciphertext, aad)
 	if err != nil {
 		return nil, fmt.Errorf("decryption failed (wrong passphrase?): %w", err)
 	}
@@ -394,6 +415,11 @@ func NewEncryptedLoggerWithPath(path, passphrase string, maxSize int64) (*Encryp
 	aead, err := chacha20poly1305.NewX(key)
 	if err != nil {
 		return nil, fmt.Errorf("creating cipher: %w", err)
+	}
+
+	// HIGH-12 FIX: zero the derived key after creating AEAD cipher
+	for i := range key {
+		key[i] = 0
 	}
 
 	// Create directory if needed

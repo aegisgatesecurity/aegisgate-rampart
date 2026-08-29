@@ -69,7 +69,7 @@ func RedactText(r detector.Result) string {
 		cat == "pii_us_core" || cat == "pii_us_extended" ||
 		cat == "pii_financial" || cat == "pii_international"
 	if isPII {
-		if len(text) < 4 {
+		if len(text) <= 4 { // LOW-5 FIX: ≤4 chars reveals everything; use [REDACTED]
 			return "[REDACTED]"
 		}
 		return text[:2] + "***" + text[len(text)-2:]
@@ -106,7 +106,7 @@ func NewWithPath(path string, maxSize int64) (*Logger, error) {
 		return nil, fmt.Errorf("create audit log dir: %w", err)
 	}
 
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600) // MEDIUM-11 FIX: restrict to owner-only
 	if err != nil {
 		return nil, fmt.Errorf("open audit log: %w", err)
 	}
@@ -184,7 +184,7 @@ func (l *Logger) rotate() error {
 		_ = os.Truncate(l.path, 0)
 	}
 
-	f, err := os.OpenFile(l.path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	f, err := os.OpenFile(l.path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
 	if err != nil {
 		return fmt.Errorf("reopen audit log after rotate: %w", err)
 	}

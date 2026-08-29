@@ -140,8 +140,10 @@ func ZeroBytes(data []byte) {
 	runtime.KeepAlive(data)
 }
 
-// ZeroString explicitly zeros a string by converting to []byte first.
-// Note: This only zeros the converted copy, not the original string.
+// ZeroString is DEPRECATED and INEFFECTIVE — Go strings are immutable and cannot
+// be securely zeroed. This function zeros only a temporary copy, not the original.
+// HIGH-13 FIX: callers must use []byte from the start and call ZeroBytes directly.
+// Deprecated: use ZeroBytes on a []byte you control from creation.
 func ZeroString(s string) {
 	if s == "" {
 		return

@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/auditlog"
@@ -64,7 +65,9 @@ type PlatformEvent struct {
 func New(url string) *Forwarder {
 	enabled := url != ""
 	if enabled {
-		log.Printf("rampart: platform forwarding enabled → %s", url)
+		// LOW-12 FIX: mask URL in logs to avoid leaking internal infra
+		maskedURL := maskURL(url)
+		log.Printf("rampart: platform forwarding enabled → %s", maskedURL)
 	} else {
 		log.Printf("rampart: platform forwarding disabled (no platform_url configured)")
 	}
@@ -81,7 +84,8 @@ func New(url string) *Forwarder {
 func NewWithAPIKey(url, apiKey string) *Forwarder {
 	enabled := url != ""
 	if enabled {
-		log.Printf("rampart: platform forwarding enabled → %s (with API key)", url)
+		maskedURL := maskURL(url)
+		log.Printf("rampart: platform forwarding enabled → %s (with API key)", maskedURL)
 	} else {
 		log.Printf("rampart: platform forwarding disabled (no platform_url configured)")
 	}
@@ -104,7 +108,7 @@ func (f *Forwarder) Forward(entry auditlog.Entry) {
 	event := PlatformEvent{
 		Timestamp:     entry.Timestamp,
 		Source:        "rampart",
-		Version:       "0.4.0",
+		Version:       "0.6.2", // LOW-15 FIX: use actual version
 		Direction:     entry.Direction,
 		Host:          entry.Host,
 		Path:          entry.Path,
@@ -256,4 +260,13 @@ func (f *Forwarder) StartHeartbeatLoop(ctx context.Context, interval time.Durati
 	}()
 
 	return results
+}
+
+// maskURL masks the URL for safe logging, showing only the scheme and host.
+func maskURL(rawURL string) string {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return "[invalid-url]"
+	}
+	return u.Scheme + "://" + u.Hostname() + "/..."
 }

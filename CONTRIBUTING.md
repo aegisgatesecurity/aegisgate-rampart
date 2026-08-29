@@ -420,4 +420,4 @@ Together, we're building better AI security for everyone.
 ---
 
 **Last updated:** August 17, 2026  
-**Version:** 1.1 (v0.6.1 release)
+**Version:** 1.1 (v0.6.2 release)

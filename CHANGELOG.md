@@ -5,6 +5,93 @@ All notable changes to AegisGate Rampart are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.6.2] - 2026-08-29 - Security Audit Remediation 🔒
+
+> **v0.6.2** resolves all 56 findings from the comprehensive 5-phase security audit (4 CRITICAL, 13 HIGH, 22 MEDIUM, 17 LOW). 39 fixes applied, 17 accepted with documented justifications. Supply chain hardened (golang.org/x/crypto v0.55.0, 65 CI action tags pinned to full semver).
+
+### Critical Fixes (4)
+
+- **C1: AppleScript injection in notify.go** — Escape backslashes before quotes in notification text passed to `osascript`. Prevents arbitrary code execution via crafted detection event titles.
+- **C2: Dual CA certificate vulnerability** — New `LoadCAFromFiles()` method loads certificate and key explicitly. Prevents signing with unexpected CA from multi-cert PEM files.
+- **C3: Open proxy / SSRF** — Proxy now binds to `127.0.0.1` (was `0.0.0.0`). Added `isBlockedAddress()` + `isBlockedIP()` blocklist for tunnel connections. Prevents use as open proxy to internal services.
+- **C4: pprof debug server authentication** — pprof endpoint now requires token-based auth via `X-Pprof-Token` header. Prevents information disclosure (goroutine stacks, heap data).
+
+### High Fixes (13)
+
+- **H1: Race condition in `isTargetDomain()`** — Added `RLock` for concurrent map read safety.
+- **H2: Detection bypass via tunnel fallback** — Failed detection now returns 503 instead of falling back to tunnel.
+- **H3: API auth for pprof** — pprof requires auth token (same as C4).
+- **H4: Certificate cache size limit** — `maxCertCacheSize=1000` with eviction prevents memory exhaustion.
+- **H5: TLS cipher suites** — AEAD-only cipher suites enforced (removed CBC-mode ciphers).
+- **H6: CA path length constraint** — `MaxPathLen: 0`, `MaxPathLenZero: true` prevents CA misuse.
+- **H7: Shared DefaultTransport** — Replaced `http.DefaultTransport` modification with shared transport with explicit TLS config.
+- **H8: Webhook SSRF** — Added `validateWebhookURL()` function to validate webhook destinations.
+- **H9: Enterprise gate offline handling** — Returns error on network failure instead of accepting.
+- **H10: Enterprise gate non-401 handling** — Requires explicit `Connect()` with HTTP 200 response.
+- **H11: PBKDF2 iterations** — Increased from 100,000 to 600,000 (OWASP 2023 recommendation).
+- **H12: Key zeroing** — Zero encryption key after AEAD creation (3 locations).
+- **H13: ZeroString deprecation** — Deprecated with warning, secure zeroing documented.
+
+### Medium Fixes (22)
+
+- Random serial numbers via `crypto/rand` (was sequential)
+- Detection text redaction in proxy logs
+- Body size limits (proxy 100MB, webhook 1MB, updater 1MB)
+- Hostname removal from proxy logs
+- AAD for audit log encryption
+- File permissions set to 0600 for sensitive files
+- Constant-time comparison via `crypto/subtle.ConstantTimeCompare`
+- `Sync()` after write for audit log integrity
+- Webhook body limit (1MB)
+- Updater body limit (1MB)
+- TLS MinVersion enforcement
+- PII redaction for short values (≤4 chars)
+- Path validation in audit log search
+- Scanner buffer limit (1MB)
+- URL masking in forward logs
+- Hash record file permissions (0600)
+- And more...
+
+### Low Fixes (17)
+
+- IP SAN in certificates via `net.ParseIP`
+- Dead code path removal in tunnel fallback
+- PII redaction improvements
+- Path validation in search
+- Scanner buffer sizing
+- URL masking in forward.go
+- Version string correction (0.6.1 → actual version)
+- Icon TOCTOU fix (os.UserCacheDir + O_EXCL)
+- And more...
+
+### Supply Chain
+
+- `golang.org/x/crypto` v0.54.0 → v0.55.0
+- 65 CI action tags pinned to full semver (e.g., `@v4.2.2` instead of `@v4`)
+- Shell injection in CI workflows fixed (env vars instead of `${{ }}`)
+
+### Verification
+
+- go vet: clean
+- go build: clean
+- go test -race: 29/29 pass, 0 races
+- govulncheck: 0 called, 1 module (openpgp, uncalled)
+- gitleaks: 0 leaks
+- semgrep: 0 findings
+- trivy: 1 uncalled module
+- gosec: 56 (all known/accepted)
+- fuzz: 5K+ executions, 0 crashes
+
+### Accepted Risks (17)
+
+M2, M7, M8, M13, M14, M15, M17, M21, M22, L2, L3, L7, L11, L12, L14, L15, L16 — each documented with justification in the audit report.
+
+### Audit Report
+
+Full audit report: `.plans/SECURITY-AUDIT-2026-08-29.md`
+
+---
+
 ## [0.6.1] - 2026-08-16
 
 ### Added — 18 High-Value SOC Detection Patterns

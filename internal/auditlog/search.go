@@ -69,7 +69,9 @@ func (l *Logger) Search(query SearchQuery) (*SearchResult, error) {
 		result.Limit = 100
 	}
 
+	// LOW-9 FIX: increase scanner buffer to handle large audit entries (up to 1MB)
 	scanner := bufio.NewScanner(file)
+	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 	lineNum := 0
 	matched := 0
 
@@ -229,8 +231,17 @@ func matchesQuery(entry Entry, query SearchQuery) bool {
 
 // SearchFile searches an audit log file by path (convenience function)
 func SearchFile(logPath string, query SearchQuery) (*SearchResult, error) {
+	// LOW-8 FIX: validate path is within the audit log directory to prevent path traversal
+	defaultPath := GetLogPath()
+	defaultDir := filepath.Dir(defaultPath)
+	cleanPath := filepath.Clean(logPath)
+	cleanDir := filepath.Dir(cleanPath)
+	if cleanDir != defaultDir && !strings.HasPrefix(cleanDir, defaultDir) {
+		return nil, fmt.Errorf("search path outside audit log directory")
+	}
+
 	// Create a temporary logger for searching
-	logger := &Logger{path: logPath}
+	logger := &Logger{path: cleanPath}
 	return logger.Search(query)
 }
 

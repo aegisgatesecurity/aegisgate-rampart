@@ -4,6 +4,8 @@
 package enterprise
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -49,7 +51,18 @@ func TestConnectAndDisconnect(t *testing.T) {
 	// Clean up any existing config
 	_ = Disconnect()
 
-	testURL := "https://platform.aegisgate.com"
+	// Use a local mock server for connection testing
+	mock := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/v1/health" {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"status":"ok"}`))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	t.Cleanup(mock.Close)
+
+	testURL := mock.URL
 	testToken := "test-api-token-12345"
 
 	// Test connection

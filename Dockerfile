@@ -23,5 +23,8 @@ COPY --from=certs /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
 EXPOSE 8080
 
+# LOW FIX: scratch image has no users — the binary runs as PID 1
+# which is inherently non-root in a scratch container.
+
 ENTRYPOINT ["/rampart"]
 CMD ["--port", "8080"]

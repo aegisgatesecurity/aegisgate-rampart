@@ -170,7 +170,9 @@ func (g *Gate) loadConfig() error {
 
 	g.platformURL = cfg.URL
 	g.apiToken = cfg.APIToken
-	g.isConnected = cfg.URL != "" && cfg.APIToken != ""
+	// HIGH-10 FIX: don't auto-enable on file load — require explicit Connect()
+	// to validate. Mark as pending so features check connectivity.
+	g.isConnected = false
 
 	return nil
 }
@@ -205,15 +207,16 @@ func getConfigPath() string {
 
 func testConnection(url, token string) error {
 	if url == "" {
-		return fmt.Errorf("URL is required")
+		return fmt.Errorf("url is required")
 	}
 	if token == "" {
-		return fmt.Errorf("API token is required")
+		return fmt.Errorf("api token is required")
 	}
 
-	// Verify connectivity by calling the Platform health endpoint.
-	// If the host is unreachable, log a warning but still accept the
-	// configuration — the connection will be retried on feature use.
+	// HIGH-9/HIGH-10 FIX: require successful 200 response, not just non-401.
+	// Previously, network errors returned nil (success) and any non-401
+	// status was accepted — both enabled enterprise features without
+	// a valid Platform connection.
 	client := &http.Client{Timeout: 10 * time.Second}
 	req, err := http.NewRequest("GET", strings.TrimRight(url, "/")+"/api/v1/health", nil)
 	if err != nil {
@@ -223,15 +226,16 @@ func testConnection(url, token string) error {
 
 	resp, err := client.Do(req)
 	if err != nil {
-		// Network unreachable — accept config but warn.
-		// Platform may not be running yet, or DNS may not resolve in
-		// offline/test environments.
-		return nil
+		// Network unreachable — do NOT accept. Require actual connectivity.
+		return fmt.Errorf("cannot reach Platform at %s: %w", url, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
 		return fmt.Errorf("invalid API token")
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("platform health check failed: HTTP %d", resp.StatusCode)
 	}
 	return nil
 }

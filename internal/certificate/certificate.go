@@ -21,10 +21,14 @@ import (
 	"golang.org/x/crypto/hkdf"
 	"io"
 	"math/big"
+	"net"
 	"os"
 	"sync"
 	"time"
 )
+
+// HIGH-4: maximum cert cache size (LRU eviction when exceeded)
+const maxCertCacheSize = 1000
 
 // Certificate represents a certificate with its key
 type Certificate struct {
@@ -61,8 +65,14 @@ func (m *Manager) GenerateSelfSigned() (*Certificate, error) {
 		return nil, fmt.Errorf("failed to generate private key: %w", err)
 	}
 
+	// MEDIUM-1 FIX: use cryptographically random serial number
+	serialNumber, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate serial number: %w", err)
+	}
+
 	template := x509.Certificate{
-		SerialNumber: big.NewInt(1),
+		SerialNumber: serialNumber,
 		Subject: pkix.Name{
 			CommonName:   "AegisGate CA",
 			Organization: []string{"AegisGate"},
@@ -75,6 +85,9 @@ func (m *Manager) GenerateSelfSigned() (*Certificate, error) {
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
 		BasicConstraintsValid: true,
 		IsCA:                  true,
+		// HIGH-6 FIX: restrict CA to only sign end-entity certs, not subordinate CAs
+		MaxPathLen: 0,
+		MaxPathLenZero: true,
 	}
 
 	certDER, err := x509.CreateCertificate(rand.Reader, &template, &template, &key.PublicKey, key)
@@ -129,19 +142,31 @@ func (m *Manager) GenerateProxyCertificate(hostname string) (*Certificate, error
 		return nil, fmt.Errorf("failed to generate private key: %w", err)
 	}
 
+	// MEDIUM-1 FIX: use cryptographically random serial number
+	serialNumber, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate serial number: %w", err)
+	}
+
 	template := x509.Certificate{
-		SerialNumber: big.NewInt(time.Now().UnixNano()),
+		SerialNumber: serialNumber,
 		Subject: pkix.Name{
 			CommonName:   hostname,
 			Organization: []string{"AegisGate"},
 			Country:      []string{"US"},
 		},
-		DNSNames:              []string{hostname},
 		NotBefore:             time.Now(),
 		NotAfter:              time.Now().AddDate(1, 0, 0),
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		BasicConstraintsValid: true,
+	}
+
+	// LOW-1 FIX: use IP SAN for IP addresses, DNS SAN for hostnames
+	if ip := net.ParseIP(hostname); ip != nil {
+		template.IPAddresses = []net.IP{ip}
+	} else {
+		template.DNSNames = []string{hostname}
 	}
 
 	certDER, err := x509.CreateCertificate(rand.Reader, &template, m.caCertificate.Certificate, &key.PublicKey, m.caPrivateKey)
@@ -169,7 +194,77 @@ func (m *Manager) GenerateProxyCertificate(hostname string) (*Certificate, error
 	}
 	m.certCache[hostname] = certObj
 
+	// HIGH-4 FIX: evict oldest entries when cache exceeds max size
+	if len(m.certCache) > maxCertCacheSize {
+		// Simple eviction: remove one random entry (not truly LRU, but bounded)
+		for k := range m.certCache {
+			if k != "self-signed-ca" && k != hostname {
+				delete(m.certCache, k)
+				break
+			}
+		}
+	}
+
 	return certObj, nil
+}
+
+// LoadCAFromFiles loads a CA certificate and private key from PEM files.
+// CRITICAL-2 FIX: allows the file-based CA (installed by user) to be used
+// for signing MITM certificates, instead of generating a separate CA.
+func (m *Manager) LoadCAFromFiles(certPath, keyPath string) error {
+	certPEM, err := os.ReadFile(certPath)
+	if err != nil {
+		return fmt.Errorf("read CA cert: %w", err)
+	}
+
+	keyPEM, err := os.ReadFile(keyPath)
+	if err != nil {
+		return fmt.Errorf("read CA key: %w", err)
+	}
+
+	certBlock, _ := pem.Decode(certPEM)
+	if certBlock == nil {
+		return fmt.Errorf("failed to decode CA cert PEM")
+	}
+
+	parsedCert, err := x509.ParseCertificate(certBlock.Bytes)
+	if err != nil {
+		return fmt.Errorf("parse CA cert: %w", err)
+	}
+
+	keyBlock, _ := pem.Decode(keyPEM)
+	if keyBlock == nil {
+		return fmt.Errorf("failed to decode CA key PEM")
+	}
+
+	var privateKey interface{}
+	switch keyBlock.Type {
+	case "EC PRIVATE KEY":
+		privateKey, err = x509.ParseECPrivateKey(keyBlock.Bytes)
+	case "RSA PRIVATE KEY":
+		privateKey, err = x509.ParsePKCS1PrivateKey(keyBlock.Bytes)
+	case "PRIVATE KEY":
+		privateKey, err = x509.ParsePKCS8PrivateKey(keyBlock.Bytes)
+	default:
+		return fmt.Errorf("unsupported CA key type %q", keyBlock.Type)
+	}
+	if err != nil {
+		return fmt.Errorf("parse CA private key: %w", err)
+	}
+
+	certObj := &Certificate{
+		Certificate: parsedCert,
+		PrivateKey:  privateKey,
+		CertBytes:   certPEM,
+		KeyBytes:    keyPEM,
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.certCache["self-signed-ca"] = certObj
+	m.caCertificate = certObj
+	m.caPrivateKey = privateKey
+
+	return nil
 }
 
 // Save saves a certificate to file

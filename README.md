@@ -7,7 +7,7 @@
 HTTPS MITM proxy · 176 regex patterns + Char CNN-BiLSTM · Monitor & Block modes · Zero telemetry by default
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Version](https://img.shields.io/badge/version-v0.6.1-brightgreen.svg)](https://github.com/aegisgatesecurity/aegisgate-rampart/releases/tag/v0.6.1)
+[![Version](https://img.shields.io/badge/version-v0.6.2-brightgreen.svg)](https://github.com/aegisgatesecurity/aegisgate-rampart/releases/tag/v0.6.2)
 [![CI](https://github.com/aegisgatesecurity/aegisgate-rampart/actions/workflows/ci.yml/badge.svg)](https://github.com/aegisgatesecurity/aegisgate-rampart/actions/workflows/ci.yml)
 [![Coverage](https://img.shields.io/badge/coverage-80.7%25-brightgreen.svg)](#test-coverage)
 [![Security](https://github.com/aegisgatesecurity/aegisgate-rampart/actions/workflows/security.yml/badge.svg)](https://github.com/aegisgatesecurity/aegisgate-rampart/actions/workflows/security.yml)
@@ -43,7 +43,7 @@ HTTPS MITM proxy · 176 regex patterns + Char CNN-BiLSTM · Monitor & Block mode
 - **📦 Enterprise Features** — Config hash verification, cosign signing support, self-hosted LLM configuration, batch scanning.
 - **✅ 80.7% test coverage** (88 test files, 27 packages, 7 k6 load tests, 0.0000% crash rate at 2,000+ concurrent users).
 
-## What's New in v0.6.1
+## What's New in v0.6.2
 
 - **🔒 23 New SOC Detection Patterns** — SWIFT/BIC banking codes (3 patterns), CPT/HCPCS medical billing codes (11 patterns), and OT/ICS protocol patterns (9 patterns: Modbus, DNP3, OPC-UA). Parity with Platform v4.1.0 and Lens v0.3.1.
 - **🔧 Go 1.26.6** — Runtime bump from Go 1.25.0, fixes 5 stdlib vulnerabilities.
@@ -285,7 +285,7 @@ curl -s http://localhost:8080/stats
 | Crash rate | 0.0000% |
 | Peak concurrent users | 2,000+ |
 
-See full results in the v0.6.1 release notes.
+See full results in the v0.6.2 release notes.
 
 ## Load Testing
 

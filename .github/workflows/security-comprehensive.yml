@@ -29,7 +29,7 @@ jobs:
   semgrep:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7.0.0
+      - uses: actions/checkout@v7.0.1
       - name: Install Semgrep
         run: pipx install semgrep && echo "$HOME/.local/bin" >> $GITHUB_PATH
       - name: Semgrep Scan
@@ -52,7 +52,7 @@ jobs:
   fuzz-config:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7.0.0
+      - uses: actions/checkout@v7.0.1
       - uses: actions/setup-go@v7.0.0
         with:
           go-version: '1.26.6'
@@ -71,7 +71,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v7.0.0
+      - uses: actions/checkout@v7.0.1
       - uses: actions/setup-go@v7.0.0
         with:
           go-version: '1.26.6'

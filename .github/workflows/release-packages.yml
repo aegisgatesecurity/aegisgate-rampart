@@ -52,7 +52,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.0
       - name: Download binary
-        uses: actions/download-artifact@v6.0.0
+        uses: actions/download-artifact@v8.0.1
         with:
           name: rampart-linux-amd64-pkg
           path: .
@@ -97,7 +97,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.0
       - name: Download binary
-        uses: actions/download-artifact@v6.0.0
+        uses: actions/download-artifact@v8.0.1
         with:
           name: rampart-linux-amd64-pkg
           path: .
@@ -150,7 +150,7 @@ jobs:
           VERSION=${VERSION#v}
           echo "version=$VERSION" >> $GITHUB_OUTPUT
       - name: Download packages
-        uses: actions/download-artifact@v6.0.0
+        uses: actions/download-artifact@v8.0.1
         with:
           pattern: aegisgate-rampart-*
           merge-multiple: true

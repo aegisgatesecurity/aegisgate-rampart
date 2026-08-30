@@ -24,18 +24,27 @@ permissions:
 jobs:
   # ========================================
   # Semgrep — multi-language SAST
+  # (returntocorp/semgrep-action is deprecated/archived — use direct CLI)
   # ========================================
   semgrep:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.0
+      - name: Install Semgrep
+        run: pipx install semgrep && echo "$HOME/.local/bin" >> $GITHUB_PATH
       - name: Semgrep Scan
-        uses: returntocorp/semgrep-action@v1.0.0
-        with:
-          config: .semgrep.yml
-          # Report findings as SARIF upload but don't fail the job
-          # Real issues should be caught by gosec + CodeQL in security.yml
+        run: |
+          if [ -f .semgrep.yml ]; then
+            semgrep scan --config .semgrep.yml --sarif --output semgrep-results.sarif || true
+          else
+            semgrep scan --config auto --sarif --output semgrep-results.sarif || true
+          fi
         continue-on-error: true
+      - name: Upload SARIF
+        if: always() && hashFiles('semgrep-results.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v4.37.9
+        with:
+          sarif_file: semgrep-results.sarif
 
   # ========================================
   # Go Fuzzing — native fuzz targets
@@ -88,20 +97,19 @@ jobs:
             exit 0
           fi
       - name: ZAP Baseline Scan
-        uses: zaproxy/action-baseline@v0.12.0
+        uses: zaproxy/action-baseline@v0.15.0
         with:
           target: 'http://localhost:8080'
-          rules_file: '.zap/rules.tsv'
+          rules_file_name: '.zap/rules.tsv'
           cmd_options: '-a -j'
-          report_title: 'AegisGate Rampart ZAP Scan'
           fail_action: false
         continue-on-error: true
       - name: ZAP API Scan — /detect
-        uses: zaproxy/action-api-scan@v0.2.0
+        uses: zaproxy/action-api-scan@v0.10.0
         with:
           target: 'http://localhost:8080'
-          api_file: '.zap/detect-api-openapi.json'
-          report_title: 'AegisGate Rampart API ZAP Scan'
+          format: 'openapi'
+          docker_name: 'ghcr.io/zaproxy/zaproxy:latest'
         continue-on-error: true
 
   # ========================================

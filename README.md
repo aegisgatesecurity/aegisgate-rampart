@@ -2,7 +2,9 @@
 
 # 🛡️ AegisGate Rampart
 
-**Local AI security proxy — intercept, detect, block.**
+**Local firewall for AI coding tools — intercept, detect, block.**
+
+*A free local proxy that sits between your editor and the AI model, catching secrets and sensitive data before they leave your machine.*
 
 HTTPS MITM proxy · 176 regex patterns + Char CNN-BiLSTM · Monitor & Block modes · Zero telemetry by default
 
@@ -33,104 +35,80 @@ HTTPS MITM proxy · 176 regex patterns + Char CNN-BiLSTM · Monitor & Block mode
 
 ---
 
-## What's New in v0.6.0
+## What is Rampart?
 
-- **🛡️ Block Mode** — Actively block threats at the proxy level. Returns HTTP 403 with structured JSON response. Configurable threshold, categories, and block direction (request, response, or both).
-- **🧠 ML Adversarial Detection** — Char CNN-BiLSTM with Attention model detects adversarial prompt injections (instruction override, roleplay injection, obfuscated commands) in real time.
-- **🔐 Encrypted Audit Logs** — ChaCha20-Poly1305 authenticated encryption with PBKDF2-SHA256 key derivation. Key is never stored — decryption requires original passphrase.
-- **📊 Anonymized Metrics** — Opt-in privacy-preserving telemetry. Domain hashed with SHA-256, timestamps rounded to hour, only false positives reported.
-- **🔔 Webhook Notifications** — Configurable webhook integration for detection alerts. Custom headers, multiple endpoints.
-- **📦 Enterprise Features** — Config hash verification, cosign signing support, self-hosted LLM configuration, batch scanning.
-- **✅ 80.7% test coverage** (88 test files, 27 packages, 7 k6 load tests, 0.0000% crash rate at 2,000+ concurrent users).
+Rampart is a **local security tool for developers** who use AI coding assistants like GitHub Copilot, Cursor, or local LLMs (Ollama, LM Studio). It sits between your editor and the AI model, scanning everything you send — and everything the AI sends back — for sensitive data and security risks.
 
-## What's New in v0.6.2
-
-- **🔒 23 New SOC Detection Patterns** — SWIFT/BIC banking codes (3 patterns), CPT/HCPCS medical billing codes (11 patterns), and OT/ICS protocol patterns (9 patterns: Modbus, DNP3, OPC-UA). Parity with Platform v4.1.0 and Lens v0.3.1.
-- **🔧 Go 1.26.6** — Runtime bump from Go 1.25.0, fixes 5 stdlib vulnerabilities.
-- **🧪 Test coverage** — 88 test files, 27 packages, all passing with `-race`.
-
-## What Is Rampart?
-
-Rampart is a **local HTTPS MITM proxy** that sits between your applications and AI API endpoints. It intercepts traffic in transit, runs real-time detection for PII, secrets, XSS, compliance violations, and adversarial prompt injections — and can **actively block** threats before they reach the AI service.
+Think of it as a firewall for AI coding tools. It catches the moment you're about to send a database password to Copilot, or when the AI generates code that contains an API key, and stops it before it's too late.
 
 - **In-transit interception.** Unlike Lens (browser-level) or Platform (gateway-level), Rampart operates at the network proxy layer — it sees every request and response.
-- **176 regex patterns + ML.** Same detection engine as AegisGate Platform v4.1.0. Regex catches known patterns; Char CNN-BiLSTM catches adversarial paraphrasing.
+- **176 regex patterns + ML.** Same detection engine as AegisGate Platform. Regex catches known patterns; Char CNN-BiLSTM catches adversarial paraphrasing.
 - **Monitor or Block.** Log-only mode for visibility. Block mode for enforcement with configurable thresholds and categories.
 - **Zero telemetry by default.** Air-gap mode when `--platform-url` is not set. No network calls. All detection is local.
 - **Free. Forever.** Apache 2.0, single binary, no external dependencies.
 
-## Operating Modes
+## Do I need Rampart?
 
-| Mode | Flag | Behavior | Use Case |
-|------|------|----------|----------|
-| **Monitor** | _(default)_ | Log & alert, allow all traffic | Developer visibility |
-| **Block** | `--block` | Log, alert, **actively block threats** | Security enforcement |
+**If you use AI chat in a browser (ChatGPT, Claude, etc.):** You need [Lens](https://github.com/aegisgatesecurity/aegisgate-lens) — it's a free browser extension that protects you in the browser. Rampart is not for this use case.
 
-```bash
-# Monitor mode (default) — log only
-./rampart
+**If you use AI coding tools (Copilot, Cursor, local LLMs, API calls):** You need Rampart. It protects the places Lens can't reach — your IDE, your terminal, your API calls.
 
-# Block mode — actively block PII, secrets, XSS
-./rampart --block
+| Your setup | What to use |
+|-----------|-------------|
+| ChatGPT or Claude in a browser | [Lens](https://github.com/aegisgatesecurity/aegisgate-lens) (free browser extension) |
+| GitHub Copilot in VS Code | **Rampart** (IDE plugin) |
+| Cursor AI editor | **Rampart** (IDE plugin) |
+| Local LLMs (Ollama, LM Studio) | **Rampart** (local proxy) |
+| API calls to OpenAI/Anthropic from your code | **Rampart** (local proxy) |
+| Both browser chat AND coding tools | **Lens + Rampart** (both are free) |
 
-# Block mode with custom threshold
-./rampart --block --mode=block
-```
+## What does it catch?
 
-### Block Mode Configuration
-
-```json
-{
-  "mode": "block",
-  "block": {
-    "threshold": "high",
-    "categories": [],
-    "status_code": 403,
-    "include_detections": true,
-    "message": "Request blocked by AegisGate Rampart",
-    "block_response": "both"
-  }
-}
-```
-
-| Field | Default | Description |
-|-------|---------|-------------|
-| `threshold` | `"high"` | Minimum severity to block: `"low"`, `"medium"`, `"high"`, `"critical"` |
-| `categories` | `[]` (all) | Categories to block: `"pii"`, `"secrets"`, `"xss"`, `"toxicity"`, `"ml_threat"` |
-| `status_code` | `403` | HTTP status code for blocked responses |
-| `include_detections` | `true` | Include detection details in block response |
-| `message` | `"Request blocked by AegisGate Rampart"` | Custom block message |
-| `block_response` | `"both"` | Block direction: `"request"`, `"response"`, or `"both"` |
-
-### Block Mode Response
-
-When a request is blocked, Rampart returns a structured JSON response:
-
-```json
-{
-  "direction": "request",
-  "host": "api.openai.com",
-  "path": "/v1/chat/completions",
-  "blocked": true,
-  "reason": "pii: ssn detected in response",
-  "severity": "critical",
-  "message": "Request blocked by AegisGate Rampart",
-  "results": [
-    {"category": "pii", "severity": "critical", "rule": "pii_ssn", "text": "123-45-6789"}
-  ]
-}
-```
+| Risk | Examples |
+|------|----------|
+| **Secrets** | API keys (AWS, GitHub, OpenAI, Stripe), database passwords, SSH private keys, JWT tokens, OAuth tokens |
+| **Personal info (PII)** | SSN, email, phone, credit card, passport, bank routing numbers |
+| **Prompt injection** | Adversarial prompts designed to make the AI ignore safety rules, leak system prompts, or execute unauthorized actions |
+| **Compliance violations** | Text that violates HIPAA, GDPR, PCI-DSS, EU AI Act |
+| **Malicious code (XSS)** | Script injection, event handlers, encoded payloads, SVG vectors |
+| **Response risks** | PII leaked in AI responses, hallucinated secrets, injected content in model output |
 
 ## Quick Start
+
+### Option 1: Install the IDE plugin (recommended)
+
+**VS Code / Cursor:**
+1. Open the Extensions panel (`Ctrl+Shift+X` / `Cmd+Shift+X`)
+2. Search for "AegisGate Rampart"
+3. Click Install, then Reload
+4. Detection runs automatically as you type — results appear as inline warnings
+
+**JetBrains (IntelliJ, PyCharm, WebStorm, etc.):**
+1. Open Settings → Plugins → Marketplace
+2. Search for "AegisGate Rampart"
+3. Click Install, then Restart
+4. Detection results appear in the Problems tool window
+
+**Neovim / any LSP editor:**
+```bash
+# Download the Rampart LSP binary
+curl -L https://github.com/aegisgatesecurity/aegisgate-rampart/releases/latest/download/rampart-lsp-linux-amd64 -o /usr/local/bin/rampart-lsp
+chmod +x /usr/local/bin/rampart-lsp
+
+# Add to your LSP config (Neovim example)
+# lspconfig.rampart_lsp.setup({})
+```
+
+### Option 2: Run as a local proxy
 
 ```bash
 # Build
 CGO_ENABLED=0 go build -o bin/rampart ./cmd/rampart
 
-# Monitor mode (default)
+# Monitor mode (default) — log only
 ./bin/rampart
 
-# Block mode — actively block threats
+# Block mode — actively block PII, secrets, XSS
 ./bin/rampart --block
 
 # Install CA cert (required for HTTPS interception)
@@ -138,22 +116,39 @@ CGO_ENABLED=0 go build -o bin/rampart ./cmd/rampart
 
 # Custom port + block mode + rate limiting
 ./bin/rampart --port 9090 --block --rate-limit=10000
-
-# With Platform telemetry (opt-in, metadata only)
-./bin/rampart --platform-url https://platform.aegisgate.dev --platform-api-key rag_...
-
-# Daemon mode (system tray + notifications)
-./bin/rampart --daemon --block
-
-# Check status
-./bin/rampart --status
-
-# Auto-start on boot
-./bin/rampart --autostart
-
-# Print version
-./bin/rampart version
 ```
+
+### Option 3: Docker
+
+```bash
+docker run -d \
+  -p 8443:8443 \
+  -p 9090:9090 \
+  ghcr.io/aegisgatesecurity/aegisgate-rampart:v0.6.2
+```
+
+<details>
+<summary><strong>⚙️ Additional CLI Options</strong></summary>
+
+```bash
+rampart                              # Monitor mode (default)
+rampart --block                      # Block mode (actively block threats)
+rampart --mode=monitor               # Explicit monitor mode
+rampart --mode=block                 # Explicit block mode
+rampart --port 9090                  # Custom port (default: 8080)
+rampart --rate-limit 10000           # Rate limit (requests/second)
+rampart --trust                      # Install CA cert into OS trust store
+rampart --autostart                  # Configure auto-start on boot
+rampart --no-autostart               # Remove auto-start
+rampart --status                     # Show daemon PID, trust, autostart status
+rampart --daemon                     # Daemon mode (tray + notifications)
+rampart --platform-url URL           # Opt-in Platform telemetry
+rampart --platform-api-key KEY       # API key for Platform authentication
+rampart version                      # Print version
+rampart -v                           # Verbose output
+```
+
+</details>
 
 ## What It Does
 
@@ -185,6 +180,58 @@ Your Machine                                          AI APIs
 └─────────────────────────────────────────────────────────────────┘
 ```
 
+## Operating Modes
+
+| Mode | Flag | Behavior | Use Case |
+|------|------|----------|----------|
+| **Monitor** | _(default)_ | Log & alert, allow all traffic | Developer visibility |
+| **Block** | `--block` | Log, alert, **actively block threats** | Security enforcement |
+
+When a request is blocked, Rampart returns a structured JSON response:
+
+```json
+{
+  "direction": "request",
+  "host": "api.openai.com",
+  "path": "/v1/chat/completions",
+  "blocked": true,
+  "reason": "pii: ssn detected in response",
+  "severity": "critical",
+  "message": "Request blocked by AegisGate Rampart",
+  "results": [
+    {"category": "pii", "severity": "critical", "rule": "pii_ssn", "text": "123-45-6789"}
+  ]
+}
+```
+
+<details>
+<summary><strong>⚙️ Block Mode Configuration</strong></summary>
+
+```json
+{
+  "mode": "block",
+  "block": {
+    "threshold": "high",
+    "categories": [],
+    "status_code": 403,
+    "include_detections": true,
+    "message": "Request blocked by AegisGate Rampart",
+    "block_response": "both"
+  }
+}
+```
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| `threshold` | `"high"` | Minimum severity to block: `"low"`, `"medium"`, `"high"`, `"critical"` |
+| `categories` | `[]` (all) | Categories to block: `"pii"`, `"secrets"`, `"xss"`, `"toxicity"`, `"ml_threat"` |
+| `status_code` | `403` | HTTP status code for blocked responses |
+| `include_detections` | `true` | Include detection details in block response |
+| `message` | `"Request blocked by AegisGate Rampart"` | Custom block message |
+| `block_response` | `"both"` | Block direction: `"request"`, `"response"`, or `"both"` |
+
+</details>
+
 ## Detection Capabilities
 
 | Category | Patterns | Detects |
@@ -199,6 +246,14 @@ Your Machine                                          AI APIs
 | **OT/ICS Protocols** | 9 | Modbus, DNP3, OPC-UA |
 | **ML (Neural)** | 1 model | Char CNN-BiLSTM adversarial prompt detection |
 
+## IDE Coverage
+
+| Editor | Plugin | Type | Status |
+|--------|--------|------|--------|
+| **JetBrains** (IntelliJ, PyCharm, etc.) | [aegisgate-rampart-jetbrains](https://github.com/aegisgatesecurity/aegisgate-rampart-jetbrains) | Native plugin | ✅ v0.3.0 |
+| **VS Code** | [aegisgate-rampart-ext](https://github.com/aegisgatesecurity/aegisgate-rampart-ext) | Extension | ✅ v0.3.0 |
+| **Any editor** | LSP server (`rampart-lsp`) | Language Server Protocol | ✅ v0.3.0 |
+
 ## Platform Support
 
 | Platform | Config Directory | Auto-Start | Notifications | CA Trust | System Tray |
@@ -208,26 +263,6 @@ Your Machine                                          AI APIs
 | **Windows** | `%AppData%\AegisGate Rampart\` | Registry Run key | beeep (Win32 toast) | certutil -addstore | fyne/systray |
 
 **Build requirements**: Linux and Windows build with `CGO_ENABLED=0`. macOS requires `CGO_ENABLED=1` (systray uses Objective-C).
-
-## CLI Reference
-
-```
-rampart                              # Monitor mode (default)
-rampart --block                      # Block mode (actively block threats)
-rampart --mode=monitor               # Explicit monitor mode
-rampart --mode=block                 # Explicit block mode
-rampart --port 9090                  # Custom port (default: 8080)
-rampart --rate-limit 10000           # Rate limit (requests/second)
-rampart --trust                      # Install CA cert into OS trust store
-rampart --autostart                  # Configure auto-start on boot
-rampart --no-autostart               # Remove auto-start
-rampart --status                     # Show daemon PID, trust, autostart status
-rampart --daemon                     # Daemon mode (tray + notifications)
-rampart --platform-url URL           # Opt-in Platform telemetry
-rampart --platform-api-key KEY       # API key for Platform authentication
-rampart version                      # Print version
-rampart -v                           # Verbose output
-```
 
 ## API Endpoints (IDE Integration)
 
@@ -259,20 +294,92 @@ curl -s -X POST http://localhost:8080/detect \
  "severity": "critical", "results": [...]}
 ```
 
-### Stats Endpoint
+## Privacy (12 Non-Negotiables)
+
+Rampart enforces the same 12 privacy rules as Lens and Platform:
+
+1. No prompt text stored or sent
+2. No URLs logged
+3. No page content stored
+4. No PII stored
+5. No credentials stored
+6. No fingerprinting
+7. No cross-site tracking
+8. No provider metadata collected
+9. No keystroke logging
+10. No mouse tracking
+11. No session IDs stored
+12. No IP addresses logged
+
+**Air-gap mode**: When `--platform-url` is not set, Rampart makes zero network calls. All detection is local.
+
+<details>
+<summary><strong>🔐 Enhanced Privacy Features (v0.5.1+)</strong></summary>
+
+**Audit Log Encryption:**
+- Encrypt audit logs at rest with **ChaCha20-Poly1305** authenticated encryption
+- Key derived from passphrase via **PBKDF2-SHA256** (100K iterations)
+- Key is **NEVER stored** - decryption requires original passphrase
+- Protects against disk theft and forensic analysis
+
 ```bash
-curl -s http://localhost:8080/stats
-{"total_requests": 142, "detections": 23, "blocked_requests": 5,
- "mode": "block", ...}
+# Generate secure passphrase
+rampart generate-passphrase
+
+# Enable encrypted audit logging
+rampart --audit-key-passphrase="your-passphrase"
+
+# Decrypt logs later
+rampart decrypt-audit --audit-key-passphrase="your-passphrase" audit.log.enc output.log
 ```
 
-## IDE Coverage
+**Anonymized Metrics:**
+- **Opt-in only** - disabled by default
+- Domain hashed with **SHA-256** → 16 hex chars (cannot reverse)
+- Timestamps rounded to hour (cannot correlate events)
+- Only **false positives** sent (user-confirmed)
+- No identifiers, no content, no PII
 
-| Editor | Plugin | Type | Status |
-|--------|--------|------|--------|
-| **JetBrains** (IntelliJ, PyCharm, etc.) | [aegisgate-rampart-jetbrains](https://github.com/aegisgatesecurity/aegisgate-rampart-jetbrains) | Native plugin | ✅ v0.3.0 |
-| **VS Code** | [aegisgate-rampart-ext](https://github.com/aegisgatesecurity/aegisgate-rampart-ext) | Extension | ✅ v0.3.0 |
-| **Any editor** | LSP server (`rampart-lsp`) | Language Server Protocol | ✅ v0.3.0 |
+```bash
+# Enable privacy-preserving telemetry
+rampart --anonymized-metrics
+```
+
+See **[PRIVACY.md](PRIVACY.md)** for complete privacy documentation.
+
+</details>
+
+## Product Family
+
+| Product | Surface | Approach | Detection | Block Mode |
+|---------|---------|----------|-----------|-------------|
+| **Lens** | Browser | DOM blocking (before send) | 155 regex + JS ML | ✅ Block in browser |
+| **Rampart** | Desktop, CLI, IDE | HTTPS proxy (in transit) | 176 regex + Go ML | ✅ Block at proxy |
+| **Platform** | Server | API gateway | 176 regex + Go ML | ✅ Block at gateway |
+
+**Lens blocks before send. Rampart blocks in transit. Platform blocks at the gateway.** Together = full-spectrum coverage.
+
+<details>
+<summary><strong>📦 What's New in v0.6.2</strong></summary>
+
+- **🔒 23 New SOC Detection Patterns** — SWIFT/BIC banking codes (3 patterns), CPT/HCPCS medical billing codes (11 patterns), and OT/ICS protocol patterns (9 patterns: Modbus, DNP3, OPC-UA). Parity with Platform v4.1.0 and Lens v0.3.1.
+- **🔧 Go 1.26.6** — Runtime bump from Go 1.25.0, fixes 5 stdlib vulnerabilities.
+- **🧪 Test coverage** — 88 test files, 27 packages, all passing with `-race`.
+
+</details>
+
+<details>
+<summary><strong>📦 What's New in v0.6.0</strong></summary>
+
+- **🛡️ Block Mode** — Actively block threats at the proxy level. Returns HTTP 403 with structured JSON response. Configurable threshold, categories, and block direction (request, response, or both).
+- **🧠 ML Adversarial Detection** — Char CNN-BiLSTM with Attention model detects adversarial prompt injections (instruction override, roleplay injection, obfuscated commands) in real time.
+- **🔐 Encrypted Audit Logs** — ChaCha20-Poly1305 authenticated encryption with PBKDF2-SHA256 key derivation. Key is never stored — decryption requires original passphrase.
+- **📊 Anonymized Metrics** — Opt-in privacy-preserving telemetry. Domain hashed with SHA-256, timestamps rounded to hour, only false positives reported.
+- **🔔 Webhook Notifications** — Configurable webhook integration for detection alerts. Custom headers, multiple endpoints.
+- **📦 Enterprise Features** — Config hash verification, cosign signing support, self-hosted LLM configuration, batch scanning.
+- **✅ 80.7% test coverage** (88 test files, 27 packages, 7 k6 load tests, 0.0000% crash rate at 2,000+ concurrent users).
+
+</details>
 
 ## Test Coverage
 
@@ -285,9 +392,8 @@ curl -s http://localhost:8080/stats
 | Crash rate | 0.0000% |
 | Peak concurrent users | 2,000+ |
 
-See full results in the v0.6.2 release notes.
-
-## Load Testing
+<details>
+<summary><strong>🧪 Load Testing Details</strong></summary>
 
 **v0.6.0 Results:** 235 RPS throughput, p95=201ms latency, **0.0000% crash rate** across 7 test scenarios.
 
@@ -317,6 +423,8 @@ k6 run rate-limit-test.js       # Rate limiter verification
 | Endurance | 70 | 91K | 0% | 5-min stable |
 | Rate Limit | 100 | 27K | 0% | 429s enforced |
 
+</details>
+
 ## 27 Target Endpoints
 
 Covers all 10 AI providers:
@@ -333,68 +441,6 @@ Covers all 10 AI providers:
 | DeepSeek | api.deepseek.com | chat.deepseek.com |
 | Duck.ai | api.duck.ai | duck.ai |
 | Meta AI | — | meta.ai |
-
-## Privacy (12 Non-Negotiables)
-
-Rampart enforces the same 12 privacy rules as Lens and Platform:
-
-1. No prompt text stored or sent
-2. No URLs logged
-3. No page content stored
-4. No PII stored
-5. No credentials stored
-6. No fingerprinting
-7. No cross-site tracking
-8. No provider metadata collected
-9. No keystroke logging
-10. No mouse tracking
-11. No session IDs stored
-12. No IP addresses logged
-
-**Air-gap mode**: When `--platform-url` is not set, Rampart makes zero network calls. All detection is local.
-
-### Enhanced Privacy Features (v0.5.1)
-
-**Audit Log Encryption (P2#11):**
-- Encrypt audit logs at rest with **ChaCha20-Poly1305** authenticated encryption
-- Key derived from passphrase via **PBKDF2-SHA256** (100K iterations)
-- Key is **NEVER stored** - decryption requires original passphrase
-- Protects against disk theft and forensic analysis
-
-```bash
-# Generate secure passphrase
-rampart generate-passphrase
-
-# Enable encrypted audit logging
-rampart --audit-key-passphrase="your-passphrase"
-
-# Decrypt logs later
-rampart decrypt-audit --audit-key-passphrase="your-passphrase" audit.log.enc output.log
-```
-
-**Anonymized Metrics (P2#12):**
-- **Opt-in only** - disabled by default
-- Domain hashed with **SHA-256** → 16 hex chars (cannot reverse)
-- Timestamps rounded to hour (cannot correlate events)
-- Only **false positives** sent (user-confirmed)
-- No identifiers, no content, no PII
-
-```bash
-# Enable privacy-preserving telemetry
-rampart --anonymized-metrics
-```
-
-See **[PRIVACY.md](PRIVACY.md)** for complete privacy documentation.
-
-## Product Family
-
-| Product | Surface | Approach | Detection | Block Mode |
-|---------|---------|----------|-----------|-------------|
-| **Lens** | Browser | DOM blocking (before send) | 155 regex + JS ML | ✅ Block in browser |
-| **Rampart** | Desktop, CLI, IDE | HTTPS proxy (in transit) | 176 regex + Go ML | ✅ Block at proxy |
-| **Platform** | Server | API gateway | 176 regex + Go ML | ✅ Block at gateway |
-
-**Lens blocks before send. Rampart blocks in transit. Platform blocks at the gateway.** Together = full-spectrum coverage.
 
 ## Build & Test
 
@@ -415,7 +461,8 @@ go test ./internal/platformforward/ -race -v
 golangci-lint run ./...
 ```
 
-## Project Structure
+<details>
+<summary><strong>🏗️ Project Structure</strong></summary>
 
 ```
 aegisgate-rampart/
@@ -453,6 +500,8 @@ aegisgate-rampart/
 ├── Dockerfile              # Multi-stage scratch container
 └── .github/workflows/      # CI/CD workflows
 ```
+
+</details>
 
 ## License
 

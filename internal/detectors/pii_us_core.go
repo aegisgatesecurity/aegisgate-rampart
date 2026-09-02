@@ -39,6 +39,19 @@ var PIIUSCorePatterns = []PatternDef{
 		Regex:       `\b(?:\d{4}[ -]?){3}\d{1,7}\b|\b\d{13,19}\b`,
 		Description: "Credit card number (13-19 digits with optional separators)",
 	},
+	// Phase 3 parity fix — 2026-09-02: brand-specific credit card patterns
+	{
+		Name:        "pii_credit_card_mastercard",
+		Severity:    SeverityCritical,
+		Regex:       `\b5[1-5]\d{2}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b`,
+		Description: "Mastercard credit card (with separators)",
+	},
+	{
+		Name:        "pii_credit_card_amex",
+		Severity:    SeverityCritical,
+		Regex:       `\b3[47]\d{2}[\s-]?\d{6}[\s-]?\d{5}\b`,
+		Description: "American Express credit card (4-6-5 format with separators)",
+	},
 	{
 		Name:        "pii_dob",
 		Severity:    SeverityHigh,

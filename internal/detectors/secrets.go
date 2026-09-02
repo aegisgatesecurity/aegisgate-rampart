@@ -30,7 +30,7 @@ var SecretsPatterns = []PatternDef{
 	{
 		Name:        "secret_gcp_key",
 		Severity:    SeverityHigh,
-		Regex:       `\bAIza[0-9A-Za-z_-]{30,50}\b`,
+		Regex:       `\bAIza[0-9A-Za-z_-]{20,}\b`,
 		Description: "Google Cloud API key",
 	},
 	{
@@ -284,6 +284,13 @@ var SecretsPatterns = []PatternDef{
 		Severity:    SeverityHigh,
 		Regex:       `\br8_[A-Za-z0-9]{37}\b`,
 		Description: "Replicate API token",
+	},
+	// Phase 3 parity fix — 2026-09-02
+	{
+		Name:        "secret_german_tax_id",
+		Severity:    SeverityHigh,
+		Regex:       `\b(?:Steuer-?ID|Steuernummer)[:\s]*\d{11}\b`,
+		Description: "German tax identification number (Steuer-ID)",
 	},
 }
 

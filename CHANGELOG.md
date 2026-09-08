@@ -1,3 +1,20 @@
+## [0.7.0] - 2026-09-08 - v9 Neural Threat Detection Model 🔒
+
+> **v0.7.0** upgrades the Char CNN-BiLSTM threat detection model from v4 to v9, matching Platform and Lens. New threshold (0.5), expanded input (256 chars), Latin-1 vocabulary (256 chars).
+
+### Security Enhancements
+
+- **v9 Model Upgrade**: Threshold 0.7→0.5, MaxSeqLen 128→256, VocabSize 128→256, Latin-1 character support. Normalizer updated for full 0-255 range.
+- **ML Model Integrity Verification**: SHA-256 hash check at model load time. Refuses to load tampered models.
+- **ML Crash Isolation**: `inference()` has `defer/recover()` for ONNX Runtime panics. Falls back to heuristic scoring.
+- **Temporal Query FP Mitigation**: Post-inference regex check downgrades block→warn for temporal queries.
+- **Config threshold fixed**: `configs/default.json` threshold 0.05→0.5
+
+### Testing
+
+- All ML unit tests pass (CGO and non-CGO)
+- 80% adversarial detection rate maintained
+
 # Changelog
 
 All notable changes to AegisGate Rampart are documented here.

@@ -6,6 +6,8 @@
 package ml
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -61,4 +63,15 @@ func computeFileHashSimple(path string) (string, error) {
 		return fmt.Sprintf("sha256:nocgo-%x", data), nil
 	}
 	return fmt.Sprintf("sha256:nocgo-%x", data[:64]), nil
+}
+
+// computeFileHash computes the real SHA-256 hash of a file (pure Go, no CGO needed).
+func computeFileHash(path string) (string, error) {
+	cleanPath := filepath.Clean(path)
+	data, err := os.ReadFile(cleanPath)
+	if err != nil {
+		return "", fmt.Errorf("read file: %w", err)
+	}
+	hash := sha256.Sum256(data)
+	return "sha256:" + hex.EncodeToString(hash[:]), nil
 }

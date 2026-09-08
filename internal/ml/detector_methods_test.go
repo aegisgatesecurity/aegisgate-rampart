@@ -17,7 +17,7 @@ func TestDetectAll_DisabledDetector(t *testing.T) {
 		Enabled:           false,
 		ShadowMode:        false,
 		Threshold:         0.7,
-		MaxSequenceLength: 128,
+		MaxSequenceLength: 256,
 		Timeout:           10,
 	}
 	detector := NewThreatDetector(cfg)
@@ -39,7 +39,7 @@ func TestDetectAll_ShadowMode(t *testing.T) {
 		Enabled:           false,
 		ShadowMode:        true,
 		Threshold:         0.7,
-		MaxSequenceLength: 128,
+		MaxSequenceLength: 256,
 		Timeout:           10,
 	}
 	detector := NewThreatDetector(cfg)
@@ -60,7 +60,7 @@ func TestDetectAll_EnabledDetector(t *testing.T) {
 		Enabled:           true,
 		ShadowMode:        false,
 		Threshold:         0.7,
-		MaxSequenceLength: 128,
+		MaxSequenceLength: 256,
 		Timeout:           10,
 	}
 	detector := NewThreatDetector(cfg)
@@ -82,7 +82,7 @@ func TestDetectAll_CleanTextVariants(t *testing.T) {
 		Enabled:           true,
 		ShadowMode:        false,
 		Threshold:         0.7,
-		MaxSequenceLength: 128,
+		MaxSequenceLength: 256,
 		Timeout:           10,
 	}
 	detector := NewThreatDetector(cfg)
@@ -104,7 +104,7 @@ func TestDetectAll_SingleVariant(t *testing.T) {
 		Enabled:           true,
 		ShadowMode:        false,
 		Threshold:         0.7,
-		MaxSequenceLength: 128,
+		MaxSequenceLength: 256,
 		Timeout:           10,
 	}
 	detector := NewThreatDetector(cfg)
@@ -118,7 +118,7 @@ func TestDetectAll_EmptyVariants(t *testing.T) {
 		Enabled:           true,
 		ShadowMode:        false,
 		Threshold:         0.7,
-		MaxSequenceLength: 128,
+		MaxSequenceLength: 256,
 		Timeout:           10,
 	}
 	detector := NewThreatDetector(cfg)
@@ -136,7 +136,7 @@ func TestDetectAll_BreakOnThreshold(t *testing.T) {
 		Enabled:           true,
 		ShadowMode:        false,
 		Threshold:         0.5,
-		MaxSequenceLength: 128,
+		MaxSequenceLength: 256,
 		Timeout:           10,
 	}
 	detector := NewThreatDetector(cfg)
@@ -156,8 +156,8 @@ func TestDetectAll_ThresholdDefault(t *testing.T) {
 	detector := NewThreatDetector(cfg)
 
 	result := detector.DetectAll([]string{"hello world"})
-	if result.Threshold != 0.7 {
-		t.Errorf("Default threshold = %f, want 0.7", result.Threshold)
+	if result.Threshold != 0.5 {
+		t.Errorf("Default threshold = %f, want 0.5", result.Threshold)
 	}
 }
 
@@ -220,7 +220,7 @@ func TestIsEnabled_ExplicitlyEnabled(t *testing.T) {
 		Enabled:           true,
 		ShadowMode:        false,
 		Threshold:         0.7,
-		MaxSequenceLength: 128,
+		MaxSequenceLength: 256,
 		Timeout:           10,
 	}
 	detector := NewThreatDetector(cfg)
@@ -262,7 +262,7 @@ func TestIsEnabled_ConcurrentAccess(t *testing.T) {
 		Enabled:           true,
 		ShadowMode:        false,
 		Threshold:         0.7,
-		MaxSequenceLength: 128,
+		MaxSequenceLength: 256,
 		Timeout:           10,
 	}
 	detector := NewThreatDetector(cfg)
@@ -316,8 +316,8 @@ func TestGetStats_DefaultConfig(t *testing.T) {
 	if !ok {
 		t.Error("Stats should contain 'threshold' float64 key")
 	}
-	if threshold != 0.7 {
-		t.Errorf("Default threshold = %f, want 0.7", threshold)
+	if threshold != 0.5 {
+		t.Errorf("Default threshold = %f, want 0.5", threshold)
 	}
 
 	modelLoaded, ok := stats["model_loaded"].(bool)
@@ -332,8 +332,8 @@ func TestGetStats_DefaultConfig(t *testing.T) {
 	if !ok {
 		t.Error("Stats should contain 'max_seq_len' int key")
 	}
-	if maxSeqLen != 128 {
-		t.Errorf("Default max_seq_len = %d, want 128", maxSeqLen)
+	if maxSeqLen != 256 {
+		t.Errorf("Default max_seq_len = %d, want 256", maxSeqLen)
 	}
 
 	timeoutMs, ok := stats["timeout_ms"].(int)
@@ -439,7 +439,7 @@ func TestDetectAll_AttackVariants(t *testing.T) {
 		Enabled:           true,
 		ShadowMode:        false,
 		Threshold:         0.7,
-		MaxSequenceLength: 128,
+		MaxSequenceLength: 256,
 		Timeout:           10,
 	}
 	detector := NewThreatDetector(cfg)
@@ -465,7 +465,7 @@ func TestDetectAll_MixedVariants(t *testing.T) {
 		Enabled:           true,
 		ShadowMode:        false,
 		Threshold:         0.7,
-		MaxSequenceLength: 128,
+		MaxSequenceLength: 256,
 		Timeout:           10,
 	}
 	detector := NewThreatDetector(cfg)
@@ -485,7 +485,7 @@ func TestDetectAll_ShadowModeLogsPrediction(t *testing.T) {
 		Enabled:           false,
 		ShadowMode:        true,
 		Threshold:         0.7,
-		MaxSequenceLength: 128,
+		MaxSequenceLength: 256,
 		Timeout:           10,
 	}
 	detector := NewThreatDetector(cfg)

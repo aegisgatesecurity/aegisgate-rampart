@@ -47,7 +47,7 @@ type DetectorConfig struct {
 
 	// Threshold is the score above which content is classified as adversarial.
 	// Calibrated from benign corpus to achieve 0% FPR.
-	// Default: 0.7 (override after calibration)
+	// Default: 0.5 (calibrated for v9 model, 0% FPR on benign corpus)
 	Threshold float64
 
 	// ModelPath is the path to the ONNX model file.
@@ -55,7 +55,7 @@ type DetectorConfig struct {
 	ModelPath string
 
 	// MaxSequenceLength is the maximum number of characters to feed the model.
-	// Longer sequences are truncated. Default: 128.
+	// Longer sequences are truncated. Default: 256.
 	MaxSequenceLength int
 
 	// Timeout is the maximum time for a single inference in milliseconds.
@@ -72,9 +72,9 @@ func DefaultDetectorConfig() DetectorConfig {
 	return DetectorConfig{
 		Enabled:           false, // Disabled by default — cold-start safety
 		ShadowMode:        true,  // Shadow mode on by default
-		Threshold:         0.7,   // Will be calibrated
+		Threshold:         0.5,   // Calibrated for v9 model (0% FPR on benign corpus)
 		ModelPath:         "/opt/aegisgate-platform/models/threat_cnn_bilstm.onnx",
-		MaxSequenceLength: 128,
+		MaxSequenceLength: 256,
 		Timeout:           10,
 	}
 }

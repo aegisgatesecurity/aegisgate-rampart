@@ -30,10 +30,17 @@ package ml
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 	"sync"
 )
+
+// ExpectedModelHash is the SHA-256 hash of the v9 threat detection model.
+// If the model file hash does not match, the detector refuses to load it.
+const ExpectedModelHash = "0076b66d069ca445589526624ebeb67b65a1df68d615525b83e528f03e0bd4b7"
 
 // ThreatDetector performs neural network-based threat detection.
 // ONNX session fields are defined in build-tag-specific files:
@@ -89,6 +96,11 @@ func (td *ThreatDetector) Detect(text string) ThreatScore {
 	score := td.inference(encoded)
 	isThreat := score >= td.config.Threshold
 
+	// Temporal query FP mitigation: downgrade block to warn for temporal queries
+	if isThreat && isTemporalFalsePositive(text) {
+		isThreat = false
+	}
+
 	result := ThreatScore{
 		Score:        score,
 		IsThreat:     isThreat,
@@ -138,6 +150,11 @@ func (td *ThreatDetector) DetectAll(variants []string) ThreatScore {
 	_ = bestVariant
 	isThreat := bestScore >= td.config.Threshold
 
+	// Temporal query FP mitigation: downgrade block to warn for temporal queries
+	if isThreat && isTemporalFalsePositive(variants[0]) {
+		isThreat = false
+	}
+
 	result := ThreatScore{
 		Score:        bestScore,
 		IsThreat:     isThreat,
@@ -156,11 +173,21 @@ func (td *ThreatDetector) DetectAll(variants []string) ThreatScore {
 
 // inference runs the ONNX model on the encoded input.
 // Falls back to heuristic scoring when no model is loaded or CGO is disabled.
-func (td *ThreatDetector) inference(encoded []int32) float64 {
+func (td *ThreatDetector) inference(encoded []int32) (score float64) {
+	// Recover from ONNX runtime panics (corrupt model, memory error, glibc edge case).
+	// Fall back to heuristic scoring instead of crashing the proxy process.
+	defer func() {
+		if r := recover(); r != nil {
+			slog.Error("ONNX inference panic, falling back to heuristic",
+				"panic", r, "model_loaded", td.loaded)
+			score = td.heuristicScore(encoded)
+		}
+	}()
+
 	// Try ONNX inference first (only available with CGO)
 	if td.loaded {
-		if score, ok := td.inferenceONNX(encoded); ok {
-			return score
+		if s, ok := td.inferenceONNX(encoded); ok {
+			return s
 		}
 	}
 	return td.heuristicScore(encoded)
@@ -212,7 +239,30 @@ func (td *ThreatDetector) LoadModel(path string) error {
 		return fmt.Errorf("model file not found: %w", err)
 	}
 
+	// Verify model integrity via SHA-256 hash to prevent supply-chain tampering.
+	hash, err := computeFileHash(cleanPath)
+	if err != nil {
+		return fmt.Errorf("failed to compute model hash: %w", err)
+	}
+	// computeFileHash returns "sha256:<hex>" format
+	expectedHash := "sha256:" + ExpectedModelHash
+	if hash != expectedHash {
+		return fmt.Errorf("model integrity check failed: expected %s, got %s — refusing to load tampered model", expectedHash, hash)
+	}
+	slog.Info("ML model integrity verified", "hash", hash, "path", cleanPath)
+
 	return td.loadModelONNX(cleanPath)
+}
+
+// temporalQueryPattern matches common temporal/date/time queries that
+// are known to cause false positives in the neural model.
+var temporalQueryPattern = regexp.MustCompile(`(?i)^(what|which|tell me|do you know)\s+(time|day|date|month|year|hour|minute|second|timezone|time zone)\b`)
+
+// isTemporalFalsePositive returns true if the text is a temporal query
+// that should not be blocked even if the neural model scores it high.
+func isTemporalFalsePositive(text string) bool {
+	text = strings.TrimSpace(strings.ToLower(text))
+	return temporalQueryPattern.MatchString(text)
 }
 
 // Close cleans up the ONNX session and tensors.

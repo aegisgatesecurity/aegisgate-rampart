@@ -9,7 +9,7 @@ func TestNewThreatDetector(t *testing.T) {
 		ShadowMode:        true,
 		Threshold:         0.7,
 		ModelPath:         "/nonexistent/model.onnx",
-		MaxSequenceLength: 128,
+		MaxSequenceLength: 256,
 		Timeout:           10,
 	}
 	detector := NewThreatDetector(cfg)
@@ -23,7 +23,7 @@ func TestThreatDetectorDetectHeuristic(t *testing.T) {
 		ShadowMode:        true,
 		Threshold:         0.7,
 		ModelPath:         "/nonexistent/model.onnx",
-		MaxSequenceLength: 128,
+		MaxSequenceLength: 256,
 		Timeout:           10,
 	}
 	detector := NewThreatDetector(cfg)
@@ -54,7 +54,7 @@ func TestThreatDetectorClose(t *testing.T) {
 		ShadowMode:        true,
 		Threshold:         0.7,
 		ModelPath:         "/nonexistent/model.onnx",
-		MaxSequenceLength: 128,
+		MaxSequenceLength: 256,
 		Timeout:           10,
 	}
 	detector := NewThreatDetector(cfg)
@@ -72,11 +72,11 @@ func TestDetectorConfigDefaults(t *testing.T) {
 	if !cfg.ShadowMode {
 		t.Error("Default ShadowMode should be true")
 	}
-	if cfg.Threshold != 0.7 {
-		t.Errorf("Default Threshold = %f, want 0.7", cfg.Threshold)
+	if cfg.Threshold != 0.5 {
+		t.Errorf("Default Threshold = %f, want 0.5", cfg.Threshold)
 	}
-	if cfg.MaxSequenceLength != 128 {
-		t.Errorf("Default MaxSequenceLength = %d, want 128", cfg.MaxSequenceLength)
+	if cfg.MaxSequenceLength != 256 {
+		t.Errorf("Default MaxSequenceLength = %d, want 256", cfg.MaxSequenceLength)
 	}
 	if cfg.Timeout != 10 {
 		t.Errorf("Default Timeout = %d, want 10", cfg.Timeout)

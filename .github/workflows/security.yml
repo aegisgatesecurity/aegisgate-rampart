@@ -123,6 +123,19 @@ jobs:
           extra_args: '--only-verified'
 
   # ========================================
+  # OPSEC scan — private paths, secrets, internal docs
+  # ========================================
+  opsec-scan:
+    name: "OPSEC scan (tools/opsec-scan.sh)"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Run OPSEC scan
+        run: |
+          chmod +x tools/opsec-scan.sh
+          bash tools/opsec-scan.sh
+
+  # ========================================
   # Standard Go tools — go vet, staticcheck, gofmt
   # ========================================
   standard-tools:
@@ -173,7 +186,7 @@ jobs:
   # Security summary
   # ========================================
   security-summary:
-    needs: [govulncheck, gosec, trivy, gitleaks, trufflehog, standard-tools]
+    needs: [govulncheck, gosec, trivy, gitleaks, trufflehog, standard-tools, opsec-scan]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -187,3 +200,4 @@ jobs:
           echo "| trivy | ${{ needs.trivy.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| gitleaks | ${{ needs.gitleaks.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| trufflehog | ${{ needs.trufflehog.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| opsec-scan | ${{ needs.opsec-scan.result }} |" >> $GITHUB_STEP_SUMMARY

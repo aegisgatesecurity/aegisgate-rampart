@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/auditlog"
+	"github.com/aegisgatesecurity/aegisgate-rampart/internal/version"
 )
 
 func TestNew_Disabled(t *testing.T) {
@@ -324,7 +325,7 @@ func TestForward_VersionIsCurrent(t *testing.T) {
 
 	mu.Lock()
 	defer mu.Unlock()
-	if received.Version != "0.7.0" {
-		t.Errorf("expected version 0.7.0, got %s", received.Version)
+	if received.Version != version.Version {
+		t.Errorf("expected version %s, got %s", version.Version, received.Version)
 	}
 }

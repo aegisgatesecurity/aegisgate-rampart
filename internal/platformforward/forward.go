@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/auditlog"
+	"github.com/aegisgatesecurity/aegisgate-rampart/internal/version"
 )
 
 // Forwarder pushes detection events to AegisGate Platform.
@@ -108,7 +109,7 @@ func (f *Forwarder) Forward(entry auditlog.Entry) {
 	event := PlatformEvent{
 		Timestamp:     entry.Timestamp,
 		Source:        "rampart",
-		Version:       "0.6.2", // LOW-15 FIX: use actual version
+		Version:       version.Version, // LOW-15 FIX: use actual version
 		Direction:     entry.Direction,
 		Host:          entry.Host,
 		Path:          entry.Path,

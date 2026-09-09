@@ -1,3 +1,24 @@
+## [0.7.1] - 2026-09-09 - v11b Model + Evasion Suite + OPSEC Hardening 🔒
+
+> **v0.7.1** upgrades Rampart's Char CNN-BiLSTM threat detection model from v9 to v11b, matching Platform and Lens. Adds full text normalization (keyWalkReverse, homoglyph, l33t, zero-width Unicode) and a 2,600-test adversarial evasion suite. OPSEC hardening: pre-commit hooks, CODEOWNERS, PR templates, gitleaks config.
+
+### Security Enhancements
+- **v11b Neural Model**: ExpectedModelHash updated to `8e13c793...`, threshold 0.5 (calibrated for 0% FPR)
+- **Text normalization** (`internal/detectors/normalize.go`): keyWalkReverse (QWERTY right-shift inverse), homoglyph map (Cyrillic→Latin, Greek→Latin), l33t speak deobfuscation, zero-width Unicode stripping, ROT13, repeating char collapse, backslash escape handling
+- **Evasion suite** (`internal/detectors/evasion_suite_test.go`): 52 ATLAS payloads × 50 transforms = 2,600 adversarial tests. Skips threshold assertion when ONNX model not loaded (CI environment).
+
+### Bug Fixes
+- Fixed CI lint failures: errcheck on os.MkdirAll, staticcheck S1039 unnecessary fmt.Sprintf
+- Fixed gofmt (missing trailing newline)
+
+### Version & Infrastructure
+- `internal/version/version.go`: 0.6.2 → 0.7.0
+- README badges: v0.6.2 → v0.7.0
+- Pre-commit hook: `.githooks/pre-commit` (OPSEC scan + gofmt + go vet)
+- Added: `.github/CODEOWNERS`, `.github/PULL_REQUEST_TEMPLATE.md`, `.github/ISSUE_TEMPLATE/`
+
+---
+
 ## [0.7.0] - 2026-09-08 - v9 Neural Threat Detection Model 🔒
 
 > **v0.7.0** upgrades the Char CNN-BiLSTM threat detection model from v4 to v9, matching Platform and Lens. New threshold (0.5), expanded input (256 chars), Latin-1 vocabulary (256 chars).

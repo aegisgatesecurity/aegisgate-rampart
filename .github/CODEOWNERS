@@ -1,0 +1,13 @@
+# AegisGate Rampart — Code Owners
+# Reviewers automatically requested for PRs touching these paths
+
+* @jcolvin1056
+
+# ML detection internals
+internal/ml/          @jcolvin1056
+
+# Detectors (regex + normalization)
+internal/detectors/   @jcolvin1056
+
+# Certificate management (security-critical)
+internal/certificate/ @jcolvin1056

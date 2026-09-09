@@ -324,7 +324,7 @@ func TestForward_VersionIsCurrent(t *testing.T) {
 
 	mu.Lock()
 	defer mu.Unlock()
-	if received.Version != "0.6.2" {
-		t.Errorf("expected version 0.6.2, got %s", received.Version)
+	if received.Version != "0.7.0" {
+		t.Errorf("expected version 0.7.0, got %s", received.Version)
 	}
 }

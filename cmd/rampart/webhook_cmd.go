@@ -216,7 +216,7 @@ func runWebhookTest(args []string) error {
 		Severity:  "info",
 		Message:   "This is a test webhook from AegisGate Rampart",
 		RawData: map[string]interface{}{
-			"version": "0.7.0",
+			"version": "0.7.1",
 			"test":    true,
 		},
 	}

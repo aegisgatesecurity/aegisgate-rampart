@@ -507,6 +507,8 @@ aegisgate-rampart/
 
 Apache-2.0. See [LICENSE](./LICENSE) for the full text.
 
+The trained ML model weights are separately licensed under the [AegisGate Model Weight License](WEIGHTS-LICENSE.md). Non-commercial use is permitted; commercial use requires a commercial license.
+
 ## Contributing
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md).

@@ -9,7 +9,7 @@
 HTTPS MITM proxy · 176 regex patterns + Char CNN-BiLSTM · Monitor & Block modes · Zero telemetry by default
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Version](https://img.shields.io/badge/version-v0.7.0-brightgreen.svg)](https://github.com/aegisgatesecurity/aegisgate-rampart/releases/tag/v0.7.0)
+[![Version](https://img.shields.io/badge/version-v0.7.1-brightgreen.svg)](https://github.com/aegisgatesecurity/aegisgate-rampart/releases/tag/v0.7.1)
 [![CI](https://github.com/aegisgatesecurity/aegisgate-rampart/actions/workflows/ci.yml/badge.svg)](https://github.com/aegisgatesecurity/aegisgate-rampart/actions/workflows/ci.yml)
 [![Coverage](https://img.shields.io/badge/coverage-80.7%25-brightgreen.svg)](#test-coverage)
 [![Security](https://github.com/aegisgatesecurity/aegisgate-rampart/actions/workflows/security.yml/badge.svg)](https://github.com/aegisgatesecurity/aegisgate-rampart/actions/workflows/security.yml)
@@ -124,7 +124,7 @@ CGO_ENABLED=0 go build -o bin/rampart ./cmd/rampart
 docker run -d \
   -p 8443:8443 \
   -p 9090:9090 \
-  ghcr.io/aegisgatesecurity/aegisgate-rampart:v0.6.2
+  ghcr.io/aegisgatesecurity/aegisgate-rampart:v0.7.1
 ```
 
 <details>
@@ -360,7 +360,7 @@ See **[PRIVACY.md](PRIVACY.md)** for complete privacy documentation.
 **Lens blocks before send. Rampart blocks in transit. Platform blocks at the gateway.** Together = full-spectrum coverage.
 
 <details>
-<summary><strong>📦 What's New in v0.6.2</strong></summary>
+<summary><strong>📦 What's New in v0.7.1</strong></summary>
 
 - **🔒 23 New SOC Detection Patterns** — SWIFT/BIC banking codes (3 patterns), CPT/HCPCS medical billing codes (11 patterns), and OT/ICS protocol patterns (9 patterns: Modbus, DNP3, OPC-UA). Parity with Platform v4.1.0 and Lens v0.3.1.
 - **🔧 Go 1.26.6** — Runtime bump from Go 1.25.0, fixes 5 stdlib vulnerabilities.

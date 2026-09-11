@@ -1,0 +1,40 @@
+# Git
+.git
+.gitignore
+
+# CI / GitHub
+.github/
+
+# Documentation
+docs/
+*.md
+
+# Test artifacts
+test/
+testing/
+
+# Build artifacts
+bin/
+dist/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Local config / secrets
+.env
+.env.*
+*.pem
+*.key
+secrets/

@@ -22,8 +22,11 @@ HTTPS MITM proxy · 176 regex patterns + Char CNN-BiLSTM · Monitor & Block mode
 [![Providers](https://img.shields.io/badge/providers-10-blue.svg)](#27-target-endpoints)
 [![Zero npm](https://img.shields.io/badge/dependencies-zero-success.svg)](#build--test)
 [![Privacy](https://img.shields.io/badge/privacy-12%20non--negotiables-success.svg)](#privacy-12-non-negotiables)
+[![Patent Pending](https://img.shields.io/badge/IP-Patent_Pending-8B5CF6?logo=uspto)](https://github.com/aegisgatesecurity/aegisgate-rampart#ip-notice)
 
 [Quick Start](#quick-start) · [Operating Modes](#operating-modes) · [Detection](#detection-capabilities) · [IDE Integration](#ide-coverage) · [Privacy](#privacy-12-non-negotiables) · [Releases](https://github.com/aegisgatesecurity/aegisgate-rampart/releases)
+
+[![GitHub stars](https://img.shields.io/github/stars/aegisgatesecurity/aegisgate-rampart?style=social)](https://github.com/aegisgatesecurity/aegisgate-rampart) — **If Rampart helps you protect your AI coding workflow, please consider ⭐ starring this repo. It helps others discover it.**
 
 </div>
 
@@ -31,7 +34,7 @@ HTTPS MITM proxy · 176 regex patterns + Char CNN-BiLSTM · Monitor & Block mode
 
 ---
 
-> **🛡️ Using AegisGate at work?** [AegisGate Platform](https://github.com/aegisgatesecurity/aegisgate-platform) is our server-side gateway — 176 detection patterns, MCP/A2A/ACP protection, 31 compliance frameworks, and cryptographic attestation. For individual developers, Rampart runs locally on your machine. [Explore Platform →](https://github.com/aegisgatesecurity/aegisgate-platform)
+> **🛡️ Using AegisGate at work?** [AegisGate Platform](https://github.com/aegisgatesecurity/aegisgate-platform) is our server-side gateway — 216 detection patterns, MCP/A2A/ACP protection, 30+ compliance frameworks, and cryptographic attestation. For individual developers, Rampart runs locally on your machine. [Explore Platform →](https://github.com/aegisgatesecurity/aegisgate-platform)
 
 ---
 
@@ -42,7 +45,7 @@ Rampart is a **local security tool for developers** who use AI coding assistants
 Think of it as a firewall for AI coding tools. It catches the moment you're about to send a database password to Copilot, or when the AI generates code that contains an API key, and stops it before it's too late.
 
 - **In-transit interception.** Unlike Lens (browser-level) or Platform (gateway-level), Rampart operates at the network proxy layer — it sees every request and response.
-- **176 regex patterns + ML.** Same detection engine as AegisGate Platform. Regex catches known patterns; Char CNN-BiLSTM catches adversarial paraphrasing.
+- **176 regex patterns + ML.** Same detection engine as AegisGate Platform. Regex catches known patterns; Char CNN-BiLSTM catches adversarial paraphrasing. Platform uses 216 patterns; Rampart and Lens use 176 (subset optimized for local/browser deployment).
 - **Monitor or Block.** Log-only mode for visibility. Block mode for enforcement with configurable thresholds and categories.
 - **Zero telemetry by default.** Air-gap mode when `--platform-url` is not set. No network calls. All detection is local.
 - **Free. Forever.** Apache 2.0, single binary, no external dependencies.
@@ -512,6 +515,14 @@ The trained ML model weights are separately licensed under the [AegisGate Model 
 ## Contributing
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md).
+
+---
+
+<div align="center">
+
+## IP Notice
+
+AegisGate's core technologies are patent pending with the USPTO (Provisional App. Nos. 64/153,573–64/153,577, filed September 12, 2026). Source code is © 2025-2026 AegisGate Security, LLC. Licensed under Apache 2.0. Trained ML model weights are separately licensed under the [AegisGate Model Weight License](WEIGHTS-LICENSE.md).
 
 ---
 

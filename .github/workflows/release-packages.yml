@@ -196,7 +196,7 @@ jobs:
           sed -i 's|url ".*"|url "https://github.com/aegisgatesecurity/aegisgate-rampart/archive/v${{ steps.version.outputs.version }}.tar.gz"|' packaging/homebrew/aegisgate-rampart.rb
           sed -i 's|sha256 ".*"|sha256 "${{ steps.sha.outputs.sha256 }}"|' packaging/homebrew/aegisgate-rampart.rb
       - name: Create PR for formula update
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: 'chore: update homebrew formula to v${{ steps.version.outputs.version }}'

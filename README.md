@@ -528,7 +528,7 @@ AegisGate's core technologies are patent pending with the USPTO (Provisional App
 
 <div align="center">
 
-[🌐 AegisGate Security](https://aegisgatesecurity.io) · [💬 Discord](https://discord.gg/cvJ4QcY9B) · [✉️ support@aegisgatesecurity.io](mailto:support@aegisgatesecurity.io) · [𝕏 @aegisgate](https://x.com/aegisgate) · [🐘 @aegisgate@mastodon.social](https://mastodon.social/@aegisgate)
+[🌐 AegisGate Security](https://aegisgatesecurity.io) · [💬 Discord](https://discord.gg/cvJ4QcY9B) · [✉️ support@aegisgatesecurity.io](mailto:support@aegisgatesecurity.io) · [𝕏 @aegisgate](https://x.com/aegisgate) · [📱 Telegram](https://t.me/+imsWrOY4QpcxYzIx) · [🐘 @aegisgate@mastodon.social](https://mastodon.social/@aegisgate)
 
 Made with 🖤 by AegisGate Security developers to secure the AI attack surface.
 

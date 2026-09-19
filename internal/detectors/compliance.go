@@ -41,7 +41,7 @@ var CompliancePatterns = []PatternDef{
 	{
 		Name:        "owasp_llm10_model_theft",
 		Severity:    SeverityHigh,
-		Regex:       `(?i)(?:extract|reveal|expose|leak|give\s+me)\s+(?:the\s+)?(?:model|weights?|parameters?|architecture|training\s+data|embeddings?)`,
+		Regex:       `(?i)(?:extract|reveal|expose|leak|give\s+me|print|show|output|display|share|tell\s+me)\s+(?:me\s+)?(?:your\s+|the\s+)?(?:model|weights?|parameters?|architecture|training\s+data|embeddings?)`,
 		Description: "Model extraction/theft attempt",
 	},
 	{
@@ -235,6 +235,53 @@ var CompliancePatterns = []PatternDef{
 		Severity:    SeverityCritical,
 		Regex:       `(?i)\b(?:suicid(?:e|al)|kill\s+(?:my)?self|hurt\s+(?:my)?self|end\s+(?:my\s+)?(?:life|suffering)|self\s*[-]?\s*harm|cut(?:ting)?)\b`,
 		Description: "Self-harm indicators",
+	},
+
+	// ====================================================================
+	// v0.2.x parity sync — Platform v4.5.0 detection patterns
+	// Closes real-world detection gaps identified through k6 adversarial testing.
+	// ====================================================================
+	// --- SSTI (Server-Side Template Injection) ---
+	{
+		Name:        "prompt_injection_ssti",
+		Severity:    SeverityCritical,
+		Regex:       `(?i)(?:\{\{[^}]*(?:constructor|process|require|mainModule|exec|spawn|child_process)[^}]*\}\}|<%[^>]*(?:exec|system|require|spawn|eval|response\.write|Server\.CreateObject)[^%>]*%>|#\{[^}]*(?:exec|system|Runtime|getRuntime)[^}]*\}|\{\{[^}]*(?:__class__|__subclasses__|__globals__|__builtins__)[^}]*\}\})`,
+		Description: "Server-side template injection attempt",
+	},
+	// --- eval/atob obfuscated code execution ---
+	{
+		Name:        "prompt_injection_eval_atob",
+		Severity:    SeverityCritical,
+		Regex:       `(?i)(?:eval\s*\(\s*atob\s*\(|eval\s*\(\s*decodeURIComponent\s*\(|eval\s*\(\s*unescape\s*\(|eval\s*\(\s*String\.fromCharCode|Function\s*\(\s*atob\s*\(|window\.atob\s*\(|Buffer\.from\s*\(\s*[^)]+,\s*['"]base64['"]\))`,
+		Description: "Obfuscated code execution via eval/atob",
+	},
+	// --- Model theft via question-form queries ---
+	{
+		Name:        "owasp_llm10_model_theft_query",
+		Severity:    SeverityHigh,
+		Regex:       `(?i)(?:what\s+are\s+(?:your|the)\s+(?:model\s+)?weights|what\s+is\s+(?:your|the)\s+(?:model\s+)?architecture|export\s+(?:your\s+)?(?:neural\s+network|model|weights|parameters)|show\s+me\s+(?:your\s+)?(?:model\s+)?(?:weights|parameters|architecture)|what\s+(?:model|architecture)\s+(?:are|is)\s+you)`,
+		Description: "Model theft via direct query",
+	},
+	// --- System prompt extraction via variant phrasings ---
+	{
+		Name:        "owasp_llm06_system_prompt_extraction_variant",
+		Severity:    SeverityHigh,
+		Regex:       `(?i)(?:give\s+me\s+(?:your|the)\s+(?:system\s+prompt|instructions?)\s+(?:in\s+full|completely|verbatim)|(?:what|which)\s+instructions\s+(?:were\s+you\s+given|do\s+you\s+have|are\s+you\s+using)\s+(?:about|regarding|for|on)\s+(?:content\s+filtering|safety|guidelines|restrictions)|(?:tell|show)\s+me\s+(?:everything|all)\s+(?:about\s+)?(?:your|the)\s+(?:system\s+prompt|instructions?|configuration|rules?))`,
+		Description: "System prompt extraction via variant phrasing",
+	},
+	// --- Safety protocol bypass ---
+	{
+		Name:        "atlas_safety_protocol_bypass",
+		Severity:    SeverityCritical,
+		Regex:       `(?i)(?:disable|deactivate|turn\s+off|remove|bypass|override|circumvent)\s+(?:all\s+)?(?:safety\s+(?:protocols?|measures?|guidelines?|filters?|restrictions?)|content\s+(?:filters?|moderation|policy|guidelines))`,
+		Description: "Safety protocol bypass attempt",
+	},
+	// --- Direct data exfiltration queries ---
+	{
+		Name:        "atlas_data_exfiltration_query",
+		Severity:    SeverityCritical,
+		Regex:       `(?i)(?:(?:list|show|display|output|print|reveal|give\s+me|tell\s+me)\s+(?:me\s+)?(?:all\s+)?(?:the\s+)?|what\s+(?:is|are)\s+(?:the\s+)?)(?:environment\s+variables?\s+(?:including\s+)?(?:API\s+keys?|secrets?|tokens?)?|database\s+connection\s+(?:strings?|URL|DSN)|contents?\s+of\s+/etc/(?:passwd|shadow|hosts)|credentials?\s+(?:file|store|vault)|password\s+(?:file|hash|database))`,
+		Description: "Direct request for sensitive system data (credentials, env vars, system files)",
 	},
 }
 

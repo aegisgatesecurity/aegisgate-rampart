@@ -205,7 +205,16 @@ func (d *Detector) DetectWithContext(ctx context.Context, text string) (*Summary
 	}
 
 	// 3. Run all-detector scan (comprehensive regex from detectors package)
-	allMatches := detectors.DetectAll(text)
+	// Truncate to 64KB (mirrors ResponseGuard's maxScanBytes) to prevent
+	// O(n*k) regex cost on very large inputs. The guard already scanned the
+	// first 64KB; DetectAll runs the same patterns so truncating here avoids
+	// redundant work on the tail of large inputs.
+	const detectorMaxScanBytes = 64 * 1024
+	scanText := text
+	if len(scanText) > detectorMaxScanBytes {
+		scanText = scanText[:detectorMaxScanBytes]
+	}
+	allMatches := detectors.DetectAll(scanText)
 	for _, m := range allMatches {
 		// Avoid duplicating results already captured by response guard
 		r := Result{

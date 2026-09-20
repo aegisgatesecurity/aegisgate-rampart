@@ -38,11 +38,11 @@ import (
 	"sync"
 )
 
-// ExpectedModelHash is the SHA-256 hash of the v11b threat detection model.
+// ExpectedModelHash is the SHA-256 hash of the v13 threat detection model.
 // If the model file hash does not match, the detector refuses to load it.
-// v11b: 8e13c793c32816aa0f6e2af13ffadd4f38f707b4ac8906b56ddfa77da51ea8e5
+// v11b: 329fd89afe153d0b9f01143c50a9a2dd73b1d3613cc87a07b4b83a93172aeaf0
 // v9:   0076b66d069ca445589526624ebeb67b65a1df68d615525b83e528f03e0bd4b7
-const ExpectedModelHash = "8e13c793c32816aa0f6e2af13ffadd4f38f707b4ac8906b56ddfa77da51ea8e5"
+const ExpectedModelHash = "329fd89afe153d0b9f01143c50a9a2dd73b1d3613cc87a07b4b83a93172aeaf0"
 
 // ThreatDetector performs neural network-based threat detection.
 // ONNX session fields are defined in build-tag-specific files:

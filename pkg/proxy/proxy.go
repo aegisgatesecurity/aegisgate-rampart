@@ -34,6 +34,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -137,8 +138,30 @@ func New(cfg *config.Config) (*Proxy, error) {
 		p.targets[t.Domain] = true
 	}
 
-	// Initialize detector
-	det, err := detector.New(detector.DefaultConfig())
+	// Initialize detector with config-sourced ML settings.
+	// Priority: config file > AEGISGATE_ML_MODEL_PATH env > detector defaults.
+	// This ensures detection parity with Platform's config-driven model loading.
+	modelPath := cfg.Models.Path
+	if modelPath == "" {
+		modelPath = os.Getenv("AEGISGATE_ML_MODEL_PATH")
+	}
+	mlThreshold := cfg.Models.Threshold
+	if mlThreshold == 0 {
+		mlThreshold = 0.5 // v13 calibrated default (matches Platform proxy)
+	}
+
+	detCfg := &detector.Config{
+		EnablePII:        true,
+		EnableSecrets:    true,
+		EnableXSS:        true,
+		EnableCompliance: true,
+		EnableML:         true,
+		ModelPath:        modelPath,
+		MLThreshold:      mlThreshold,
+		ShadowMode:       cfg.Models.Shadow,
+		StrictMode:       false,
+	}
+	det, err := detector.New(detCfg)
 	if err != nil {
 		return nil, fmt.Errorf("initializing detector: %w", err)
 	}

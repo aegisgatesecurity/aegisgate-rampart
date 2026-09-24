@@ -21,6 +21,7 @@
 package ml
 
 import (
+	"golang.org/x/text/unicode/norm"
 	"strings"
 	"unicode"
 )
@@ -58,6 +59,11 @@ func NewCharNormalizer() *CharNormalizer {
 // 3. Collapse multiple whitespace
 // 4. Truncate to max length
 func (cn *CharNormalizer) Normalize(text string) string {
+	// NFKC normalization — canonical decomposition + composition.
+	// This maps compatibility characters (fullwidth, etc.) to their
+	// canonical ASCII equivalents: Ｉｇｎｏｒｅ → Ignore
+	text = norm.NFKC.String(text)
+
 	// Lowercase
 	text = strings.ToLower(text)
 

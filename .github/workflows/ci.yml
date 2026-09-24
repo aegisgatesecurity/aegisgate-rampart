@@ -230,11 +230,67 @@ jobs:
       - uses: actions/setup-go@v7.0.0
         with:
           go-version: '1.26.6'
+      - name: Install ONNX Runtime v1.29.0 (CGO builds only)
+        if: matrix.cgo == 1
+        run: |
+          wget -q https://github.com/microsoft/onnxruntime/releases/download/v1.29.0/onnxruntime-linux-x64-1.29.0.tgz
+          tar -xzf onnxruntime-linux-x64-1.29.0.tgz
+          sudo cp onnxruntime-linux-x64-1.29.0/lib/*.so /usr/lib/
+          sudo cp -r onnxruntime-linux-x64-1.29.0/include/* /usr/include/
+          rm -rf onnxruntime-linux-x64-1.29.0.tgz onnxruntime-linux-x64-1.29.0
       - name: Build binary
         env:
           CGO_ENABLED: ${{ matrix.cgo }}
+          CGO_CFLAGS: ${{ matrix.cgo == 1 && '-I/usr/include' || '' }}
+          CGO_LDFLAGS: ${{ matrix.cgo == 1 && '-L/usr/lib -lonnxruntime' || '' }}
         run: |
           go build -ldflags "-s -w -X main.versionFlag=$(cat VERSION)" -o rampart ./cmd/rampart/
           ls -lh rampart
       - name: Verify binary runs
         run: ./rampart version
+
+  # ========================================
+  # ML tests — CGO-enabled tests with ONNX Runtime + model
+  # Verifies detection parity: neural model loads and scores threats correctly.
+  # ========================================
+  ml-test:
+    needs: [lint, test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-go@v7.0.0
+        with:
+          go-version: '1.26.6'
+      - name: Install ONNX Runtime v1.29.0
+        run: |
+          wget -q https://github.com/microsoft/onnxruntime/releases/download/v1.29.0/onnxruntime-linux-x64-1.29.0.tgz
+          tar -xzf onnxruntime-linux-x64-1.29.0.tgz
+          sudo cp onnxruntime-linux-x64-1.29.0/lib/*.so /usr/lib/
+          sudo cp -r onnxruntime-linux-x64-1.29.0/include/* /usr/include/
+          sudo ldconfig
+          rm -rf onnxruntime-linux-x64-1.29.0.tgz onnxruntime-linux-x64-1.29.0
+      - name: Run ML tests (CGO_ENABLED=1)
+        env:
+          CGO_ENABLED: 1
+          CGO_CFLAGS: "-I/usr/include"
+          CGO_LDFLAGS: "-L/usr/lib -lonnxruntime"
+          LD_LIBRARY_PATH: /usr/lib
+        run: |
+          go test -v -count=1 -timeout 120s ./pkg/detector/ ./internal/ml/
+      - name: Run evasion suite (gate — must score ≥95/100)
+        env:
+          CGO_ENABLED: 1
+          CGO_CFLAGS: "-I/usr/include"
+          CGO_LDFLAGS: "-L/usr/lib -lonnxruntime"
+          LD_LIBRARY_PATH: /usr/lib
+          AEGISGATE_ML_MODEL_PATH: ${{ github.workspace }}/models/threat_cnn_bilstm.onnx
+        run: |
+          go test -v -count=1 -timeout 600s -tags=cgo -run TestEvasionSuite ./internal/detectors/ 2>&1 | tee /tmp/evasion-results.txt
+          SCORE=$(grep "Evasion Resistance Score" /tmp/evasion-results.txt | grep -oP '[\d.]+/100' | cut -d/ -f1)
+          echo "Evasion Resistance Score: $SCORE/100"
+          if awk -v score="$SCORE" 'BEGIN { exit (score < 95.0) ? 1 : 0 }'; then
+            echo "✅ Evasion suite PASSED (score: $SCORE/100)"
+          else
+            echo "❌ Evasion suite FAILED (score: $SCORE/100, threshold: 95.0)"
+            exit 1
+          fi

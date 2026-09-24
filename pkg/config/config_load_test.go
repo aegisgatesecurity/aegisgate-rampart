@@ -216,11 +216,11 @@ func TestPrivacyConfigPartialOverride(t *testing.T) {
 
 func TestModelConfig(t *testing.T) {
 	cfg := DefaultConfig()
-	if cfg.Models.Path != "/opt/aegisgate/models/threat-detection.onnx" {
+	if cfg.Models.Path != "/opt/aegisgate-rampart/models/threat_cnn_bilstm.onnx" {
 		t.Errorf("Default Path = %s", cfg.Models.Path)
 	}
-	if cfg.Models.Threshold != 0.05 {
-		t.Errorf("Default Threshold = %f, want 0.05", cfg.Models.Threshold)
+	if cfg.Models.Threshold != 0.5 {
+		t.Errorf("Default Threshold = %f, want 0.5", cfg.Models.Threshold)
 	}
 	if !cfg.Models.Shadow {
 		t.Error("Default Shadow should be true")

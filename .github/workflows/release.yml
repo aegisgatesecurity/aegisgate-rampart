@@ -19,19 +19,14 @@ permissions:
 
 jobs:
   # ========================================
-  # Build binaries — Linux, Windows (CGO_ENABLED=0)
+  # Build binaries — Windows (CGO_ENABLED=0, no ONNX runtime)
+  # Windows standalone binary uses heuristic-only ML detection.
   # ========================================
   build-static:
     runs-on: ubuntu-latest
     strategy:
       matrix:
         include:
-          - goos: linux
-            goarch: amd64
-            suffix: ''
-          - goos: linux
-            goarch: arm64
-            suffix: -arm64
           - goos: windows
             goarch: amd64
             suffix: -windows.exe
@@ -53,6 +48,48 @@ jobs:
         uses: actions/upload-artifact@v7.0.1
         with:
           name: rampart-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: rampart${{ matrix.suffix }}
+
+  # ========================================
+  # Build binaries — Linux (CGO_ENABLED=1, ONNX Runtime v1.29.0)
+  # ML-enabled build with CNN-BiLSTM threat detection model.
+  # ========================================
+  build-ml:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goarch: amd64
+            suffix: ''
+          - goarch: arm64
+            suffix: -arm64
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-go@v7.0.0
+        with:
+          go-version: '1.26.6'
+      - name: Install ONNX Runtime v1.29.0
+        run: |
+          wget -q https://github.com/microsoft/onnxruntime/releases/download/v1.29.0/onnxruntime-linux-x64-1.29.0.tgz
+          tar -xzf onnxruntime-linux-x64-1.29.0.tgz
+          sudo cp onnxruntime-linux-x64-1.29.0/lib/*.so /usr/lib/
+          sudo cp -r onnxruntime-linux-x64-1.29.0/include/* /usr/include/
+          rm -rf onnxruntime-linux-x64-1.29.0.tgz onnxruntime-linux-x64-1.29.0
+      - name: Build
+        env:
+          GOOS: linux
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 1
+          CGO_CFLAGS: "-I/usr/include"
+          CGO_LDFLAGS: "-L/usr/lib -lonnxruntime"
+        run: |
+          VERSION=${{ github.event.inputs.version || github.ref_name }}
+          go build -ldflags "-s -w -X main.versionFlag=$VERSION" \
+            -o rampart${{ matrix.suffix }} ./cmd/rampart/
+      - name: Upload binary
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: rampart-linux-${{ matrix.goarch }}
           path: rampart${{ matrix.suffix }}
 
   # ========================================
@@ -93,7 +130,7 @@ jobs:
   # Requires id-token: write for OIDC-based keyless signing
   # ========================================
   sign-binary:
-    needs: [build-static, build-macos]
+    needs: [build-static, build-ml, build-macos]
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -133,7 +170,7 @@ jobs:
   # SBOM — CycloneDX + SPDX (Syft)
   # ========================================
   sbom-attest:
-    needs: [build-static, build-macos]
+    needs: [build-static, build-ml, build-macos]
     runs-on: ubuntu-latest
     permissions:
       actions: read
@@ -160,10 +197,10 @@ jobs:
             sbom-spdx.json
 
   # ========================================
-  # Docker build + push
+  # Docker build + push (builds from source with CGO + ONNX Runtime)
   # ========================================
   build-container:
-    needs: [build-static, sign-binary]
+    needs: [build-ml, sign-binary]
     runs-on: ubuntu-latest
     permissions:
       packages: write
@@ -172,16 +209,6 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v7.0.1
-      - name: Download Linux amd64 binary
-        uses: actions/download-artifact@v8.0.1
-        with:
-          name: rampart-linux-amd64
-          path: build/
-      - name: Download Linux arm64 binary
-        uses: actions/download-artifact@v8.0.1
-        with:
-          name: rampart-linux-arm64
-          path: build/
       - name: Install Cosign
         uses: sigstore/cosign-installer@v4.1.2
       - name: Set up Docker Buildx
@@ -201,7 +228,7 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}:latest
             ghcr.io/${{ github.repository }}:${{ github.event.inputs.version || github.ref_name }}
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
       - name: Sign container image
         run: |
           cosign sign --yes ghcr.io/${{ github.repository }}:${{ github.event.inputs.version || github.ref_name }}
@@ -210,7 +237,7 @@ jobs:
   # GitHub Release
   # ========================================
   create-release:
-    needs: [build-static, build-macos, sign-binary, sbom-attest, build-container]
+    needs: [build-static, build-ml, build-macos, sign-binary, sbom-attest, build-container]
     runs-on: ubuntu-latest
     permissions:
       contents: write

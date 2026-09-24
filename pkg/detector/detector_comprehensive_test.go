@@ -27,8 +27,8 @@ func TestDefaultConfig(t *testing.T) {
 	if !cfg.EnableML {
 		t.Error("DefaultConfig EnableML should be true")
 	}
-	if cfg.MLThreshold != 0.7 {
-		t.Errorf("DefaultConfig MLThreshold = %f, want 0.7", cfg.MLThreshold)
+	if cfg.MLThreshold != 0.5 {
+		t.Errorf("DefaultConfig MLThreshold = %f, want 0.5", cfg.MLThreshold)
 	}
 	if !cfg.ShadowMode {
 		t.Error("DefaultConfig ShadowMode should be true")

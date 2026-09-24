@@ -115,8 +115,8 @@ func DefaultConfig() *Config {
 		Mode:        ModeMonitor,
 		Targets:     DefaultTargets(),
 		Models: ModelConfig{
-			Path:      "/opt/aegisgate/models/threat-detection.onnx",
-			Threshold: 0.05,
+			Path:      "/opt/aegisgate-rampart/models/threat_cnn_bilstm.onnx",
+			Threshold: 0.5, // v13 calibrated threshold (matches Platform proxy default)
 			Shadow:    true,
 		},
 		Block: BlockConfig{

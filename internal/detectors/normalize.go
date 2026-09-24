@@ -223,6 +223,74 @@ func NormalizeForComparison(input string) string {
 
 // NormalizeAllVariants returns the original text plus all normalized variants.
 // The caller should scan each variant against detection patterns.
+// NormalizeSlidingROT13 applies ROT13 decoding to sliding windows of 4+
+// consecutive alphabetic characters within the input. This catches attacks
+// where only part of the text is ROT13-encoded (e.g., "vtaber previous"
+// where "vtaber" decodes to "ignore"). Returns up to 5 unique variants,
+// each with a different window decoded. If no suitable alphabetic runs are
+// found, returns an empty slice.
+//
+// Ported from Platform scanner/normalize.go (v4.4.0).
+func NormalizeSlidingROT13(input string) []string {
+	type run struct {
+		start int
+		end   int
+	}
+	runes := []rune(input)
+
+	var runs []run
+	i := 0
+	for i < len(runes) {
+		if unicode.IsLetter(runes[i]) {
+			start := i
+			for i < len(runes) && unicode.IsLetter(runes[i]) {
+				i++
+			}
+			if i-start >= 4 {
+				runs = append(runs, run{start: start, end: i})
+			}
+		} else {
+			i++
+		}
+	}
+
+	if len(runs) == 0 {
+		return nil
+	}
+
+	var variants []string
+	seen := map[string]bool{}
+
+	for _, r := range runs {
+		var b strings.Builder
+		b.Grow(len(input))
+		for j, ch := range runes {
+			if j >= r.start && j < r.end {
+				switch {
+				case ch >= 'a' && ch <= 'z':
+					b.WriteRune((ch-'a'+13)%26 + 'a')
+				case ch >= 'A' && ch <= 'Z':
+					b.WriteRune((ch-'A'+13)%26 + 'A')
+				default:
+					b.WriteRune(ch)
+				}
+			} else {
+				b.WriteRune(ch)
+			}
+		}
+		v := b.String()
+		if v != input && !seen[v] {
+			seen[v] = true
+			variants = append(variants, v)
+			if len(variants) >= 5 {
+				break
+			}
+		}
+	}
+
+	return variants
+}
+
 func NormalizeAllVariants(input string) []string {
 	variants := []string{
 		input,
@@ -232,11 +300,36 @@ func NormalizeAllVariants(input string) []string {
 		NormalizeText(NormalizeKeyboardWalk(input)),
 		NormalizeText(NormalizeROT13(input)),
 	}
+
+	// Additional variants for parity with Platform
+	repeating := NormalizeRepeatingChars(input)
+	if repeating != input && repeating != "" {
+		variants = append(variants, repeating)
+	}
+	backslash := NormalizeBackslashEscapes(input)
+	if backslash != input && backslash != "" {
+		variants = append(variants, backslash)
+	}
+	homoglyphs := NormalizeHomoglyphs(input)
+	if homoglyphs != input && homoglyphs != "" {
+		variants = append(variants, homoglyphs)
+		homoglyphNorm := NormalizeText(homoglyphs)
+		if homoglyphNorm != homoglyphs && homoglyphNorm != input && homoglyphNorm != "" {
+			variants = append(variants, homoglyphNorm)
+		}
+	}
+
+	// Sliding ROT13 variants (parity with Platform)
+	slidingVariants := NormalizeSlidingROT13(input)
+	for _, v := range slidingVariants {
+		variants = append(variants, v)
+	}
+
 	// Deduplicate
 	seen := make(map[string]bool, len(variants))
 	unique := make([]string, 0, len(variants))
 	for _, v := range variants {
-		if !seen[v] {
+		if v != "" && !seen[v] {
 			seen[v] = true
 			unique = append(unique, v)
 		}

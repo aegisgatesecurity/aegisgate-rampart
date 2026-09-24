@@ -28,7 +28,9 @@ Thumbs.db
 # Go
 vendor/
 
-# Models (large binary)
+# Models (large binary) — force-tracked via git add -f
+# The v13 ONNX model is committed to the repo for detection parity with Platform.
+# See .plans/DETECTION-PARITY-FIX.md for details.
 *.onnx
 models/
 
@@ -54,3 +56,6 @@ proxy.test
 STRATEGY-MARKET-ANALYSIS.md
 TECHNICAL-GAPS-CORRECTED.md
 95-PERCENT-NEEDS.md
+
+# Evasion suite JSON reports (large, regenerated locally)
+internal/detectors/testing/reports/adversarial/*.json

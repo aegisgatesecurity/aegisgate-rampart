@@ -57,7 +57,7 @@ func DefaultConfig() *Config {
 		EnableCompliance: true,
 		EnableML:         true,
 		ModelPath:        "/opt/aegisgate-rampart/models/threat_cnn_bilstm.onnx",
-		MLThreshold:      0.7,
+		MLThreshold:      0.5, // v13 calibrated threshold (matches Platform proxy default)
 		ShadowMode:       true,
 		StrictMode:       false,
 	}
@@ -90,7 +90,7 @@ func New(cfg *Config) (*Detector, error) {
 			ShadowMode:        cfg.ShadowMode,
 			Threshold:         cfg.MLThreshold,
 			ModelPath:         cfg.ModelPath,
-			MaxSequenceLength: 128,
+			MaxSequenceLength: 256,
 			Timeout:           10,
 		}
 
@@ -186,9 +186,24 @@ func (d *Detector) DetectWithContext(ctx context.Context, text string) (*Summary
 		summary.Compliance[framework] = result.Compliant
 	}
 
+	// Truncate to 64KB (mirrors ResponseGuard's maxScanBytes) to prevent
+	// O(n*k) regex cost on very large inputs. The guard already scanned the
+	// first 64KB; DetectAll and NormalizeAllVariants run against the same
+	// patterns so truncating here avoids redundant work on the tail.
+	const detectorMaxScanBytes = 64 * 1024
+
 	// 2. Run ML threat detection (supplementary layer)
+	// Use DetectAll with normalization variants for evasion-resistant scoring.
+	// This matches Platform's approach of scanning deobfuscated forms.
 	if d.ml != nil {
-		mlResult := d.ml.Detect(text)
+		mlVariants := detectors.NormalizeAllVariants(text)
+		// Truncate variants to 64KB to prevent O(n*k) regex cost on large inputs.
+		for i, v := range mlVariants {
+			if len(v) > detectorMaxScanBytes {
+				mlVariants[i] = v[:detectorMaxScanBytes]
+			}
+		}
+		mlResult := d.ml.DetectAll(mlVariants)
 		summary.MLScore = mlResult.Score
 		if mlResult.IsThreat {
 			summary.Results = append(summary.Results, Result{
@@ -204,27 +219,39 @@ func (d *Detector) DetectWithContext(ctx context.Context, text string) (*Summary
 		}
 	}
 
-	// 3. Run all-detector scan (comprehensive regex from detectors package)
-	// Truncate to 64KB (mirrors ResponseGuard's maxScanBytes) to prevent
-	// O(n*k) regex cost on very large inputs. The guard already scanned the
-	// first 64KB; DetectAll runs the same patterns so truncating here avoids
-	// redundant work on the tail of large inputs.
-	const detectorMaxScanBytes = 64 * 1024
-	scanText := text
-	if len(scanText) > detectorMaxScanBytes {
-		scanText = scanText[:detectorMaxScanBytes]
-	}
-	allMatches := detectors.DetectAll(scanText)
-	for _, m := range allMatches {
-		// Avoid duplicating results already captured by response guard
-		r := Result{
-			Category:   string(m.Category),
-			Severity:   string(m.Severity),
-			Confidence: m.Confidence,
-			Text:       m.Value,
-			Rule:       m.Category,
+	// 3. Run all-detector scan on normalization variants (evasion-resistant).
+	// Platform calls scanner.NormalizeAllVariants() then ScanFast() on each
+	// variant with early-exit on block. We mirror that here: scan the original
+	// first, then each deobfuscated variant, collecting new matches.
+	//
+	// NormalizeAllVariants returns the original text as variants[0], so the
+	// first iteration covers the same content as the old single-pass scan.
+	variants := detectors.NormalizeAllVariants(text)
+	seenMatches := make(map[string]bool) // deduplicate by Category:Value
+	for _, v := range variants {
+		if v == "" {
+			continue
 		}
-		summary.Results = append(summary.Results, r)
+		scanText := v
+		if len(scanText) > detectorMaxScanBytes {
+			scanText = scanText[:detectorMaxScanBytes]
+		}
+		allMatches := detectors.DetectAll(scanText)
+		for _, m := range allMatches {
+			key := string(m.Category) + ":" + m.Value
+			if seenMatches[key] {
+				continue
+			}
+			seenMatches[key] = true
+			r := Result{
+				Category:   string(m.Category),
+				Severity:   string(m.Severity),
+				Confidence: m.Confidence,
+				Text:       m.Value,
+				Rule:       m.Category,
+			}
+			summary.Results = append(summary.Results, r)
+		}
 	}
 
 	// Update total detections count to include all-detector results

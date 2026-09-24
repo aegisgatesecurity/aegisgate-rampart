@@ -190,6 +190,13 @@ var PIIUSCorePatterns = []PatternDef{
 		Regex:       `\b(?:10004|20000|30000|40000|50000|60000)\b`,
 		Description: "CPT surgery codes (high-value procedures)",
 	},
+	// Phase 4 parity fix — 2026-09-24: patterns synced from Platform
+	{
+		Name:        "pii_icd10_patient_ctx",
+		Severity:    SeverityCritical,
+		Regex:       `(?i)\b(?:patient|diagnosed\s+with|diagnosis(?:\s+of)?|treated\s+for|admitted\s+for|suffers\s+from|has\s+(?:a\s+)?diagnosis\s+of|ICD.10\s+(?:code|diagnosis))\s*[:\s].*?\b[A-TV-Z][0-9][0-9AB]\.[0-9A-TV-Z]{1,4}\b`,
+		Description: "ICD-10 diagnosis code with patient context (PHI leak)",
+	},
 }
 
 // CompiledPIIUSCorePatterns holds pre-compiled US core PII regex patterns.

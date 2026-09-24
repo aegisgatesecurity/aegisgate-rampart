@@ -292,6 +292,73 @@ var SecretsPatterns = []PatternDef{
 		Regex:       `\b(?:Steuer-?ID|Steuernummer)[:\s]*\d{11}\b`,
 		Description: "German tax identification number (Steuer-ID)",
 	},
+	// Phase 4 parity fix — 2026-09-24: patterns synced from Platform
+	{
+		Name:        "SlackToken",
+		Severity:    SeverityHigh,
+		Regex:       `\bxox[baprs]-[0-9]{10,13}-[0-9]{10,13}[a-zA-Z0-9-]*\b`,
+		Description: "Slack token",
+	},
+	{
+		Name:        "SlackTokenV2",
+		Severity:    SeverityHigh,
+		Regex:       `\bxox[abprs]-[A-Za-z0-9-]{20,}\b`,
+		Description: "Slack token (relaxed format)",
+	},
+	{
+		Name:        "secret_azure_connection",
+		Severity:    SeverityCritical,
+		Regex:       `(?i)Azure\s+connection\s+string\s*[:=]?\s*DefaultEndpointsProtocol=\S+;AccountName=\S+;AccountKey=\S+`,
+		Description: "Azure storage connection string",
+	},
+	{
+		Name:        "secret_cloudflare_key",
+		Severity:    SeverityHigh,
+		Regex:       `(?i)(?:cloudflare|cf)[_ \-]?api[_ \-]?key\s*[:=]\s*['"]?([A-Za-z0-9_-]{30,})['"]?`,
+		Description: "Cloudflare API key",
+	},
+	{
+		Name:        "secret_docker_pat",
+		Severity:    SeverityCritical,
+		Regex:       `\bdckr_pat_[A-Za-z0-9_-]{27,}\b`,
+		Description: "Docker personal access token",
+	},
+	{
+		Name:        "secret_gcp_key_id",
+		Severity:    SeverityHigh,
+		Regex:       `(?i)(?:private[_-]?key[_-]?id|key[_-]?id)\s*[:=]\s*['"]?([a-fA-F0-9]{8,})['"]?`,
+		Description: "GCP service account private key ID",
+	},
+	{
+		Name:        "secret_generic_hex",
+		Severity:    SeverityHigh,
+		Regex:       `(?i)(?:key|secret|token|passphrase|password|api[_-]?key|auth[_-]?token)\s*(?:is|:|=)\s*['"]?([a-fA-F0-9]{32,})['"]?`,
+		Description: "Generic hex secret/credential value (32+ hex chars with label)",
+	},
+	{
+		Name:        "secret_kubernetes_token",
+		Severity:    SeverityHigh,
+		Regex:       `(?i)Kubernetes\s+service\s+account\s+token\s*[:=]?\s*['"]?([A-Za-z0-9+/=_]{20,})['"]?`,
+		Description: "Kubernetes service account token",
+	},
+	{
+		Name:        "secret_labeled_credential",
+		Severity:    SeverityHigh,
+		Regex:       `(?i)(?:(?:password|passwd|pwd|secret\s+key|secret|api[_-]?secret|signing[_-]?key|encryption[_-]?key|encryption\s+passphrase|passphrase|auth[_-]?token|access[_-]?key|webhook\s+secret))\s*(?:(?:for\s+\S+(?:\s+\S+){0,3})\s+)?(?:is\s+(?:the\s+)?['"]?(?:[0-9_!@#$%^&*\-+=|<>?./~]\S{3,}|\S[0-9_!@#$%^&*\-+=|<>?./~]\S{2,}|\S{2}[0-9_!@#$%^&*\-+=|<>?./~]\S{1,}|\S{3,}[0-9_!@#$%^&*\-+=|<>?./~]\S*)['"]?|is\s*[:=]\s*['"]?\S{4,}['"]?|[:=]\s*['"]?\S{4,}['"]?)`,
+		Description: "Labeled credential value in natural text",
+	},
+	{
+		Name:        "secret_pagerduty_key",
+		Severity:    SeverityHigh,
+		Regex:       `(?i)(?:PagerDuty|pagerduty)\s+(?:API\s+)?key\s*[:=]\s*['"]?(pd_api_key_[A-Za-z0-9_]{20,})['"]?`,
+		Description: "PagerDuty API key",
+	},
+	{
+		Name:        "secret_uuid_token",
+		Severity:    SeverityHigh,
+		Regex:       `(?i)(?:consul|vault|nomad)\s+(?:acl\s+)?token\s*(?:is\s+(?:the\s+)?|is\s*[:=]|[:=])?\s*['"]?\b([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b['"]?`,
+		Description: "HashiCorp Consul/Vault/Nomad UUID token",
+	},
 }
 
 // CompiledSecretPatterns holds pre-compiled secret regex patterns.

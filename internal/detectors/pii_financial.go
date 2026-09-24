@@ -85,6 +85,13 @@ var PIIFinancialPatterns = []PatternDef{
 		Regex:       `\b([A-Z]{4}[A-Z]{2}[0-9]{2}[A-Z0-9]{3})\b`,
 		Description: "SWIFT/BIC 11-character code (includes branch code)",
 	},
+	// Phase 4 parity fix — 2026-09-24: patterns synced from Platform
+	{
+		Name:        "fin_crypto_context",
+		Severity:    SeverityHigh,
+		Regex:       `(?i)(?:send\s+(?:bitcoin|btc|funds|crypto|payment)\s+to\s+(?:this\s+)?(?:address|wallet)?|pay\s+to|wallet\s+address\s*(?:is|:|=)|address\s+for\s+payment|wallet\s*[:=])\s*[:=]?\s*(?:(?:[13][a-km-zA-HJ-NP-Z1-9]{25,34}|bc1[qrp][0-9A-Za-z]{36,59})|(?:0x[a-fA-F0-9]{40})|(?:bnb[a-zA-HJ-NP-Z1-9]{39})|(?:[LM3][a-zA-Z0-9]{26,33})|(?:[1-9A-HJ-NP-Za-km-z]{32,44}))`,
+		Description: "Crypto wallet address with payment context",
+	},
 }
 
 // CompiledPIIFinancialPatterns holds pre-compiled financial PII regex patterns.

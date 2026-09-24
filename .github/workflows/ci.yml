@@ -286,7 +286,7 @@ jobs:
           AEGISGATE_ML_MODEL_PATH: ${{ github.workspace }}/models/threat_cnn_bilstm.onnx
         run: |
           go test -v -count=1 -timeout 600s -tags=cgo -run TestEvasionSuite ./internal/detectors/ 2>&1 | tee /tmp/evasion-results.txt
-          SCORE=$(grep "Evasion Resistance Score" /tmp/evasion-results.txt | grep -oP '[\d.]+/100' | cut -d/ -f1)
+          SCORE=$(grep "Evasion Resistance Score" /tmp/evasion-results.txt | grep -oP '[\d.]+/100' | cut -d/ -f1 | head -1)
           echo "Evasion Resistance Score: $SCORE/100"
           if awk -v score="$SCORE" 'BEGIN { exit (score < 95.0) ? 1 : 0 }'; then
             echo "✅ Evasion suite PASSED (score: $SCORE/100)"

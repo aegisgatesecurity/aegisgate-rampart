@@ -229,33 +229,25 @@ func startMockBackend(t *testing.T, ca *TestCA, triggerDetection bool, responseB
 
 // TestMITM_Integration_FullFlow tests the complete MITM interception flow
 // with a trusted CA, mock backend, and real HTTPS requests.
+//
+// FIX: The original test connected directly to 127.0.0.1:backendPort through
+// the proxy. The proxy's SSRF protection (isBlockedAddress) correctly blocks
+// loopback addresses in tunnel mode, causing a 403 Forbidden. The fix mirrors
+// the pattern used by TestBlockModeMITM_* tests: send requests to a real
+// target domain (api.openai.com) and override sharedTransport.DialTLSContext
+// to remap the upstream connection to the mock backend on loopback.
 func TestMITM_Integration_FullFlow(t *testing.T) {
 	skipUnlessIntegration(t)
 
 	// Generate test CA
 	ca := generateTestCAForHarness(t)
 
-	// Create temp cert directory for proxy
-	certDir, err := os.MkdirTemp("", "rampart-test-certs-*")
-	if err != nil {
-		t.Fatalf("Failed to create temp cert dir: %v", err)
-	}
-	defer os.RemoveAll(certDir)
-
-	// Install CA in cert directory
-	caCertPath := certDir + "/ca.crt"
-	caKeyPath := certDir + "/ca.key"
-	if err := os.WriteFile(caCertPath, ca.CertPEM, 0644); err != nil {
-		t.Fatalf("Failed to write CA cert: %v", err)
-	}
-	if err := os.WriteFile(caKeyPath, ca.KeyPEM, 0644); err != nil {
-		t.Fatalf("Failed to write CA key: %v", err)
-	}
-
-	// Start mock backend
+	// Start mock backend with cert signed by test CA
 	backend := startMockBackend(t, ca, false, "")
+	backendURL := mustParseURL(backend.URL)
+	backendHost, backendPort, _ := net.SplitHostPort(backendURL.Host)
 
-	// Start proxy with test CA
+	// Start proxy
 	proxyPort := findFreePort(t)
 	cfg := &config.Config{
 		ProxyPort:  proxyPort,
@@ -284,14 +276,60 @@ func TestMITM_Integration_FullFlow(t *testing.T) {
 		},
 	}
 
-	// Override cert directory
-	// Note: This requires modifying the proxy to accept cert dir as config
-	// For now, we'll use the default cert directory and copy our CA there
-	// This is a limitation of the current architecture
-
 	p, err := New(cfg)
 	if err != nil {
 		t.Fatalf("Failed to create proxy: %v", err)
+	}
+
+	// Load test CA into proxy's cert manager so MITM certs are signed by our CA
+	certDir, err := os.MkdirTemp("", "rampart-test-certs-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp cert dir: %v", err)
+	}
+	defer os.RemoveAll(certDir)
+
+	caCertPath := certDir + "/ca.crt"
+	caKeyPath := certDir + "/ca.key"
+	if err := os.WriteFile(caCertPath, ca.CertPEM, 0644); err != nil {
+		t.Fatalf("Failed to write CA cert: %v", err)
+	}
+	if err := os.WriteFile(caKeyPath, ca.KeyPEM, 0600); err != nil {
+		t.Fatalf("Failed to write CA key: %v", err)
+	}
+	if err := p.certMgr.LoadCAFromFiles(caCertPath, caKeyPath); err != nil {
+		t.Fatalf("Failed to load test CA into proxy: %v", err)
+	}
+
+	// Override sharedTransport to route upstream requests to the mock backend
+	// instead of the real api.openai.com. This bypasses the SSRF protection
+	// (which blocks loopback) because the proxy's interceptHTTPS path uses
+	// RoundTrip on this transport, not the tunnel path.
+	backendCertPool := x509.NewCertPool()
+	backendCertPool.AddCert(ca.Cert)
+
+	p.sharedTransport = &http.Transport{
+		TLSClientConfig: &tls.Config{
+			RootCAs:    backendCertPool,
+			MinVersion: tls.VersionTLS12,
+		},
+		DialTLSContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			// Remap any target domain to our mock backend on loopback
+			dialer := &net.Dialer{Timeout: 10 * time.Second}
+			conn, err := dialer.DialContext(ctx, network, net.JoinHostPort(backendHost, backendPort))
+			if err != nil {
+				return nil, err
+			}
+			tlsConn := tls.Client(conn, &tls.Config{
+				RootCAs:    backendCertPool,
+				MinVersion: tls.VersionTLS12,
+				ServerName: "localhost",
+			})
+			if err := tlsConn.Handshake(); err != nil {
+				conn.Close()
+				return nil, fmt.Errorf("TLS handshake to backend: %w", err)
+			}
+			return tlsConn, nil
+		},
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -309,7 +347,10 @@ func TestMITM_Integration_FullFlow(t *testing.T) {
 	// Wait for proxy to start
 	time.Sleep(200 * time.Millisecond)
 
-	// Create HTTP client that trusts test CA and uses proxy
+	// Create HTTP client that trusts test CA and uses proxy.
+	// The client sends CONNECT for api.openai.com:443 (a target domain),
+	// the proxy MITMs the TLS, scans the request/response, and forwards
+	// to our mock backend via the overridden sharedTransport.
 	certPool := x509.NewCertPool()
 	certPool.AddCert(ca.Cert)
 
@@ -328,8 +369,9 @@ func TestMITM_Integration_FullFlow(t *testing.T) {
 		Timeout: 10 * time.Second,
 	}
 
-	// Make request through proxy to backend
-	resp, err := client.Get(backend.URL)
+	// Make request to a target domain through the proxy.
+	// The proxy will MITM the connection and forward to our mock backend.
+	resp, err := client.Get("https://api.openai.com/v1/chat/completions")
 	if err != nil {
 		t.Fatalf("Request failed: %v", err)
 	}
@@ -349,7 +391,13 @@ func TestMITM_Integration_FullFlow(t *testing.T) {
 		t.Errorf("Expected AI API response, got: %s", string(body))
 	}
 
-	t.Logf("✓ Full MITM flow successful - request intercepted and proxied")
+	// Verify the proxy intercepted the request (should be counted as intercepted)
+	stats := p.GetStats()
+	if stats.Intercepted < 1 {
+		t.Errorf("Expected intercepted >= 1, got %d", stats.Intercepted)
+	}
+
+	t.Logf("✓ Full MITM flow successful - request intercepted and proxied (intercepted=%d)", stats.Intercepted)
 }
 
 // TestMITM_Integration_BlockModeDetectAPI tests block mode via the /detect endpoint

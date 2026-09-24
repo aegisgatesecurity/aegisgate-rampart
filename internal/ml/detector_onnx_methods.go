@@ -67,6 +67,7 @@ func discoverONNXRuntimeLib(configPath string) string {
 	homeDir, _ := os.UserHomeDir()
 	if homeDir != "" {
 		venvPaths := []string{
+			filepath.Join(homeDir, "Desktop", "AegisGate", "consolidated", "aegisgate-platform", "testlab", "libonnxruntime.so.1.29.0"),
 			filepath.Join(homeDir, "Desktop", "AegisGate", ".venv", "lib", "python3.12", "site-packages", "onnxruntime", "capi", "libonnxruntime.so.1.27.0"),
 			filepath.Join(homeDir, ".local", "lib", "onnxruntime", "libonnxruntime.so"),
 			filepath.Join(homeDir, "Desktop", "AegisGate", ".venv", "Lib", "site-packages", "onnxruntime", "capi", "onnxruntime.dll"),

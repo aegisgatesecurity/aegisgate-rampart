@@ -57,5 +57,8 @@ STRATEGY-MARKET-ANALYSIS.md
 TECHNICAL-GAPS-CORRECTED.md
 95-PERCENT-NEEDS.md
 
-# Evasion suite JSON reports (large, regenerated locally)
-internal/detectors/testing/reports/adversarial/*.json
+# # Evasion suite JSON reports (large, regenerated locally)
+# internal/detectors/testing/reports/adversarial/*.json
+
+# Allow tracking the latest evasion suite report for CI conformance
+!internal/detectors/testing/reports/adversarial/evasion-suite-rampart-2026-09-24.json

@@ -643,7 +643,9 @@ func TestBlockModeMITM_NonTargetPassthrough(t *testing.T) {
 	}
 
 	// Set a read deadline so we don't hang forever
-	conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+	if err := conn.SetReadDeadline(time.Now().Add(5 * time.Second)); err != nil {
+		t.Fatalf("Failed to set read deadline: %v", err)
+	}
 
 	reader := bufio.NewReader(conn)
 	resp, err := http.ReadResponse(reader, &http.Request{

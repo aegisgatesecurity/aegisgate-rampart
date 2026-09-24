@@ -350,7 +350,7 @@ func optimizedDetectWithSets(td *ThreatDetector, optimizer *LatencyOptimizer, te
 	}
 
 	score := 0.0
-	threshold := 0.5 // calibrated threshold for v11b model
+	threshold := 0.5 // calibrated threshold for v13 model
 
 	// Check attack words directly
 	for word := range optimizer.attackSet {

@@ -320,10 +320,7 @@ func NormalizeAllVariants(input string) []string {
 	}
 
 	// Sliding ROT13 variants (parity with Platform)
-	slidingVariants := NormalizeSlidingROT13(input)
-	for _, v := range slidingVariants {
-		variants = append(variants, v)
-	}
+	variants = append(variants, NormalizeSlidingROT13(input)...)
 
 	// Deduplicate
 	seen := make(map[string]bool, len(variants))

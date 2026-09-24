@@ -250,11 +250,6 @@ func setupMITMTestEnv(t *testing.T, blockCfg config.BlockConfig, backendHandler 
 			MinVersion: tls.VersionTLS12,
 		},
 		DialTLSContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			// Remap any target domain to our mock backend
-			_, _, err := net.SplitHostPort(addr)
-			if err != nil {
-				addr = net.JoinHostPort(addr, "443")
-			}
 			// Always connect to the mock backend
 			dialer := &net.Dialer{Timeout: 10 * time.Second}
 			conn, err := dialer.DialContext(ctx, network, net.JoinHostPort(backendHost, backendPort))

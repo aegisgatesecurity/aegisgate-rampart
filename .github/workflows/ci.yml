@@ -176,14 +176,14 @@ jobs:
   macos:
     needs: dco
     runs-on: macos-latest
-    timeout-minutes: 15
+    timeout-minutes: 20  # -race + ONNX inference on arm64 needs headroom
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: actions/setup-go@v7.0.0
         with:
           go-version: '1.26.6'
       - name: Run tests (CGO_ENABLED=1)
-        run: CGO_ENABLED=1 go test -race -coverprofile=coverage.out ./...
+        run: CGO_ENABLED=1 go test -race -timeout 900s -coverprofile=coverage.out ./...
       - name: go vet
         run: go vet ./...
       - name: Build binary (CGO_ENABLED=1)

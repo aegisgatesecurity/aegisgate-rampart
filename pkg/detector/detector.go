@@ -193,17 +193,20 @@ func (d *Detector) DetectWithContext(ctx context.Context, text string) (*Summary
 	const detectorMaxScanBytes = 64 * 1024
 
 	// 2. Run ML threat detection (supplementary layer)
-	// Use DetectAll with normalization variants for evasion-resistant scoring.
-	// This matches Platform's approach of scanning deobfuscated forms.
+	// Feed only the original text to the ML model, not normalization variants.
+	// The variants (ROT13, keyboard-walk, l33t, etc.) are designed for regex
+	// pattern matching, not neural network inference. The CharCNN-BiLSTM was
+	// trained on raw text and produces false positives on ROT13-transformed
+	// benign text (e.g., "Hello" → "Uryyb" scores 0.99+). The model's own
+	// character-level normalization handles evasion patterns that the variant
+	// pipeline covers for regex. This matches Platform's request path approach.
+	// (ref: upstream/aegisgate/pkg/proxy/proxy.go:710-720)
 	if d.ml != nil {
-		mlVariants := detectors.NormalizeAllVariants(text)
-		// Truncate variants to 64KB to prevent O(n*k) regex cost on large inputs.
-		for i, v := range mlVariants {
-			if len(v) > detectorMaxScanBytes {
-				mlVariants[i] = v[:detectorMaxScanBytes]
-			}
+		scanContent := text
+		if len(scanContent) > detectorMaxScanBytes {
+			scanContent = scanContent[:detectorMaxScanBytes]
 		}
-		mlResult := d.ml.DetectAll(mlVariants)
+		mlResult := d.ml.Detect(scanContent)
 		summary.MLScore = mlResult.Score
 		if mlResult.IsThreat {
 			summary.Results = append(summary.Results, Result{

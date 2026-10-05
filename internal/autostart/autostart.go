@@ -111,6 +111,11 @@ func (m *Manager) enableDarwin() error {
 </dict>
 </plist>`, plistName, m.binPath, platform.ConfigDir(), platform.ConfigDir())
 
+	// Ensure the LaunchAgents directory exists (HOME may be a temp dir in tests).
+	plistDir := filepath.Dir(m.plistPath())
+	if err := os.MkdirAll(plistDir, 0755); err != nil {
+		return fmt.Errorf("create LaunchAgents directory: %w", err)
+	}
 	return os.WriteFile(m.plistPath(), []byte(plist), 0644)
 }
 

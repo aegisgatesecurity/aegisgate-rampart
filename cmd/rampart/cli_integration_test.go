@@ -291,6 +291,12 @@ func TestCLI_RunForeground_BlockMode(t *testing.T) {
 func TestCLI_HandleAutoStart_Extended(t *testing.T) {
 	skipIfNotIntegration(t)
 
+	// Isolate HOME so the plist doesn't leak into the real home directory.
+	tmpHome := t.TempDir()
+	origHome := os.Getenv("HOME")
+	os.Setenv("HOME", tmpHome)
+	defer func() { os.Setenv("HOME", origHome) }()
+
 	// Test enable
 	handleAutoStart(true)
 	t.Logf("✓ handleAutoStart(true) completed")

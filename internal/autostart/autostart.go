@@ -115,7 +115,12 @@ func (m *Manager) enableDarwin() error {
 }
 
 func (m *Manager) disableDarwin() error {
-	return os.Remove(m.plistPath())
+	// Idempotent: removing a non-existent plist is not an error.
+	// The desired state (plist absent) is already achieved.
+	if err := os.Remove(m.plistPath()); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return nil
 }
 
 func (m *Manager) isEnabledDarwin() bool {
@@ -153,7 +158,11 @@ WantedBy=default.target
 }
 
 func (m *Manager) disableLinux() error {
-	return os.Remove(m.unitPath())
+	// Idempotent: removing a non-existent unit file is not an error.
+	if err := os.Remove(m.unitPath()); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return nil
 }
 
 func (m *Manager) isEnabledLinux() bool {

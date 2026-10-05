@@ -279,6 +279,12 @@ func TestHandleAutoStart(t *testing.T) {
 	os.Setenv("XDG_CONFIG_HOME", tmpDir)
 	defer os.Unsetenv("XDG_CONFIG_HOME")
 
+	// Isolate HOME so the plist doesn't leak into the real home directory.
+	tmpHome := t.TempDir()
+	origHome := os.Getenv("HOME")
+	os.Setenv("HOME", tmpHome)
+	defer func() { os.Setenv("HOME", origHome) }()
+
 	// Should not panic
 	handleAutoStart(true)
 	handleAutoStart(false)

@@ -87,7 +87,13 @@ func TestHandleStatus_NoDaemonRunning(t *testing.T) {
 }
 
 func TestHandleAutoStart_Enable(t *testing.T) {
-	// Test --autostart enable (may fail on CI but should not panic)
+	// Isolate HOME so the plist doesn't leak into the real home directory
+	// and cause TestCompIsEnabledNotConfigured in the autostart package to fail.
+	tmpHome := t.TempDir()
+	origHome := os.Getenv("HOME")
+	os.Setenv("HOME", tmpHome)
+	defer func() { os.Setenv("HOME", origHome) }()
+
 	origStderr := os.Stderr
 	os.Stderr, _ = os.Open(os.DevNull)
 	defer func() { os.Stderr = origStderr }()
@@ -100,10 +106,18 @@ func TestHandleAutoStart_Enable(t *testing.T) {
 	// Call handleAutoStart with a real binary path
 	os.Args = []string{"rampart", "--autostart"}
 	handleAutoStart(true)
+
+	// Clean up: disable autostart to remove the plist
+	handleAutoStart(false)
 }
 
 func TestHandleAutoStart_Disable(t *testing.T) {
-	// Test --no-autostart (should not panic even if not enabled)
+	// Isolate HOME so we don't touch the real home directory.
+	tmpHome := t.TempDir()
+	origHome := os.Getenv("HOME")
+	os.Setenv("HOME", tmpHome)
+	defer func() { os.Setenv("HOME", origHome) }()
+
 	origStderr := os.Stderr
 	os.Stderr, _ = os.Open(os.DevNull)
 	defer func() { os.Stderr = origStderr }()

@@ -40,6 +40,12 @@ func TestHandleTrust_WithOutput(t *testing.T) {
 
 // TestHandleAutoStart_EnableOutput tests handleAutoStart enable output.
 func TestHandleAutoStart_EnableOutput(t *testing.T) {
+	// Isolate HOME so the plist doesn't leak into the real home directory.
+	tmpHome := t.TempDir()
+	origHome := os.Getenv("HOME")
+	os.Setenv("HOME", tmpHome)
+	defer func() { os.Setenv("HOME", origHome) }()
+
 	old := os.Stdout
 	r, w, _ := os.Pipe()
 	os.Stdout = w
@@ -64,6 +70,12 @@ func TestHandleAutoStart_EnableOutput(t *testing.T) {
 
 // TestHandleAutoStart_DisableOutput tests handleAutoStart disable output.
 func TestHandleAutoStart_DisableOutput(t *testing.T) {
+	// Isolate HOME so we don't touch the real home directory.
+	tmpHome := t.TempDir()
+	origHome := os.Getenv("HOME")
+	os.Setenv("HOME", tmpHome)
+	defer func() { os.Setenv("HOME", origHome) }()
+
 	old := os.Stdout
 	r, w, _ := os.Pipe()
 	os.Stdout = w

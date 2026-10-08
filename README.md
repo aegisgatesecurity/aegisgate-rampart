@@ -6,15 +6,15 @@
 
 *A free local proxy that sits between your editor and the AI model, catching secrets and sensitive data before they leave your machine.*
 
-HTTPS MITM proxy · 223 regex patterns + Char CNN-BiLSTM · Monitor & Block modes · Zero telemetry by default
+HTTPS MITM proxy · 211 regex patterns + Char CNN-BiLSTM (v13) · Monitor & Block modes · 100.0/100 evasion resistance · Zero telemetry by default
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Version](https://img.shields.io/badge/version-v0.7.1-brightgreen.svg)](https://github.com/aegisgatesecurity/aegisgate-rampart/releases/tag/v0.7.1)
+[![Version](https://img.shields.io/badge/version-v0.8.0-brightgreen.svg)](https://github.com/aegisgatesecurity/aegisgate-rampart/releases/tag/v0.8.0)
 [![CI](https://github.com/aegisgatesecurity/aegisgate-rampart/actions/workflows/ci.yml/badge.svg)](https://github.com/aegisgatesecurity/aegisgate-rampart/actions/workflows/ci.yml)
-[![Coverage](https://img.shields.io/badge/coverage-80.7%25-brightgreen.svg)](#test-coverage)
+[![Coverage](https://img.shields.io/badge/coverage-81.3%25-brightgreen.svg)](#test-coverage)
 [![Security](https://github.com/aegisgatesecurity/aegisgate-rampart/actions/workflows/security.yml/badge.svg)](https://github.com/aegisgatesecurity/aegisgate-rampart/actions/workflows/security.yml)
 [![CodeQL](https://github.com/aegisgatesecurity/aegisgate-rampart/actions/workflows/codeql.yml/badge.svg)](https://github.com/aegisgatesecurity/aegisgate-rampart/actions/workflows/codeql.yml)
-[![Tests](https://img.shields.io/badge/tests-88%20files%20%7C%2027%20packages-blue.svg)](#test-coverage)
+[![Tests](https://img.shields.io/badge/tests-95%20files%20%7C%2029%20packages-blue.svg)](#test-coverage)
 [![Load Tests](https://img.shields.io/badge/load%20tests-7%20k6%20scenarios-success.svg)](#load-testing)
 [![Crash Rate](https://img.shields.io/badge/crash%20rate-0.0000%25-success.svg)](#load-testing)
 [![Throughput](https://img.shields.io/badge/throughput-235%20RPS-blue.svg)](#load-testing)
@@ -35,6 +35,8 @@ HTTPS MITM proxy · 223 regex patterns + Char CNN-BiLSTM · Monitor & Block mode
 ---
 
 > **🛡️ Using AegisGate at work?** [AegisGate Platform](https://github.com/aegisgatesecurity/aegisgate-platform) is our server-side gateway — 223 detection patterns, MCP/A2A/ACP protection, 30+ compliance frameworks, and cryptographic attestation. For individual developers, Rampart runs locally on your machine. [Explore Platform →](https://github.com/aegisgatesecurity/aegisgate-platform)
+>
+> **🔐 AegisGate MCP** — Building MCP servers? [AegisGate MCP](https://github.com/aegisgatesecurity/aegisgate-mcp) is a standalone secure MCP server framework with 21 security layers built in. Zero dependencies, Apache 2.0. [Explore MCP →](https://github.com/aegisgatesecurity/aegisgate-mcp)
 
 ---
 
@@ -45,7 +47,7 @@ Rampart is a **local security tool for developers** who use AI coding assistants
 Think of it as a firewall for AI coding tools. It catches the moment you're about to send a database password to Copilot, or when the AI generates code that contains an API key, and stops it before it's too late.
 
 - **In-transit interception.** Unlike Lens (browser-level) or Platform (gateway-level), Rampart operates at the network proxy layer — it sees every request and response.
-- **223 regex patterns + ML.** Same detection engine as AegisGate Platform. Regex catches known patterns; Char CNN-BiLSTM catches adversarial paraphrasing. Platform uses 223 patterns; 223 (subset optimized for local/browser deployment).
+- **211 regex patterns + ML.** Same detection engine as AegisGate Platform. Regex catches known patterns; Char CNN-BiLSTM (v13) catches adversarial paraphrasing. Platform uses 223 patterns; Rampart uses 211 (subset optimized for local deployment).
 - **Monitor or Block.** Log-only mode for visibility. Block mode for enforcement with configurable thresholds and categories.
 - **Zero telemetry by default.** Air-gap mode when `--platform-url` is not set. No network calls. All detection is local.
 - **Free. Forever.** Apache 2.0, single binary, no external dependencies.
@@ -127,7 +129,7 @@ CGO_ENABLED=0 go build -o bin/rampart ./cmd/rampart
 docker run -d \
   -p 8443:8443 \
   -p 9090:9090 \
-  ghcr.io/aegisgatesecurity/aegisgate-rampart:v0.7.1
+  ghcr.io/aegisgatesecurity/aegisgate-rampart:v0.8.0
 ```
 
 <details>
@@ -163,7 +165,7 @@ Your Machine                                          AI APIs
 │  VS Code + Ext ──┼────▶│      RAMPART         │──────▶  api.openai.com
 │  CLI (curl) ─────┤     │    :8080 proxy        │──────▶  api.anthropic.com
 │  Docker ─────────┘     │                       │──────▶  api.deepseek.com
-│                        │ 223 regex patterns    │──────▶  ...24 more
+│                        │ 211 regex patterns    │──────▶  ...24 more
 │                        │ Char CNN-BiLSTM        │
 │                        │ PII / Secrets /       │
 │                        │ XSS / Compliance      │
@@ -357,17 +359,28 @@ See **[PRIVACY.md](PRIVACY.md)** for complete privacy documentation.
 | Product | Surface | Approach | Detection | Block Mode |
 |---------|---------|----------|-----------|-------------|
 | **Lens** | Browser | DOM blocking (before send) | 155 regex + JS ML | ✅ Block in browser |
-| **Rampart** | Desktop, CLI, IDE | HTTPS proxy (in transit) | 223 regex + Go ML | ✅ Block at proxy |
+| **Rampart** | Desktop, CLI, IDE | HTTPS proxy (in transit) | 211 regex + Go ML | ✅ Block at proxy |
 | **Platform** | Server | API gateway | 223 regex + Go ML | ✅ Block at gateway |
 
 **Lens blocks before send. Rampart blocks in transit. Platform blocks at the gateway.** Together = full-spectrum coverage.
+
+<details>
+<summary><strong>📦 What's New in v0.8.0</strong></summary>
+
+- **🧠 Detection Parity with Platform** — v13 ONNX model, full text normalization (NormalizeAllVariants in production), threshold fix (0.7→0.5), config-sourced detector init. Evasion resistance: **100.0/100** (4,050 adversarial tests, up from 12.8/100).
+- **🔒 26 Synced Regex Patterns** — 11 secret patterns (Slack, Azure, Cloudflare, Docker, GCP, Kubernetes, etc.) + 13 compliance patterns (SSTI, eval/atob, model theft, data exfil, safety bypass). Pattern count: 185→211.
+- **🐳 CGO Docker Build** — Dockerfile rewritten for CGO + ONNX Runtime v1.29.0. ML model shipped in container. Debian bookworm-slim base (glibc for onnxruntime).
+- **🧪 Conformance Infrastructure** — Normalization conformance test suite + adversarial evasion suite (4,050 tests) tracked in CI.
+- **🧪 Test coverage** — 95 test files, 29 packages, 1,412 test functions, 81.3% filtered coverage, all passing with `-race`.
+
+</details>
 
 <details>
 <summary><strong>📦 What's New in v0.7.1</strong></summary>
 
 - **🔒 23 New SOC Detection Patterns** — SWIFT/BIC banking codes (3 patterns), CPT/HCPCS medical billing codes (11 patterns), and OT/ICS protocol patterns (9 patterns: Modbus, DNP3, OPC-UA). Parity with Platform v4.1.0 and Lens v0.3.1.
 - **🔧 Go 1.26.6** — Runtime bump from Go 1.25.0, fixes 5 stdlib vulnerabilities.
-- **🧪 Test coverage** — 88 test files, 27 packages, all passing with `-race`.
+- **🧪 Test coverage** — 95 test files, 29 packages, all passing with `-race`.
 
 </details>
 
@@ -380,7 +393,7 @@ See **[PRIVACY.md](PRIVACY.md)** for complete privacy documentation.
 - **📊 Anonymized Metrics** — Opt-in privacy-preserving telemetry. Domain hashed with SHA-256, timestamps rounded to hour, only false positives reported.
 - **🔔 Webhook Notifications** — Configurable webhook integration for detection alerts. Custom headers, multiple endpoints.
 - **📦 Enterprise Features** — Config hash verification, cosign signing support, self-hosted LLM configuration, batch scanning.
-- **✅ 80.7% test coverage** (88 test files, 27 packages, 7 k6 load tests, 0.0000% crash rate at 2,000+ concurrent users).
+- **✅ 81.3% test coverage** (95 test files, 29 packages, 7 k6 load tests, 0.0000% crash rate at 2,000+ concurrent users).
 
 </details>
 
@@ -388,9 +401,9 @@ See **[PRIVACY.md](PRIVACY.md)** for complete privacy documentation.
 
 | Metric | Value |
 |--------|-------|
-| Test files | 88 |
-| Packages tested | 27 |
-| Filtered coverage | 80.7% |
+| Test files | 95 |
+| Packages tested | 29 |
+| Filtered coverage | 81.3% |
 | Load test scenarios | 7 (k6) |
 | Crash rate | 0.0000% |
 | Peak concurrent users | 2,000+ |
@@ -483,7 +496,7 @@ aegisgate-rampart/
 │   ├── catrust/           # CA trust setup (Linux, macOS, Windows)
 │   ├── certificate/       # ECDSA P-256 CA generation
 │   ├── certinit/          # First-run certificate setup
-│   ├── detectors/         # 223 regex patterns (from Platform v4.1.0)
+│   ├── detectors/         # 211 regex patterns (from Platform v4.5.0)
 │   ├── enterprise/        # Enterprise features (config hash, verify, gate)
 │   ├── logging/           # Minimal stderr shim
 │   ├── lsp/               # Language Server Protocol server

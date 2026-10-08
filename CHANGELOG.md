@@ -1,3 +1,62 @@
+## [0.8.0] - 2026-10-08 - Detection Parity with Platform + v13 Model + 100.0/100 Evasion Resistance 🔒
+
+> **v0.8.0** achieves full detection parity with AegisGate Platform. The v13 ONNX model ships with CGO-enabled Docker builds, full text normalization in production, config-sourced detector initialization, and a calibrated threshold (0.5). Evasion resistance jumps from 12.8/100 to **100.0/100** across 4,050 adversarial test cases. 26 regex patterns synced from Platform (185→211).
+
+### Security Enhancements
+
+- **v13 Neural Model**: ONNX model upgraded from v11b to v13. SHA-256 hash `329fd89a...`, threshold 0.5 (calibrated for 0% FPR). Model integrity verified at load time.
+- **Detection Parity Fix** (5 root causes resolved):
+  - CGO enabled in Linux/Docker builds (ONNX Runtime v1.29.0)
+  - Model file shipped in Docker image (`/opt/aegisgate-rampart/models/`)
+  - Proxy reads config-sourced detector init (was hardcoded `DefaultConfig()`)
+  - ML threshold corrected (0.7→0.5, matches Platform proxy default)
+  - `NormalizeAllVariants` wired into production `DetectWithContext()`
+- **26 Regex Patterns Synced**: 11 secret patterns (Slack, Azure, Cloudflare, Docker PAT, GCP, Kubernetes, PagerDuty, UUID tokens, etc.) + 13 compliance patterns (SSTI, eval/atob, model theft, data exfil, safety bypass). Pattern count: 185→211.
+- **Text Normalization**: keyWalkReverse, homoglyph map (Cyrillic→Latin, Greek→Latin), l33t speak deobfuscation, zero-width Unicode stripping, ROT13, repeating char collapse, backslash escape handling, NFKC normalization in ML normalizer.
+- **MaxSequenceLength**: 128→256 (production parity with Platform).
+
+### Evasion Resistance
+
+| Metric | Before (v0.7.1) | After (v0.8.0) |
+|---------|-----------------|----------------|
+| Evasion resistance score | 12.8/100 | **100.0/100** |
+| Adversarial tests | 2,600 | 4,050 |
+| Categories | 5 | 5 + baseline |
+
+### Infrastructure
+
+- **Dockerfile**: Rewritten for CGO build with ONNX Runtime v1.29.0. Debian bookworm-slim base (glibc required by onnxruntime). Model file copied into image.
+- **CI**: Added CGO-enabled Linux build job with ONNX Runtime install. Added `ml-test` job for ML-specific tests. macOS test timeout bumped to 900s for evasion suite + `-race` on arm64.
+- **Release**: Split Linux build into `build-static` (Windows, CGO_ENABLED=0) + `build-ml` (Linux, CGO_ENABLED=1 with ONNX Runtime).
+- **Conformance**: Normalization conformance test suite + adversarial evasion suite reports tracked in CI.
+
+### Bug Fixes
+
+- Fixed `TestMITM_Integration_FullFlow` SSRF vs loopback backend
+- Fixed `FuzzScanRequest` hang on large inputs
+- Tightened `model_theft_query` regex — removed 'the' false positive, added 'give me' variant
+- Fixed `SetReadDeadline` error return (errcheck)
+- Fixed staticcheck warnings
+- Fixed ML model running on normalization variants (should run on original text only)
+- Fixed CI evasion score extraction (duplicate match bug)
+- Added ORT 1.29.0 testlab path to search order
+
+### Dependencies
+
+- `golang.org/x/time` 0.15→0.16
+- `golang.org/x/crypto` 0.56→0.57
+- `golang.org/x/sys` 0.47.0→0.48.0
+- `onnxruntime_go` 1.35.0→1.36.0
+
+### Testing
+
+- 95 test files, 29 packages, 1,412 test functions
+- Filtered coverage: 81.3% (excluding untestable packages: cmd/rampart, internal/tray, cmd/rampart-lsp, internal/autostart, internal/catrust)
+- All tests pass with `-race`
+- Evasion suite: 100.0/100 (4,050/4,050 tests)
+
+---
+
 ## [0.7.1] - 2026-09-09 - v11b Model + Evasion Suite + OPSEC Hardening 🔒
 
 > **v0.7.1** upgrades Rampart's Char CNN-BiLSTM threat detection model from v9 to v11b, matching Platform and Lens. Adds full text normalization (keyWalkReverse, homoglyph, l33t, zero-width Unicode) and a 2,600-test adversarial evasion suite. OPSEC hardening: pre-commit hooks, CODEOWNERS, PR templates, gitleaks config.

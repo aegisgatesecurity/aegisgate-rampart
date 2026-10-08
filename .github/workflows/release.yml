@@ -61,8 +61,6 @@ jobs:
         include:
           - goarch: amd64
             suffix: ''
-          - goarch: arm64
-            suffix: -arm64
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: actions/setup-go@v7.0.0
@@ -91,6 +89,34 @@ jobs:
         with:
           name: rampart-linux-${{ matrix.goarch }}
           path: rampart${{ matrix.suffix }}
+
+  # ========================================
+  # Build binary — Linux ARM64 (CGO_ENABLED=0, heuristic-only)
+  # Cross-compiling CGO for arm64 on x86 requires a full cross-toolchain
+  # and arm64 ONNX runtime libs. The Docker image handles arm64 ML via
+  # QEMU emulation in buildx. The standalone arm64 binary uses heuristics.
+  # ========================================
+  build-static-arm64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-go@v7.0.0
+        with:
+          go-version: '1.26.6'
+      - name: Build
+        env:
+          GOOS: linux
+          GOARCH: arm64
+          CGO_ENABLED: 0
+        run: |
+          VERSION=${{ github.event.inputs.version || github.ref_name }}
+          go build -ldflags "-s -w -X main.versionFlag=$VERSION" \
+            -o rampart-arm64 ./cmd/rampart/
+      - name: Upload binary
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: rampart-linux-arm64
+          path: rampart-arm64
 
   # ========================================
   # Build binaries — macOS (CGO_ENABLED=1, needs Xcode)
@@ -130,7 +156,7 @@ jobs:
   # Requires id-token: write for OIDC-based keyless signing
   # ========================================
   sign-binary:
-    needs: [build-static, build-ml, build-macos]
+    needs: [build-static, build-ml, build-static-arm64, build-macos]
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -170,7 +196,7 @@ jobs:
   # SBOM — CycloneDX + SPDX (Syft)
   # ========================================
   sbom-attest:
-    needs: [build-static, build-ml, build-macos]
+    needs: [build-static, build-ml, build-static-arm64, build-macos]
     runs-on: ubuntu-latest
     permissions:
       actions: read
@@ -200,7 +226,7 @@ jobs:
   # Docker build + push (builds from source with CGO + ONNX Runtime)
   # ========================================
   build-container:
-    needs: [build-ml, sign-binary]
+    needs: [build-ml, build-static-arm64, sign-binary]
     runs-on: ubuntu-latest
     permissions:
       packages: write
@@ -237,7 +263,7 @@ jobs:
   # GitHub Release
   # ========================================
   create-release:
-    needs: [build-static, build-ml, build-macos, sign-binary, sbom-attest, build-container]
+    needs: [build-static, build-ml, build-static-arm64, build-macos, sign-binary, sbom-attest, build-container]
     runs-on: ubuntu-latest
     permissions:
       contents: write

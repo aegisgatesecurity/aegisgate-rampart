@@ -30,7 +30,7 @@ var SecretsPatterns = []PatternDef{
 	{
 		Name:        "secret_gcp_key",
 		Severity:    SeverityHigh,
-		Regex:       `\bAIza[0-9A-Za-z_-]{20,}\b`,
+		Regex:       `\bAIza[0-9A-Za-z_-]{30,50}\b`,
 		Description: "Google Cloud API key",
 	},
 	{
@@ -74,12 +74,6 @@ var SecretsPatterns = []PatternDef{
 		Severity:    SeverityHigh,
 		Regex:       `\bxox[abprs]-[0-9]+-[0-9]+-[A-Za-z0-9]+\b`,
 		Description: "Slack bot/user token",
-	},
-	{
-		Name:        "secret_stripe_key",
-		Severity:    SeverityHigh,
-		Regex:       `\b(?:sk|pk|rk)_(?:live|test)_[A-Za-z0-9]{20,}\b`,
-		Description: "Stripe API key",
 	},
 	{
 		Name:        "secret_twilio_key",
@@ -216,7 +210,7 @@ var SecretsPatterns = []PatternDef{
 	{
 		Name:        "secret_digitalocean_token",
 		Severity:    SeverityCritical,
-		Regex:       `(?:DO_PAT|DIGITALOCEAN_TOKEN|DO_TOKEN)\s*[:=]\s*dop_v1_[A-Za-z0-9]{40,100}`,
+		Regex:       `(?i)(?:(?:DO_PAT|DIGITALOCEAN_TOKEN|DO_TOKEN)\s*[:=]|DigitalOcean\s+(?:API\s+)?token\s*[:=])\s*dop_v1_[A-Za-z0-9]{30,100}`,
 		Description: "DigitalOcean token",
 	},
 	{
@@ -287,7 +281,7 @@ var SecretsPatterns = []PatternDef{
 	},
 	// Phase 3 parity fix — 2026-09-02
 	{
-		Name:        "secret_german_tax_id",
+		Name:        "pii_german_tax_id",
 		Severity:    SeverityHigh,
 		Regex:       `\b(?:Steuer-?ID|Steuernummer)[:\s]*\d{11}\b`,
 		Description: "German tax identification number (Steuer-ID)",
@@ -358,6 +352,54 @@ var SecretsPatterns = []PatternDef{
 		Severity:    SeverityHigh,
 		Regex:       `(?i)(?:consul|vault|nomad)\s+(?:acl\s+)?token\s*(?:is\s+(?:the\s+)?|is\s*[:=]|[:=])?\s*['"]?\b([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b['"]?`,
 		Description: "HashiCorp Consul/Vault/Nomad UUID token",
+	},
+	{
+		Name:        "secret_redis_connection_string",
+		Severity:    SeverityHigh,
+		Regex:       `(?i)redis://[^\s"\']+`,
+		Description: "Redis connection string",
+	},
+	{
+		Name:        "secret_rsa_private_key",
+		Severity:    SeverityCritical,
+		Regex:       `-----BEGIN (?:RSA )?PRIVATE KEY-----`,
+		Description: "RSA private key",
+	},
+	{
+		Name:        "secret_ec_private_key",
+		Severity:    SeverityCritical,
+		Regex:       `-----BEGIN EC PRIVATE KEY-----`,
+		Description: "EC private key",
+	},
+	{
+		Name:        "secret_openssh_private_key",
+		Severity:    SeverityCritical,
+		Regex:       `-----BEGIN OPENSSH PRIVATE KEY-----`,
+		Description: "OpenSSH private key",
+	},
+	{
+		Name:        "secret_bearer_token",
+		Severity:    SeverityMedium,
+		Regex:       `\bBearer\s+[a-zA-Z0-9_\-\.]+`,
+		Description: "Bearer authentication token",
+	},
+	{
+		Name:        "secret_postgresql_connection_string",
+		Severity:    SeverityHigh,
+		Regex:       `(?i)postgresql://[^\s"\']+`,
+		Description: "PostgreSQL connection string",
+	},
+	{
+		Name:        "secret_mysql_connection_string",
+		Severity:    SeverityHigh,
+		Regex:       `(?i)mysql://[^\s"\']+`,
+		Description: "MySQL connection string",
+	},
+	{
+		Name:        "secret_mongodb_connection_string",
+		Severity:    SeverityHigh,
+		Regex:       `(?i)mongodb(\+srv)?://[^\s"\']+`,
+		Description: "MongoDB connection string",
 	},
 }
 

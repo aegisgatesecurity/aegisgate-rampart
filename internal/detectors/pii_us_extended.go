@@ -42,13 +42,13 @@ var PIIUSExtendedPatterns = []PatternDef{
 	{
 		Name:        "pii_passport_generic",
 		Severity:    SeverityCritical,
-		Regex:       `(?i)\b(?:passport|id|license|certificate)\s*[:\#]?\s*[A-Z0-9]{6,9}\b`,
+		Regex:       `(?i)\b(?:passport|license|certificate)\s*[:\#]?\s*[A-Z0-9]{5,8}\d[A-Z0-9]*\b`,
 		Description: "Generic passport/ID number (6-9 alphanumeric, requires label)",
 	},
 	{
 		Name:        "pii_id_generic_alphanumeric",
 		Severity:    SeverityHigh,
-		Regex:       `(?i)\b(?:id|code|number|ref|license|passport|certificate|serial|account)\s*[:\#]?\s*[A-Z0-9]{4,15}\b`,
+		Regex:       `(?i)\b(?:id|code|number|ref|license|passport|certificate|serial|account)\s*[:\#]?\s*[A-Z0-9]{4,15}\d[A-Z0-9]*\b`,
 		Description: "Generic alphanumeric ID (4-15 chars, requires label)",
 	},
 	{
@@ -78,7 +78,7 @@ var PIIUSExtendedPatterns = []PatternDef{
 	{
 		Name:        "pii_id_multisegment",
 		Severity:    SeverityHigh,
-		Regex:       `\b[A-Z][A-Z0-9]{1,7}[-.][A-Z0-9]{1,8}(?:[-.][A-Z0-9]{1,8}){1,3}\b`,
+		Regex:       `\b[A-Z][A-Z0-9]{1,7}[-.][A-Z0-9]{0,7}\d[A-Z0-9]*[-.][A-Z0-9]{0,7}\d?[A-Z0-9]*(?:[-.][A-Z0-9]{0,7}\d?[A-Z0-9]*){0,2}\b`,
 		Description: "Multi-segment ID code (e.g., SHERZ.790015.S9.027)",
 	},
 	{

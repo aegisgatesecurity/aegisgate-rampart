@@ -135,7 +135,7 @@ var CompliancePatterns = []PatternDef{
 	{
 		Name:        "eu_ai_act_high_risk",
 		Severity:    SeverityHigh,
-		Regex:       `(?i)(?:credit\s+scoring|loan\s+(?:approval|decision)|insurance\s+(?:risk|pricing))|(?:employment|hiring|firing|promotion|recruitment)\s+(?:decision|assessment|screening)|(?:law\s+enforcement|predictive\s+policing|criminal\s+justice)|(?:biometric|facial)\s+(?:identification|recognition|verification)|(?:medical|clinical)\s+diagnosis|emotion\s+recognition\s+system`,
+		Regex:       `(?i)(?:credit\s+scoring|loan\s+(?:approval|decision)|insurance\s+(?:risk|pricing))|(?:employment|hiring|firing|promotion|recruitment)\s+(?:decision|assessment|screening)|(?:law\s+enforcement|predictive\s+policing|criminal\s+justice)|(?:(?:biometric|facial)\s+(?:identification|recognition|verification))|(?:biometric\s+(?:verification|categorization)\s+(?:system|in\s+(?:public|law\s+enforcement|border\s+control)))|(?:medical|clinical)\s+diagnosis|emotion\s+recognition\s+system`,
 		Description: "EU AI Act high-risk use cases (Annex III)",
 	},
 	{
@@ -167,7 +167,7 @@ var CompliancePatterns = []PatternDef{
 	{
 		Name:        "anp_special_category",
 		Severity:    SeverityHigh,
-		Regex:       `(?i)(?:racial|ethnic)\s+(?:origin|discrimination)|(?:religious|political)\s+(?:beliefs?|opinions?|affiliation)|trade[- ]union\s+membership|(?:genetic|biometric)\s+data\s+for\s+(?:identification|profiling)|(?:health|medical)\s+data\s+(?:about|of)|(?:sex\s+life|sexual\s+orientation)`,
+		Regex:       `(?i)(?:(?:collect|process|store|share|disclose|transfer|handle|analyze)\s+(?:racial|ethnic)\s+(?:origin|data|discrimination))|(?:racial|ethnic)\s+(?:origin|data|discrimination)\s+(?:of|about|from|belonging\s+to)|(?:(?:collect|process|store|share|disclose)\s+(?:political|religious)\s+(?:beliefs?|opinions?|affiliation))|(?:political|religious)\s+(?:beliefs?|opinions?|affiliation)\s+(?:of|about|from)|trade[- ]union\s+membership|(?:genetic|biometric)\s+data\s+(?:of|about|from|belonging\s+to|for\s+(?:identification|profiling))|(?:health|medical)\s+data\s+(?:about|of)|(?:sex\s+life|sexual\s+orientation)\s+(?:of|about|from)`,
 		Description: "GDPR Article 9 special category data",
 	},
 
@@ -315,52 +315,58 @@ var CompliancePatterns = []PatternDef{
 		Description: "Instructions for weapons/explosives creation",
 	},
 	{
-		Name:        "PromptInjectionBase64",
+		Name:        "prompt_injection_base64",
 		Severity:    SeverityMedium,
 		Regex:       `[A-Za-z0-9+/]{50,}={0,2}`,
 		Description: "Base64-encoded content (obfuscation)",
 	},
 	{
-		Name:        "PromptInjectionCodeExecution",
+		Name:        "prompt_injection_code_execution",
 		Severity:    SeverityHigh,
 		Regex:       `(?i)(?:\$\([^)]*\)|\$\{[^}]*\}|<[^>]*script[^>]*>|javascript:[^;\s]+|on\w+\s*=\s*["']|on\w+\s*=\s*[^\s])`,
 		Description: "Code/script injection in prompt",
 	},
 	{
-		Name:        "PromptInjectionCommand",
+		Name:        "prompt_injection_command",
 		Severity:    SeverityCritical,
 		Regex:       `(?i)(?:ignore\s+(?:all\s+)?(?:previous|prior)\s+(?:instructions?|rules?|constraints?)|disregard\s+(?:your\s+)?(?:instructions?|rules?)|forget\s+(?:everything|all)\s+(?:you|we)\s+(?:have\s+)?told|temporary\s+instructions?)`,
 		Description: "Command-style prompt injection",
 	},
 	{
-		Name:        "PromptInjectionDelimiter",
+		Name:        "prompt_injection_delimiter",
 		Severity:    SeverityMedium,
 		Regex:       `(?i)(?:markdown\s+block|#\s*(?:system|user|assistant)\s*prompt|<<<\s*(?:USER|SYSTEM|assistant):::|\[INST\]|\[\/INST\])`,
 		Description: "Jailbreak delimiter injection",
 	},
 	{
-		Name:        "PromptInjectionLeakage",
+		Name:        "prompt_injection_leakage",
 		Severity:    SeverityCritical,
 		Regex:       `(?i)(?:reveal\s+(?:your\s+)?(?:system|hidden|internal)\s+(?:instructions?|prompt|config)|print\s+(?:your\s+)?(?:system|hidden|instructions?)|show\s+(?:me\s+)?(?:your\s+)?(?:system|hidden|instructions?)|repeat\s+(?:the\s+)?(?:system|hidden)\s+prompt)`,
 		Description: "Prompt leakage attack",
 	},
 	{
-		Name:        "PromptInjectionPrefix",
+		Name:        "prompt_injection_prefix",
 		Severity:    SeverityCritical,
 		Regex:       `(?i)^(?:simulate|you\s+are\s+free|now\s+you\s+can|breaking|override|developer\s+mode)\s*[:;]`,
 		Description: "Known jailbreak prefix",
 	},
 	{
-		Name:        "PromptInjectionRolePlay",
+		Name:        "prompt_injection_role_play",
 		Severity:    SeverityHigh,
 		Regex:       `(?i)(?:act\s+as\s+(?:a|an)|pretend\s+you\s+are\s+(?:a|an)|roleplay\s+(?:as|that)|simulate\s+(?:a|an)|you\s+are\s+now\s+(?:a|an)|new\s+(?:system|instruct))`,
 		Description: "Role-play prompt injection",
 	},
 	{
-		Name:        "PromptInjectionUnicode",
+		Name:        "prompt_injection_unicode",
 		Severity:    SeverityMedium,
 		Regex:       `[\x{200b}-\x{200f}\x{2028}-\x{202f}\x{feff}]`,
 		Description: "Hidden unicode characters (obfuscation)",
+	},
+	{
+		Name:        "prompt_injection_ssti_probe",
+		Severity:    SeverityHigh,
+		Regex:       `(?i)\{\{[\d\s+\-*/()]+\}\}`,
+		Description: "SSTI mathematical probe — reconnaissance for template injection",
 	},
 }
 

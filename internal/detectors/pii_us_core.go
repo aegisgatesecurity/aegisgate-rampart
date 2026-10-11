@@ -67,7 +67,7 @@ var PIIUSCorePatterns = []PatternDef{
 	{
 		Name:        "pii_driver_license",
 		Severity:    SeverityHigh,
-		Regex:       `(?i)\b(?:DL|D\.L\.|Driver(?:'s)?\s+License|License)\s*[:\#]?\s*(?:No\.?|Number)?\s*[:\#]?\s*[A-Z0-9]{5,15}\b`,
+		Regex:       `(?i)\b(?:DL|D\.L\.|Driver(?:'s)?\s+License|License)\s*[:\#]?\s*(?:No\.?|Number)?\s*[:\#]?\s*[A-Z0-9]{4,14}\d[A-Z0-9]*\b`,
 		Description: "US driver license number",
 	},
 	{
@@ -109,7 +109,7 @@ var PIIUSCorePatterns = []PatternDef{
 	{
 		Name:        "pii_npi",
 		Severity:    SeverityMedium,
-		Regex:       `(?i)\b(?:NPI|National\s+Provider\s+(?:ID|Identifier|Number))\s*[:=#]?\s*[0-9]{10}\b`,
+		Regex:       `(?i)\b(?:NPI|National\s+Provider\s+(?:ID|Identifier|Number))\s*(?:is|:|=|#|No\.?|Number)?\s*[:=#]?\s*[0-9]{10}\b`,
 		Description: "National Provider Identifier (US healthcare)",
 	},
 	{
@@ -196,6 +196,24 @@ var PIIUSCorePatterns = []PatternDef{
 		Severity:    SeverityCritical,
 		Regex:       `(?i)\b(?:patient|diagnosed\s+with|diagnosis(?:\s+of)?|treated\s+for|admitted\s+for|suffers\s+from|has\s+(?:a\s+)?diagnosis\s+of|ICD.10\s+(?:code|diagnosis))\s*[:\s].*?\b[A-TV-Z][0-9][0-9AB]\.[0-9A-TV-Z]{1,4}\b`,
 		Description: "ICD-10 diagnosis code with patient context (PHI leak)",
+	},
+	{
+		Name:        "pii_phone_us",
+		Severity:    SeverityMedium,
+		Regex:       `\b(?:\d{3}-?\d{4}|\d{3}-\d{3}-\d{4}|\(\d{3}\)\s?\d{3}-\d{4}|\d{3}\.\d{3}\.\d{4})\b`,
+		Description: "US phone number (structured format)",
+	},
+	{
+		Name:        "pii_ssn",
+		Severity:    SeverityCritical,
+		Regex:       `\b\d{3}-?\d{2}-?\d{4}\b`,
+		Description: "US Social Security Number",
+	},
+	{
+		Name:        "pii_ip_address_internal",
+		Severity:    SeverityLow,
+		Regex:       `\b(?:10\.(?:[0-9]{1,3}\.){2}[0-9]{1,3}|172\.(?:1[6-9]|2[0-9]|3[01])\.[0-9]{1,3}\.[0-9]{1,3}|192\.168\.[0-9]{1,3}\.[0-9]{1,3})\b`,
+		Description: "Internal/private IP address",
 	},
 }
 

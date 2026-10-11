@@ -153,7 +153,7 @@ var PIIInternationalPatterns = []PatternDef{
 		Description: "International driver license (non-US formats)",
 	},
 	{
-		Name:        "pii_ipv6",
+		Name:        "pii_ip_address_v6",
 		Severity:    SeverityLow,
 		Regex:       `(?:[A-Fa-f0-9]{1,4}:){7}[A-Fa-f0-9]{1,4}`,
 		Description: "IPv6 address",

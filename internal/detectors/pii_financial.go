@@ -52,8 +52,8 @@ var PIIFinancialPatterns = []PatternDef{
 	{
 		Name:        "pii_digital_stripe",
 		Severity:    SeverityHigh,
-		Regex:       `(?i)(?:Stripe|stripe)\s+(?:api\s*key|secret\s*key|publishable\s*key|customer\s*ID|customer|payment\s*ID|payment)?\s*[:=]?\s*(pk_live_[0-9a-zA-Z]{24,50}|sk_live_[0-9a-zA-Z]{24,50}|pk_test_[0-9a-zA-Z]{24,50}|sk_test_[0-9a-zA-Z]{24,50}|cus_[A-Za-z0-9]{21,}|pi_[A-Za-z0-9]{21,}|pay_[A-Za-z0-9]{21,})`,
-		Description: "Stripe API key, customer ID, or payment ID",
+		Regex:       `(?i)(?:(?:Stripe|stripe)\s+(?:api\s*key|secret\s*key|publishable\s*key|customer\s+ID|customer|payment\s*ID|payment)?|Payment\s+intent|Stripe\s+customer\s+ID|Stripe\s+payment)\s*[:=]?\s*(?:pk_live_[0-9a-zA-Z]{24,50}|sk_live_[0-9a-zA-Z]{24,50}|pk_test_[0-9a-zA-Z]{24,50}|sk_test_[0-9a-zA-Z]{24,50}|rk_live_[0-9a-zA-Z]{24,50}|rk_test_[0-9a-zA-Z]{24,50}|cus_[A-Za-z0-9]{14,}|pi_[A-Za-z0-9]{14,}|pay_[A-Za-z0-9]{14,})`,
+		Description: "Stripe API key, restricted key, customer ID, or payment ID",
 	},
 	{
 		Name:        "pii_digital_venmo",
@@ -91,6 +91,24 @@ var PIIFinancialPatterns = []PatternDef{
 		Severity:    SeverityHigh,
 		Regex:       `(?i)(?:send\s+(?:bitcoin|btc|funds|crypto|payment)\s+to\s+(?:this\s+)?(?:address|wallet)?|pay\s+to|wallet\s+address\s*(?:is|:|=)|address\s+for\s+payment|wallet\s*[:=])\s*[:=]?\s*(?:(?:[13][a-km-zA-HJ-NP-Z1-9]{25,34}|bc1[qrp][0-9A-Za-z]{36,59})|(?:0x[a-fA-F0-9]{40})|(?:bnb[a-zA-HJ-NP-Z1-9]{39})|(?:[LM3][a-zA-Z0-9]{26,33})|(?:[1-9A-HJ-NP-Za-km-z]{32,44}))`,
 		Description: "Crypto wallet address with payment context",
+	},
+	{
+		Name:        "pii_credit_card_amex_plain",
+		Severity:    SeverityCritical,
+		Regex:       `\b3[47][0-9]{13}\b`,
+		Description: "American Express credit card number (non-spaced)",
+	},
+	{
+		Name:        "pii_credit_card_visa",
+		Severity:    SeverityCritical,
+		Regex:       `\b4[0-9]{12}(?:[0-9]{3})?\b`,
+		Description: "Visa credit card number (non-spaced)",
+	},
+	{
+		Name:        "pii_credit_card_mastercard_plain",
+		Severity:    SeverityCritical,
+		Regex:       `\b5[1-5][0-9]{14}\b`,
+		Description: "Mastercard credit card number (non-spaced)",
 	},
 }
 

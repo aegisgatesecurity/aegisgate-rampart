@@ -430,12 +430,24 @@ func TestPublishDiagnosticsDirect(t *testing.T) {
 	client := NewRampartClient(hs.URL)
 	handler := NewHandler(client, 10, ThresholdMedium)
 
-	var outBuf bytes.Buffer
+	var outBuf threadSafeBuffer
 	s := NewServerWithIO(handler, strings.NewReader(""), &outBuf)
 
 	handler.HandleDidOpen(DidOpenTextDocumentParams{
 		TextDocument: TextDocumentItem{URI: "file:///test.py", Version: 1, Text: "AKIAIOSFODNN7EXAMPLE\n555-55-5555"},
 	})
+
+	// Stop the debounce timer started by HandleDidOpen — this test exercises
+	// the direct publishDiagnostics path, not the debounced path. Without
+	// this, the 10ms timer fires after the test completes and tries to
+	// connect to the already-closed httptest server, causing flaky
+	// "connection refused" errors on macOS CI runners.
+	handler.mu.Lock()
+	if timer, ok := handler.debounceTimers["file:///test.py"]; ok {
+		timer.Stop()
+		delete(handler.debounceTimers, "file:///test.py")
+	}
+	handler.mu.Unlock()
 
 	// Direct (non-goroutine) call — no race
 	s.publishDiagnostics("file:///test.py", 1)

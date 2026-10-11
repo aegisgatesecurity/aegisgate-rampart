@@ -84,7 +84,7 @@ jobs:
       - uses: actions/checkout@v7.0.1
       - uses: actions/setup-go@v7.0.0
         with:
-          go-version: '1.26.6'
+          go-version: '1.26.9'
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9.3.0
         with:
@@ -106,7 +106,7 @@ jobs:
       - uses: actions/checkout@v7.0.1
       - uses: actions/setup-go@v7.0.0
         with:
-          go-version: '1.26.6'
+          go-version: '1.26.9'
       - name: Run tests (non-CGO)
         run: CGO_ENABLED=0 go test -coverprofile=coverage.out -covermode=atomic ./...
       - name: Check total coverage ≥ 79%
@@ -162,7 +162,7 @@ jobs:
       - uses: actions/checkout@v7.0.1
       - uses: actions/setup-go@v7.0.0
         with:
-          go-version: '1.26.6'
+          go-version: '1.26.9'
       - name: Cross-compile for Windows
         env:
           GOOS: windows
@@ -197,7 +197,7 @@ jobs:
       - uses: actions/checkout@v7.0.1
       - uses: actions/setup-go@v7.0.0
         with:
-          go-version: '1.26.6'
+          go-version: '1.26.9'
       - name: Run tests (CGO_ENABLED=1)
         run: CGO_ENABLED=1 go test -race -timeout 900s -coverprofile=coverage.out ./...
       - name: go vet
@@ -220,7 +220,7 @@ jobs:
       - uses: actions/checkout@v7.0.1
       - uses: actions/setup-go@v7.0.0
         with:
-          go-version: '1.26.6'
+          go-version: '1.26.9'
       - name: Run tests (CGO_ENABLED=0)
         run: go test ./...
       - name: go vet
@@ -245,7 +245,7 @@ jobs:
       - uses: actions/checkout@v7.0.1
       - uses: actions/setup-go@v7.0.0
         with:
-          go-version: '1.26.6'
+          go-version: '1.26.9'
       - name: Install ONNX Runtime v1.29.0 (CGO builds only)
         if: matrix.cgo == 1
         run: |
@@ -276,7 +276,7 @@ jobs:
       - uses: actions/checkout@v7.0.1
       - uses: actions/setup-go@v7.0.0
         with:
-          go-version: '1.26.6'
+          go-version: '1.26.9'
       - name: Install ONNX Runtime v1.29.0
         run: |
           wget -q https://github.com/microsoft/onnxruntime/releases/download/v1.29.0/onnxruntime-linux-x64-1.29.0.tgz

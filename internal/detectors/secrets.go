@@ -374,7 +374,7 @@ var SecretsPatterns = []PatternDef{
 	{
 		Name:        "secret_openssh_private_key",
 		Severity:    SeverityCritical,
-		Regex:       `-----BEGIN OPENSSH PRIVATE KEY-----`,
+		Regex:       `-----BEGIN OPENSSH PRIVATE KEY-----`, //nosec G101 -- regex pattern for detecting OpenSSH private keys, not an actual key
 		Description: "OpenSSH private key",
 	},
 	{

@@ -6,10 +6,10 @@
 
 *A free local proxy that sits between your editor and the AI model, catching secrets and sensitive data before they leave your machine.*
 
-HTTPS MITM proxy · 211 regex patterns + Char CNN-BiLSTM (v13) · Monitor & Block modes · 100.0/100 evasion resistance · Zero telemetry by default
+HTTPS MITM proxy · 211 regex patterns + Char CNN-BiLSTM (v13) · Monitor & Block modes · 100.0/100 evasion resistance · Zero telemetry by default · IOC pull · Lens signal correlation
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Version](https://img.shields.io/badge/version-v0.8.0-brightgreen.svg)](https://github.com/aegisgatesecurity/aegisgate-rampart/releases/tag/v0.8.0)
+[![Version](https://img.shields.io/badge/version-v0.9.0-brightgreen.svg)](https://github.com/aegisgatesecurity/aegisgate-rampart/releases/tag/v0.9.0)
 [![CI](https://github.com/aegisgatesecurity/aegisgate-rampart/actions/workflows/ci.yml/badge.svg)](https://github.com/aegisgatesecurity/aegisgate-rampart/actions/workflows/ci.yml)
 [![Coverage](https://img.shields.io/badge/coverage-81.3%25-brightgreen.svg)](#test-coverage)
 [![Security](https://github.com/aegisgatesecurity/aegisgate-rampart/actions/workflows/security.yml/badge.svg)](https://github.com/aegisgatesecurity/aegisgate-rampart/actions/workflows/security.yml)
@@ -34,9 +34,9 @@ HTTPS MITM proxy · 211 regex patterns + Char CNN-BiLSTM (v13) · Monitor & Bloc
 
 ---
 
-> **🛡️ Using AegisGate at work?** [AegisGate Platform](https://github.com/aegisgatesecurity/aegisgate-platform) is our server-side gateway — 223 detection patterns, MCP/A2A/ACP protection, 30+ compliance frameworks, and cryptographic attestation. For individual developers, Rampart runs locally on your machine. [Explore Platform →](https://github.com/aegisgatesecurity/aegisgate-platform)
+> **🛡️ Using AegisGate at work?** [AegisGate Platform](https://github.com/aegisgatesecurity/aegisgate-platform) is our server-side gateway — 220+ canonical detection patterns, MCP/A2A/ACP protection, 30+ compliance frameworks, and cryptographic attestation. For individual developers, Rampart runs locally on your machine. [Explore Platform →](https://github.com/aegisgatesecurity/aegisgate-platform)
 >
-> **🔐 AegisGate MCP** — Building MCP servers? [AegisGate MCP](https://github.com/aegisgatesecurity/aegisgate-mcp) is a standalone secure MCP server framework with 21 security layers built in. Zero dependencies, Apache 2.0. [Explore MCP →](https://github.com/aegisgatesecurity/aegisgate-mcp)
+> **🔐 AegisGate MCP** — Building MCP servers? [AegisGate MCP](https://github.com/aegisgatesecurity/aegisgate-mcp) is a standalone secure MCP server framework with 23 security layers and 91 regex patterns built in. Zero dependencies, Apache 2.0. [Explore MCP →](https://github.com/aegisgatesecurity/aegisgate-mcp)
 
 ---
 
@@ -50,6 +50,8 @@ Think of it as a firewall for AI coding tools. It catches the moment you're abou
 - **211 regex patterns + ML.** Same detection engine as AegisGate Platform. Regex catches known patterns; Char CNN-BiLSTM (v13) catches adversarial paraphrasing. Platform uses 223 patterns; Rampart uses 211 (subset optimized for local deployment).
 - **Monitor or Block.** Log-only mode for visibility. Block mode for enforcement with configurable thresholds and categories.
 - **Zero telemetry by default.** Air-gap mode when `--platform-url` is not set. No network calls. All detection is local.
+- **IOC pull (optional).** Fetch indicators of compromise from Platform's telemetry endpoint with ETag caching. Air-gap compatible — no-op when `--platform-url` is not set.
+- **Lens signal correlation (optional).** Receives threat signals from the Lens browser extension via the Lens→Rampart bridge for cross-layer correlation.
 - **Free. Forever.** Apache 2.0, single binary, no external dependencies.
 
 ## Do I need Rampart?
@@ -129,7 +131,7 @@ CGO_ENABLED=0 go build -o bin/rampart ./cmd/rampart
 docker run -d \
   -p 8443:8443 \
   -p 9090:9090 \
-  ghcr.io/aegisgatesecurity/aegisgate-rampart:v0.8.0
+  ghcr.io/aegisgatesecurity/aegisgate-rampart:v0.9.0
 ```
 
 <details>
@@ -316,7 +318,7 @@ Rampart enforces the same 12 privacy rules as Lens and Platform:
 11. No session IDs stored
 12. No IP addresses logged
 
-**Air-gap mode**: When `--platform-url` is not set, Rampart makes zero network calls. All detection is local.
+**Air-gap mode**: When `--platform-url` is not set, Rampart makes zero network calls. All detection is local. When set, Rampart can optionally pull IOCs from Platform and receive Lens signal correlations — both are outbound, opt-in, and config-driven.
 
 <details>
 <summary><strong>🔐 Enhanced Privacy Features (v0.5.1+)</strong></summary>
@@ -360,9 +362,18 @@ See **[PRIVACY.md](PRIVACY.md)** for complete privacy documentation.
 |---------|---------|----------|-----------|-------------|
 | **Lens** | Browser | DOM blocking (before send) | 155 regex + JS ML | ✅ Block in browser |
 | **Rampart** | Desktop, CLI, IDE | HTTPS proxy (in transit) | 211 regex + Go ML | ✅ Block at proxy |
-| **Platform** | Server | API gateway | 223 regex + Go ML | ✅ Block at gateway |
+| **Platform** | Server | API gateway | 220+ regex + Go ML | ✅ Block at gateway |
 
 **Lens blocks before send. Rampart blocks in transit. Platform blocks at the gateway.** Together = full-spectrum coverage.
+
+<details>
+<summary><strong>📦 What's New in v0.9.0</strong></summary>
+
+- **📡 IOC Pull** — Fetch indicators of compromise from Platform's telemetry endpoint (`GET /api/v1/iocs/latest`) with ETag caching. Pulled IOCs merge into Rampart's local IOC store for real-time blocking decisions. Air-gap compatible — no-op when `--platform-url` is not set.
+- **🔗 Lens Signal Correlation** — Receives threat signals from the Lens browser extension via the Lens→Rampart bridge. Signals are correlated with Rampart's local detection context for enhanced threat scoring.
+- **38 new tests** (20 IOC pull + 18 Lens correlation). All existing packages continue to pass.
+
+</details>
 
 <details>
 <summary><strong>📦 What's New in v0.8.0</strong></summary>
@@ -498,6 +509,8 @@ aegisgate-rampart/
 │   ├── certinit/          # First-run certificate setup
 │   ├── detectors/         # 211 regex patterns (from Platform v4.5.0)
 │   ├── enterprise/        # Enterprise features (config hash, verify, gate)
+│   ├── iocpull/           # IOC pull client (Platform telemetry, optional)
+│   ├── lenscorrelation/   # Lens signal correlation receiver
 │   ├── logging/           # Minimal stderr shim
 │   ├── lsp/               # Language Server Protocol server
 │   ├── ml/                # Char CNN-BiLSTM (ONNX + heuristic fallback)

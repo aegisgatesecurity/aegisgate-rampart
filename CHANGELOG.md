@@ -1,3 +1,31 @@
+## [0.9.0] - 2026-10-14 - Moat Deepening: IOC Pull, Lens Signal Correlation
+
+> **v0.9.0** adds threat intelligence sharing capabilities to Rampart. IOC pull enables Rampart to fetch indicators of compromise from Platform's telemetry endpoint, while Lens signal correlation receives browser-extension threat signals relayed through the Lens→Rampart bridge. All new features are air-gap compatible — both are opt-in, outbound, config-driven, and fully disabled when `platform_url` is empty.
+
+### Added — IOC Pull
+
+- **`pkg/iocpull/pull.go`** — HTTP client that pulls indicators of compromise from Platform's telemetry endpoint (`GET /api/v1/iocs/latest`). Uses ETag-based caching (`If-None-Match`) to minimize bandwidth. Pulled IOCs are merged into Rampart's local IOC store for real-time blocking decisions. Air-gap compatible — no-op when `platform_url` is empty. 20 tests covering pull, cache, merge, and error scenarios.
+
+### Added — Lens Signal Correlation
+
+- **`pkg/lenscorrelation/receiver.go`** — HTTP endpoint that receives threat signals from the Lens browser extension via the Lens→Rampart bridge. Signals are correlated with Rampart's local detection context for enhanced threat scoring. 18 tests covering signal reception, correlation, and error scenarios.
+- **`pkg/proxy/stats_lens_integration.go`** — Integrates Lens signal data into Rampart's proxy statistics and blocking decisions.
+
+### Testing
+
+- 38 new tests (20 IOC pull + 18 Lens correlation)
+- `pkg/iocpull`: 85.3% coverage
+- `pkg/lenscorrelation`: 95% coverage
+- All 31 existing packages continue to pass
+
+### Version Bumps
+
+- Rampart VERSION: 0.8.0 → 0.9.0
+- `internal/version/version.go`: version string updated
+- README badges updated to v0.9.0
+
+---
+
 ## [0.8.0] - 2026-10-08 - Detection Parity with Platform + v13 Model + 100.0/100 Evasion Resistance 🔒
 
 > **v0.8.0** achieves full detection parity with AegisGate Platform. The v13 ONNX model ships with CGO-enabled Docker builds, full text normalization in production, config-sourced detector initialization, and a calibrated threshold (0.5). Evasion resistance jumps from 12.8/100 to **100.0/100** across 4,050 adversarial test cases. 26 regex patterns synced from Platform (185→211).

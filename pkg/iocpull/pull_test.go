@@ -122,7 +122,7 @@ func TestPull_Success(t *testing.T) {
 			t.Errorf("expected Bearer auth, got %q", r.Header.Get("Authorization"))
 		}
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, testIOCJSON(""))
+		_, _ = fmt.Fprint(w, testIOCJSON(""))
 	}))
 	defer srv.Close()
 
@@ -213,7 +213,7 @@ func TestPull_ServerError(t *testing.T) {
 func TestGetIOC(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, testIOCJSON(""))
+		_, _ = fmt.Fprint(w, testIOCJSON(""))
 	}))
 	defer srv.Close()
 
@@ -240,7 +240,7 @@ func TestGetIOC(t *testing.T) {
 func TestCheckFingerprint(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, testIOCJSON(""))
+		_, _ = fmt.Fprint(w, testIOCJSON(""))
 	}))
 	defer srv.Close()
 
@@ -268,7 +268,7 @@ func TestCheckFingerprint(t *testing.T) {
 func TestCacheSize(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, testIOCJSON(""))
+		_, _ = fmt.Fprint(w, testIOCJSON(""))
 	}))
 	defer srv.Close()
 
@@ -287,7 +287,7 @@ func TestCacheSize(t *testing.T) {
 func TestGetAllIOCs(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, testIOCJSON(""))
+		_, _ = fmt.Fprint(w, testIOCJSON(""))
 	}))
 	defer srv.Close()
 
@@ -348,7 +348,7 @@ func TestStartPullLoop(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		atomic.AddInt32(&pullCount, 1)
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, testIOCJSON(""))
+		_, _ = fmt.Fprint(w, testIOCJSON(""))
 	}))
 	defer srv.Close()
 
@@ -384,7 +384,7 @@ func TestPull_IfModifiedSinceSent(t *testing.T) {
 		if ims == "" {
 			// First call — return 200
 			w.Header().Set("Content-Type", "application/json")
-			fmt.Fprint(w, testIOCJSON("2026-10-14T16:00:00Z"))
+			_, _ = fmt.Fprint(w, testIOCJSON("2026-10-14T16:00:00Z"))
 			return
 		}
 		// Second call — we received If-Modified-Since, return 304
@@ -423,7 +423,7 @@ func TestPull_IfModifiedSinceSent(t *testing.T) {
 func TestLastUpdated(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, testIOCJSON(""))
+		_, _ = fmt.Fprint(w, testIOCJSON(""))
 	}))
 	defer srv.Close()
 
@@ -451,7 +451,7 @@ func TestLastUpdated(t *testing.T) {
 func TestPull_MalformedJSON(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `{"bad json`)
+		_, _ = fmt.Fprint(w, `{"bad json`)
 	}))
 	defer srv.Close()
 

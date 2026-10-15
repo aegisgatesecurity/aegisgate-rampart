@@ -39,7 +39,9 @@ func TestHandleSignal_Valid(t *testing.T) {
 	}
 
 	var result CorrelationResult
-	json.NewDecoder(resp.Body).Decode(&result)
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		t.Fatalf("failed to decode: %v", err)
+	}
 
 	if result.OriginalSeverity != "high" {
 		t.Errorf("expected original severity high, got %s", result.OriginalSeverity)
@@ -337,7 +339,9 @@ func TestHandleHealthz(t *testing.T) {
 	}
 
 	var result map[string]interface{}
-	json.NewDecoder(resp.Body).Decode(&result)
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		t.Fatalf("failed to decode: %v", err)
+	}
 	if result["status"] != "ok" {
 		t.Errorf("expected status ok, got %v", result["status"])
 	}

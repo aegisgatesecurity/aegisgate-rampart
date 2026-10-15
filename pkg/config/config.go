@@ -145,7 +145,7 @@ func DefaultConfig() *Config {
 }
 
 // DefaultTargets returns the AI API endpoints and web surfaces Rampart intercepts.
-// Aligned with Lens v0.3.0 providers — covers the same 10 providers,
+// Aligned with Lens v0.5.0 providers — covers the same 10 providers,
 // but Rampart intercepts BOTH API endpoints (for API clients) and
 // web surfaces (for desktop apps and browser traffic).
 func DefaultTargets() []TargetConfig {

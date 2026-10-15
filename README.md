@@ -257,9 +257,9 @@ When a request is blocked, Rampart returns a structured JSON response:
 
 | Editor | Plugin | Type | Status |
 |--------|--------|------|--------|
-| **JetBrains** (IntelliJ, PyCharm, etc.) | [aegisgate-rampart-jetbrains](https://github.com/aegisgatesecurity/aegisgate-rampart-jetbrains) | Native plugin | ✅ v0.3.0 |
-| **VS Code** | [aegisgate-rampart-ext](https://github.com/aegisgatesecurity/aegisgate-rampart-ext) | Extension | ✅ v0.3.0 |
-| **Any editor** | LSP server (`rampart-lsp`) | Language Server Protocol | ✅ v0.3.0 |
+| **JetBrains** (IntelliJ, PyCharm, etc.) | [aegisgate-rampart-jetbrains](https://github.com/aegisgatesecurity/aegisgate-rampart-jetbrains) | Native plugin | ✅ v0.4.0 (IDE plugin — Rampart core is v0.9.0) |
+| **VS Code** | [aegisgate-rampart-ext](https://github.com/aegisgatesecurity/aegisgate-rampart-ext) | Extension | ✅ v0.4.0 (IDE plugin — Rampart core is v0.9.0) |
+| **Any editor** | LSP server (`rampart-lsp`) | Language Server Protocol | ✅ v0.9.0 (Rampart core) |
 
 ## Platform Support
 

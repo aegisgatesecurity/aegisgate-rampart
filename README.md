@@ -36,7 +36,7 @@ HTTPS MITM proxy · 211 regex patterns + Char CNN-BiLSTM (v13) · Monitor & Bloc
 
 > **🛡️ Using AegisGate at work?** [AegisGate Platform](https://github.com/aegisgatesecurity/aegisgate-platform) is our server-side gateway — 256 canonical detection patterns, MCP/A2A/ACP protection, 30+ compliance frameworks, and cryptographic attestation. For individual developers, Rampart runs locally on your machine. [Explore Platform →](https://github.com/aegisgatesecurity/aegisgate-platform)
 >
-> **🔐 AegisGate MCP** — Building MCP servers? [AegisGate MCP](https://github.com/aegisgatesecurity/aegisgate-mcp) is a standalone secure MCP server framework with 23 security layers and 91 regex patterns built in. Zero dependencies, Apache 2.0. [Explore MCP →](https://github.com/aegisgatesecurity/aegisgate-mcp)
+> **🔐 AegisGate MCP** — Building MCP servers? [AegisGate MCP](https://github.com/aegisgatesecurity/aegisgate-mcp) is a standalone secure MCP server framework with 23 security layers and 79 regex patterns built in. Zero dependencies, Apache 2.0. [Explore MCP →](https://github.com/aegisgatesecurity/aegisgate-mcp)
 
 ---
 

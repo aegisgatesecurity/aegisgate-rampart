@@ -233,7 +233,7 @@ for f in $FILES; do
     case "$f" in
         # Test/regex definition files contain patterns, not real secrets
         # Rampart test files use example certs/keys/tokens for detection testing
-        internal/certinit/certinit_comprehensive_test.go|internal/response/response_coverage_test.go|internal/detectors/detectors_test.go|pkg/detector/detector_bench_test.go|tests/load/k6/break-test.js|pkg/proxy/proxy_test.go) continue ;;
+        internal/certinit/certinit_comprehensive_test.go|internal/response/response_coverage_test.go|internal/response/response_comprehensive_test.go|internal/detectors/detectors_test.go|pkg/detector/detector_bench_test.go|tests/load/k6/break-test.js|pkg/proxy/proxy_test.go) continue ;;
         # Lens test/regex definition files contain patterns, not real secrets
         src/detectors/regex/secrets.js|test/unit/regex-secrets.test.mjs|test/unit/pii-phone-tightening.test.mjs) continue ;;
         # Platform test files use example keys/certs for detection testing

@@ -285,6 +285,14 @@ jobs:
           sudo cp -r onnxruntime-linux-x64-1.29.0/include/* /usr/include/
           sudo ldconfig
           rm -rf onnxruntime-linux-x64-1.29.0.tgz onnxruntime-linux-x64-1.29.0
+      - name: Download ML model from release
+        run: |
+          mkdir -p models
+          gh release download v0.9.0 --pattern "threat_cnn_bilstm.onnx" --dir models/ || {
+            echo "WARNING: Could not download model from release, using heuristic fallback"
+          }
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Run ML tests (CGO_ENABLED=1)
         env:
           CGO_ENABLED: 1

@@ -245,6 +245,19 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Download ML model for Docker build
+        run: |
+          mkdir -p models
+          # Download from the latest GitHub release (Platform or Rampart)
+          gh release download --pattern "threat_cnn_bilstm.onnx" --dir models/ || {
+            echo "WARNING: Could not download ML model — Docker image will not include ML model"
+            echo "The container will fall back to heuristic-only detection"
+          }
+          if [ -f models/threat_cnn_bilstm.onnx ]; then
+            sha256sum models/threat_cnn_bilstm.onnx
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Build and push
         uses: docker/build-push-action@v7.4.0
         with:

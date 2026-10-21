@@ -5,7 +5,7 @@
 # Run:    docker run -p 8080:8080 aegisgate-rampart:latest
 #
 # ML-enabled build (CGO_ENABLED=1, ONNX Runtime v1.29.0 included).
-# Includes CNN-BiLSTM threat detector (v13 model) for neural detection.
+# Includes CNN-BiLSTM threat detector (v15b model) for neural detection.
 # If the model is absent at runtime, falls back to heuristic detection.
 #
 # Uses Debian bookworm-slim base (not Alpine) because onnxruntime prebuilt
@@ -61,8 +61,8 @@ COPY --from=builder /rampart /usr/local/bin/rampart
 COPY --from=builder /usr/lib/libonnxruntime.so* /usr/lib/
 RUN ln -sf /usr/lib/libonnxruntime.so /usr/lib/onnxruntime.so
 
-# Copy ML model (v13 CNN-BiLSTM threat detection model)
-COPY --from=builder /build/rampart/models/threat_cnn_bilstm.onnx /opt/aegisgate-rampart/models/threat_cnn_bilstm.onnx
+# Copy ML model (v15b CNN-BiLSTM threat detection model)
+COPY models/threat_cnn_bilstm.onnx /opt/aegisgate-rampart/models/threat_cnn_bilstm.onnx
 
 # Copy default config
 COPY configs/default.json /etc/aegisgate-rampart/config.json

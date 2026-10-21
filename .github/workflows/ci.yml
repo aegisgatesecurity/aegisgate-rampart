@@ -288,7 +288,7 @@ jobs:
       - name: Download ML model from release
         run: |
           mkdir -p models
-          gh release download v0.9.0 --pattern "threat_cnn_bilstm.onnx" --dir models/ || {
+          gh release download --pattern "threat_cnn_bilstm.onnx" --dir models/ || {
             echo "WARNING: Could not download model from release, using heuristic fallback"
           }
         env:

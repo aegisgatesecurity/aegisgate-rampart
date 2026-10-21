@@ -1,6 +1,6 @@
 module github.com/aegisgatesecurity/aegisgate-rampart
 
-go 1.26.9
+go 1.27.3
 
 // Onnxruntime for ML inference (CGO build tag)
 // Only needed when CGO_ENABLED=1 — the non-CGO build uses heuristic fallback

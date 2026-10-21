@@ -20,6 +20,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/aegisgatesecurity/aegisgate-rampart/internal/catrust"
 	"github.com/aegisgatesecurity/aegisgate-rampart/pkg/config"
 )
 
@@ -263,8 +264,14 @@ func TestCLICommands(t *testing.T) {
 
 // TestHandleTrust tests CA trust command
 func TestHandleTrust(t *testing.T) {
-	// This is tested in internal/catrtrust package
-	// Here we just verify the CLI command exists
+	// This is tested in internal/catrust package
+	// Here we just verify the CLI command exists.
+
+	// Remove any pre-existing CA cert so that CheckTrust returns early
+	// with "not found" instead of invoking certutil -addstore on Windows,
+	// which blocks indefinitely waiting for a security dialog in headless CI.
+	certPath := catrust.DefaultCACertPath()
+	os.Remove(certPath)
 
 	// Should not panic
 	handleTrust()

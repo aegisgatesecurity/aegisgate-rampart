@@ -174,8 +174,12 @@ func TestRunForeground_ContextCancel(t *testing.T) {
 	cancel()
 
 	select {
-	case <-done:
-		t.Log("Foreground proxy shut down cleanly")
+	case err := <-done:
+		if err != nil {
+			t.Logf("Foreground proxy shutdown error: %v", err)
+		} else {
+			t.Log("Foreground proxy shut down cleanly")
+		}
 	case <-time.After(5 * time.Second):
 		t.Log("Timeout waiting for foreground proxy shutdown")
 	}

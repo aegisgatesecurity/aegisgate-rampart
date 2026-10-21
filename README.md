@@ -9,7 +9,7 @@
 HTTPS MITM proxy · 211 regex patterns + Char CNN-BiLSTM (v13) · Monitor & Block modes · 100.0/100 evasion resistance · Zero telemetry by default · IOC pull · Lens signal correlation
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Version](https://img.shields.io/badge/version-v0.9.0-brightgreen.svg)](https://github.com/aegisgatesecurity/aegisgate-rampart/releases/tag/v0.9.0)
+[![Version](https://img.shields.io/badge/version-v0.9.1-brightgreen.svg)](https://github.com/aegisgatesecurity/aegisgate-rampart/releases/tag/v0.9.1)
 [![CI](https://github.com/aegisgatesecurity/aegisgate-rampart/actions/workflows/ci.yml/badge.svg)](https://github.com/aegisgatesecurity/aegisgate-rampart/actions/workflows/ci.yml)
 [![Coverage](https://img.shields.io/badge/coverage-81.3%25-brightgreen.svg)](#test-coverage)
 [![Security](https://github.com/aegisgatesecurity/aegisgate-rampart/actions/workflows/security.yml/badge.svg)](https://github.com/aegisgatesecurity/aegisgate-rampart/actions/workflows/security.yml)
@@ -131,7 +131,7 @@ CGO_ENABLED=0 go build -o bin/rampart ./cmd/rampart
 docker run -d \
   -p 8443:8443 \
   -p 9090:9090 \
-  ghcr.io/aegisgatesecurity/aegisgate-rampart:v0.9.0
+  ghcr.io/aegisgatesecurity/aegisgate-rampart:v0.9.1
 ```
 
 <details>

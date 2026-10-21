@@ -1,3 +1,15 @@
+## [0.9.1] - 2026-10-21 - ML Model v15b Update
+
+> **v0.9.1** updates Rampart to the v15b ML model (256-char Latin-1) and restores MaxSeqLen=256.
+
+### ML Model v15b
+- Updated `ExpectedModelHash` in `internal/ml/detector.go` to v15b SHA-256: `99187453bedb2b8caf21500d2344f2bbe34272c0b3fd4c610c431378dc2f4fe7`
+- Restored `MaxSeqLen = 256` and `VocabSize = 256` (Latin-1) in `internal/ml/normalizer.go`
+- Test expectations updated from 128→256
+- ONNX model downloaded from GitHub Release in CI (not tracked in repo)
+
+---
+
 ## [0.9.0] - 2026-10-14 - Moat Deepening: IOC Pull, Lens Signal Correlation
 
 > **v0.9.0** adds threat intelligence sharing capabilities to Rampart. IOC pull enables Rampart to fetch indicators of compromise from Platform's telemetry endpoint, while Lens signal correlation receives browser-extension threat signals relayed through the Lens→Rampart bridge. All new features are air-gap compatible — both are opt-in, outbound, config-driven, and fully disabled when `platform_url` is empty.

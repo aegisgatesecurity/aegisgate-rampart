@@ -6,7 +6,7 @@
 
 *A free local proxy that sits between your editor and the AI model, catching secrets and sensitive data before they leave your machine.*
 
-HTTPS MITM proxy · 211 regex patterns + Char CNN-BiLSTM (v13) · Monitor & Block modes · 100.0/100 evasion resistance · Zero telemetry by default · IOC pull · Lens signal correlation
+HTTPS MITM proxy · 211 regex patterns + Char CNN-BiLSTM (v15) · Monitor & Block modes · 100.0/100 evasion resistance · Zero telemetry by default · IOC pull · Lens signal correlation
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Version](https://img.shields.io/badge/version-v0.9.1-brightgreen.svg)](https://github.com/aegisgatesecurity/aegisgate-rampart/releases/tag/v0.9.1)
@@ -47,7 +47,7 @@ Rampart is a **local security tool for developers** who use AI coding assistants
 Think of it as a firewall for AI coding tools. It catches the moment you're about to send a database password to Copilot, or when the AI generates code that contains an API key, and stops it before it's too late.
 
 - **In-transit interception.** Unlike Lens (browser-level) or Platform (gateway-level), Rampart operates at the network proxy layer — it sees every request and response.
-- **211 regex patterns + ML.** Same detection engine as AegisGate Platform. Regex catches known patterns; Char CNN-BiLSTM (v13) catches adversarial paraphrasing. Platform uses 223 patterns; Rampart uses 211 (subset optimized for local deployment).
+- **211 regex patterns + ML.** Same detection engine as AegisGate Platform. Regex catches known patterns; Char CNN-BiLSTM (v15) catches adversarial paraphrasing. Platform uses 223 patterns; Rampart uses 211 (subset optimized for local deployment).
 - **Monitor or Block.** Log-only mode for visibility. Block mode for enforcement with configurable thresholds and categories.
 - **Zero telemetry by default.** Air-gap mode when `--platform-url` is not set. No network calls. All detection is local.
 - **IOC pull (optional).** Fetch indicators of compromise from Platform's telemetry endpoint with ETag caching. Air-gap compatible — no-op when `--platform-url` is not set.
@@ -378,7 +378,7 @@ See **[PRIVACY.md](PRIVACY.md)** for complete privacy documentation.
 <details>
 <summary><strong>📦 What's New in v0.8.0</strong></summary>
 
-- **🧠 Detection Parity with Platform** — v13 ONNX model, full text normalization (NormalizeAllVariants in production), threshold fix (0.7→0.5), config-sourced detector init. Evasion resistance: **100.0/100** (4,050 adversarial tests, up from 12.8/100).
+- **🧠 Detection Parity with Platform** — v15 ONNX model, full text normalization (NormalizeAllVariants in production), threshold fix (0.7→0.5), config-sourced detector init. Evasion resistance: **100.0/100** (4,050 adversarial tests, up from 12.8/100).
 - **🔒 26 Synced Regex Patterns** — 11 secret patterns (Slack, Azure, Cloudflare, Docker, GCP, Kubernetes, etc.) + 13 compliance patterns (SSTI, eval/atob, model theft, data exfil, safety bypass). Pattern count: 185→211.
 - **🐳 CGO Docker Build** — Dockerfile rewritten for CGO + ONNX Runtime v1.29.0. ML model shipped in container. Debian bookworm-slim base (glibc for onnxruntime).
 - **🧪 Conformance Infrastructure** — Normalization conformance test suite + adversarial evasion suite (4,050 tests) tracked in CI.

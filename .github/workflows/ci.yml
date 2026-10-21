@@ -285,11 +285,11 @@ jobs:
           sudo cp -r onnxruntime-linux-x64-1.29.0/include/* /usr/include/
           sudo ldconfig
           rm -rf onnxruntime-linux-x64-1.29.0.tgz onnxruntime-linux-x64-1.29.0
-      - name: Download ML model from release
+      - name: Download ML model from Platform release
         run: |
           mkdir -p models
-          gh release download --pattern "threat_cnn_bilstm.onnx" --dir models/ || {
-            echo "WARNING: Could not download model from release, using heuristic fallback"
+          gh release download v4.7.0 --repo aegisgatesecurity/aegisgate-platform --pattern "threat_cnn_bilstm.onnx" --dir models/ || {
+            echo "WARNING: Could not download model from Platform release, using heuristic fallback"
           }
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

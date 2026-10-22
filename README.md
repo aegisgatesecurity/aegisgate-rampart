@@ -26,6 +26,7 @@ HTTPS MITM proxy · 211 regex patterns + Char CNN-BiLSTM (v15) · Monitor & Bloc
 [![Zero npm](https://img.shields.io/badge/dependencies-zero-success.svg)](#build--test)
 [![Privacy](https://img.shields.io/badge/privacy-12%20non--negotiables-success.svg)](#privacy-12-non-negotiables)
 [![Patent Pending](https://img.shields.io/badge/IP-Patent_Pending-8B5CF6?logo=uspto)](https://github.com/aegisgatesecurity/aegisgate-rampart#ip-notice)
+[![Published Research](https://img.shields.io/badge/Research-SSRN_Published-003399?logo=elsevier)](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7652138)
 
 [Quick Start](#quick-start) · [Operating Modes](#operating-modes) · [Detection](#detection-capabilities) · [IDE Integration](#ide-coverage) · [Privacy](#privacy-12-non-negotiables) · [Releases](https://github.com/aegisgatesecurity/aegisgate-rampart/releases)
 

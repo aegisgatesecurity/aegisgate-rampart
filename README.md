@@ -8,6 +8,9 @@
 
 HTTPS MITM proxy · 211 regex patterns + Char CNN-BiLSTM (v15) · Monitor & Block modes · 100.0/100 evasion resistance · Zero telemetry by default · IOC pull · Lens signal correlation
 
+[![GitHub stars](https://img.shields.io/github/stars/aegisgatesecurity/aegisgate-rampart?style=flat&logo=github&label=Star&color=FFD700&labelColor=181717&logoColor=FFD700)](https://github.com/aegisgatesecurity/aegisgate-rampart)
+**Found Rampart useful? [Star the repo](https://github.com/aegisgatesecurity/aegisgate-rampart) ⭐ and [tell a colleague](https://x.com/intent/tweet?text=Protecting%20my%20AI%20coding%20workflow%20with%20AegisGate%20Rampart%20%E2%80%94%20local%20firewall%20for%20AI%20tools%3A%20https%3A%2F%2Fgithub.com%2Faegisgatesecurity%2Faegisgate-rampart) — it helps other devs discover AI security tooling.**
+
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Version](https://img.shields.io/badge/version-v0.9.1-brightgreen.svg)](https://github.com/aegisgatesecurity/aegisgate-rampart/releases/tag/v0.9.1)
 [![CI](https://github.com/aegisgatesecurity/aegisgate-rampart/actions/workflows/ci.yml/badge.svg)](https://github.com/aegisgatesecurity/aegisgate-rampart/actions/workflows/ci.yml)
@@ -26,7 +29,7 @@ HTTPS MITM proxy · 211 regex patterns + Char CNN-BiLSTM (v15) · Monitor & Bloc
 
 [Quick Start](#quick-start) · [Operating Modes](#operating-modes) · [Detection](#detection-capabilities) · [IDE Integration](#ide-coverage) · [Privacy](#privacy-12-non-negotiables) · [Releases](https://github.com/aegisgatesecurity/aegisgate-rampart/releases)
 
-[![GitHub stars](https://img.shields.io/github/stars/aegisgatesecurity/aegisgate-rampart?style=social)](https://github.com/aegisgatesecurity/aegisgate-rampart) — **If Rampart helps you protect your AI coding workflow, please consider ⭐ starring this repo. It helps others discover it.**
+
 
 </div>
 

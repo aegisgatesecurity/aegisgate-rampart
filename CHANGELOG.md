@@ -1,3 +1,23 @@
+## [0.9.3] - 2026-10-23 - Agent Instruction Poisoning Detection
+
+> **v0.9.3** adds 5 new regex detection patterns for agent instruction poisoning attacks (Warden Stealer IOCs). Pattern count: 297 → 302.
+
+### Agent Instruction Poisoning Detection (5 new patterns)
+
+New `agent-poisoning` category detecting malware that poisons AI agent instruction files (CLAUDE.md, AGENTS.md, .codex/config.toml):
+
+- **agent_poisoning_anthropic_redirect** (HIGH): ANTHROPIC_BASE_URL redirected to attacker server
+- **agent_poisoning_install_instruction** (HIGH): npm/pip install commands embedded in agent instruction context
+- **agent_poisoning_codex_config** (MEDIUM): .codex/config.toml references (OpenAI Codex config manipulation)
+- **agent_poisoning_env_exfil** (MEDIUM): Environment variable exfiltration instructions
+- **agent_poisoning_function_color** (LOW): function-color npm package IOC (Warden Stealer)
+
+Mirrors aegisgate-scanner v0.4.3 agent_poisoning patterns. Verified against Warden Stealer test artifacts.
+
+- Pattern count: 297 → 302
+
+---
+
 ## [0.9.2] - 2026-10-22 - ARTEX / LiteLLM Threat Intelligence Patterns
 
 > **v0.9.2** adds 13 new regex detection patterns for the ARTEX autonomous pentesting framework and LiteLLM supply chain compromise, based on Black October 2026 threat intelligence. Full parity with Platform v4.8.0 (284 → 297 patterns).

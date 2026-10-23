@@ -95,6 +95,7 @@ func DetectAll(text string) []Match {
 	all = append(all, DetectPIIInternational(text)...)
 	all = append(all, DetectCompliance(text)...)
 	all = append(all, DetectOTProtocols(text)...)
+	all = append(all, DetectAgentPoisoning(text)...)
 
 	// Sort all matches by index
 	sort.Slice(all, func(i, j int) bool {

@@ -35,7 +35,7 @@ type Event struct {
 }
 
 // Record logs an event. In Rampart's air-gap mode, this writes to stderr.
-// When Platform telemetry is connected, this is overridden by pkg/telemetry.
+// When Platform telemetry is connected, this is handled by internal/platformforward.
 func Record(e Event) {
 	if e.Time.IsZero() {
 		e.Time = time.Now()

@@ -49,10 +49,14 @@ func TestForward_Enabled_SendsEvent(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
 		mu.Lock()
-		if err := json.Unmarshal(body, &received); err != nil {
+		var batch EventBatch
+		if err := json.Unmarshal(body, &batch); err != nil {
 			mu.Unlock()
-			t.Errorf("failed to unmarshal: %v", err)
+			t.Errorf("failed to unmarshal batch: %v", err)
 			return
+		}
+		if len(batch.Events) > 0 {
+			received = batch.Events[0]
 		}
 		mu.Unlock()
 		w.WriteHeader(http.StatusOK)
@@ -300,12 +304,16 @@ func TestForward_VersionIsCurrent(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
 		mu.Lock()
-		if err := json.Unmarshal(body, &received); err != nil {
+		var batch EventBatch
+		if err := json.Unmarshal(body, &batch); err != nil {
 			mu.Unlock()
 			t.Errorf("unmarshal: %v", err)
 			w.WriteHeader(http.StatusOK)
 			done <- struct{}{}
 			return
+		}
+		if len(batch.Events) > 0 {
+			received = batch.Events[0]
 		}
 		mu.Unlock()
 		w.WriteHeader(http.StatusOK)
@@ -325,7 +333,7 @@ func TestForward_VersionIsCurrent(t *testing.T) {
 
 	mu.Lock()
 	defer mu.Unlock()
-	if received.Version != version.Version {
-		t.Errorf("expected version %s, got %s", version.Version, received.Version)
+	if received.SourceVersion != version.Version {
+		t.Errorf("expected source_version %s, got %s", version.Version, received.SourceVersion)
 	}
 }

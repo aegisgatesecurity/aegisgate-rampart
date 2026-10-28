@@ -26,6 +26,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/auditlog"
@@ -46,20 +47,32 @@ type Forwarder struct {
 // PlatformEvent is the metadata-only payload sent to Platform.
 // No prompt text, no PII values, no credentials — only detection metadata.
 type PlatformEvent struct {
+	ID            string    `json:"id"`
 	Timestamp     time.Time `json:"timestamp"`
-	Source        string    `json:"source"`    // "rampart"
-	Version       string    `json:"version"`   // rampart version
-	Direction     string    `json:"direction"` // "request" or "response"
-	Host          string    `json:"host"`      // e.g. "api.openai.com"
+	Source        string    `json:"source"`         // "rampart"
+	SourceVersion string    `json:"source_version"` // rampart version
+	SchemaVersion string    `json:"schema_version"` // "v1"
+	Direction     string    `json:"direction"`      // "request" or "response"
+	Host          string    `json:"host,omitempty"`
 	Path          string    `json:"path,omitempty"`
 	TotalDets     int       `json:"total_detections"`
 	Blocked       bool      `json:"blocked"`
+	Action        string    `json:"action,omitempty"`
 	PIICategories []string  `json:"pii_categories,omitempty"`
 	SecretTypes   []string  `json:"secret_types,omitempty"`
 	MLScore       float64   `json:"ml_score,omitempty"`
 	Categories    []string  `json:"categories,omitempty"`
 	Severities    []string  `json:"severities,omitempty"`
 	Rules         []string  `json:"rules,omitempty"`
+}
+
+// EventBatch wraps events in the canonical batch envelope expected by
+// the Platform telemetry receiver and the community Cloudflare Worker.
+// Mirrors contracts.EventBatch without importing the platform module.
+type EventBatch struct {
+	SchemaVersion string          `json:"schema_version"`
+	Source        string          `json:"source"`
+	Events        []PlatformEvent `json:"events"`
 }
 
 // New creates a Platform forwarder. If url is empty, forwarding is disabled.
@@ -107,14 +120,17 @@ func (f *Forwarder) Forward(entry auditlog.Entry) {
 	}
 
 	event := PlatformEvent{
+		ID:            fmt.Sprintf("rampart-%d", f.nowFunc().UnixNano()),
 		Timestamp:     entry.Timestamp,
 		Source:        "rampart",
-		Version:       version.Version, // LOW-15 FIX: use actual version
+		SourceVersion: version.Version,
+		SchemaVersion: "v1",
 		Direction:     entry.Direction,
 		Host:          entry.Host,
 		Path:          entry.Path,
 		TotalDets:     entry.TotalDets,
 		Blocked:       entry.Blocked,
+		Action:        actionForEntry(entry),
 		PIICategories: entry.PIICategories,
 		SecretTypes:   entry.SecretTypes,
 		MLScore:       entry.MLScore,
@@ -128,13 +144,26 @@ func (f *Forwarder) Forward(entry auditlog.Entry) {
 
 // send posts the event to Platform. Logs errors but never blocks the caller.
 func (f *Forwarder) send(event PlatformEvent) {
-	payload, err := json.Marshal(event)
+	batch := EventBatch{
+		SchemaVersion: "v1",
+		Source:        "rampart",
+		Events:        []PlatformEvent{event},
+	}
+
+	payload, err := json.Marshal(batch)
 	if err != nil {
 		log.Printf("rampart: platform forward marshal error: %v", err)
 		return
 	}
 
-	req, err := http.NewRequest(http.MethodPost, f.url, bytes.NewReader(payload))
+	// Build the telemetry endpoint URL. If the configured platform_url
+	// already contains /api/v1/telemetry, use it as-is. Otherwise append it.
+	endpoint := f.url
+	if !strings.HasSuffix(endpoint, "/api/v1/telemetry") {
+		endpoint = strings.TrimRight(endpoint, "/") + "/api/v1/telemetry"
+	}
+
+	req, err := http.NewRequest(http.MethodPost, endpoint, bytes.NewReader(payload))
 	if err != nil {
 		log.Printf("rampart: platform forward request error: %v", err)
 		return
@@ -156,6 +185,17 @@ func (f *Forwarder) send(event PlatformEvent) {
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		log.Printf("rampart: platform forward rejected: HTTP %d", resp.StatusCode)
 	}
+}
+
+// actionForEntry determines the action string from the audit log entry.
+func actionForEntry(entry auditlog.Entry) string {
+	if entry.Blocked {
+		return "blocked"
+	}
+	if entry.TotalDets > 0 {
+		return "logged"
+	}
+	return "allowed"
 }
 
 // Enabled returns whether forwarding is active.

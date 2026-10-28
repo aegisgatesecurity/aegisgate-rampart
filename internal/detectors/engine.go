@@ -84,6 +84,23 @@ func detectWithPatterns(text string, patterns []compiledPattern, category string
 	return matches
 }
 
+// TotalCompiledPatterns returns the total number of compiled regex patterns
+// across all detector categories. Used for startup reporting.
+func TotalCompiledPatterns() int {
+	return len(CompiledSecretPatterns) +
+		len(CompiledXSSPatterns) +
+		len(CompiledPIIUSCorePatterns) +
+		len(CompiledPIIUSExtendedPatterns) +
+		len(CompiledPIIFinancialPatterns) +
+		len(CompiledPIIInternationalPatterns) +
+		len(CompiledCompliancePatterns) +
+		len(CompiledOTProtocolPatterns) +
+		len(CompiledAgentPoisoningPatterns) +
+		len(CompiledRAGPatterns) +
+		len(CompiledPathTraversalPatterns) +
+		len(CompiledPromptLeakagePatterns)
+}
+
 // DetectAll scans text with all pattern categories and returns combined results.
 func DetectAll(text string) []Match {
 	var all []Match
@@ -96,6 +113,9 @@ func DetectAll(text string) []Match {
 	all = append(all, DetectCompliance(text)...)
 	all = append(all, DetectOTProtocols(text)...)
 	all = append(all, DetectAgentPoisoning(text)...)
+	all = append(all, DetectRAG(text)...)
+	all = append(all, DetectPathTraversal(text)...)
+	all = append(all, DetectPromptLeakage(text)...)
 
 	// Sort all matches by index
 	sort.Slice(all, func(i, j int) bool {
@@ -116,6 +136,11 @@ func DetectAllWithResults(text string) ([]Match, []DetectionResult) {
 		detectWithResult(text, CompiledPIIFinancialPatterns, CategoryPIIFinancial),
 		detectWithResult(text, CompiledPIIInternationalPatterns, CategoryPIIInternational),
 		detectWithResult(text, CompiledCompliancePatterns, CategoryCompliance),
+		detectWithResult(text, CompiledOTProtocolPatterns, CategoryOTProtocols),
+		detectWithResult(text, CompiledAgentPoisoningPatterns, CategoryAgentPoisoning),
+		detectWithResult(text, CompiledRAGPatterns, CategoryRAG),
+		detectWithResult(text, CompiledPathTraversalPatterns, CategoryPathTraversal),
+		detectWithResult(text, CompiledPromptLeakagePatterns, CategoryPromptLeakage),
 	}
 
 	all := DetectAll(text)

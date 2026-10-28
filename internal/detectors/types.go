@@ -32,6 +32,10 @@ const (
 	CategoryXSS              Category = "xss"
 	CategoryCompliance       Category = "compliance"
 	CategoryAgentPoisoning   Category = "agent-poisoning"
+	CategoryOTProtocols      Category = "ot-protocols"
+	CategoryRAG              Category = "rag"
+	CategoryPathTraversal    Category = "path-traversal"
+	CategoryPromptLeakage    Category = "prompt-leakage"
 )
 
 // Match represents a single regex detection match.

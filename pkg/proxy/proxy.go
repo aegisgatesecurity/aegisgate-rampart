@@ -42,6 +42,7 @@ import (
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/auditlog"
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/certificate"
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/certinit"
+	"github.com/aegisgatesecurity/aegisgate-rampart/internal/detectors"
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/metrics"
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/notify"
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/platform"
@@ -312,7 +313,7 @@ func (p *Proxy) Start(ctx context.Context) error {
 	if p.cfg.Mode == ModeBlock {
 		modeLabel = "BLOCK"
 	}
-	fmt.Printf("rampart: Detection engine ready (153 regex patterns + ML) — mode: %s\n", modeLabel)
+	fmt.Printf("rampart: Detection engine ready (%d regex patterns + ML) — mode: %s\n", detectors.TotalCompiledPatterns(), modeLabel)
 
 	// Start pprof debug server if configured
 	if p.cfg.PprofAddr != "" {

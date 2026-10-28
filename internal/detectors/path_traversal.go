@@ -8,6 +8,18 @@
 
 package detectors
 
+// CompiledPathTraversalPatterns holds pre-compiled path traversal detection regex patterns.
+var CompiledPathTraversalPatterns []compiledPattern
+
+func init() {
+	CompiledPathTraversalPatterns = compilePatterns(PathTraversalPatterns)
+}
+
+// DetectPathTraversal scans text for path traversal and sensitive file access.
+func DetectPathTraversal(text string) []Match {
+	return detectWithPatterns(text, CompiledPathTraversalPatterns, "path-traversal")
+}
+
 // PathTraversalPatterns defines regex patterns for path traversal and
 // sensitive file access attempts in AI agent contexts.
 var PathTraversalPatterns = []PatternDef{

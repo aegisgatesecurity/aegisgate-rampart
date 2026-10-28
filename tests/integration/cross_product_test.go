@@ -47,7 +47,8 @@ type mockPlatformServer struct {
 func newMockPlatform(t *testing.T) *mockPlatformServer {
 	m := &mockPlatformServer{}
 	m.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/" && r.URL.Path != "" {
+		// Accept both root path (legacy) and /api/v1/telemetry (canonical)
+		if r.URL.Path != "/" && r.URL.Path != "" && r.URL.Path != "/api/v1/telemetry" {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
@@ -58,6 +59,15 @@ func newMockPlatform(t *testing.T) *mockPlatformServer {
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
 			http.Error(w, "read error", http.StatusBadRequest)
+			return
+		}
+		// Try EventBatch first (canonical format), fall back to flat PlatformEvent
+		var batch platformforward.EventBatch
+		if err := json.Unmarshal(body, &batch); err == nil && len(batch.Events) > 0 {
+			m.mu.Lock()
+			m.events = append(m.events, batch.Events...)
+			m.mu.Unlock()
+			w.WriteHeader(http.StatusOK)
 			return
 		}
 		var event platformforward.PlatformEvent

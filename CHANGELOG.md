@@ -260,7 +260,7 @@ M2, M7, M8, M13, M14, M15, M17, M21, M22, L2, L3, L7, L11, L12, L14, L15, L16 â€
 
 ### Audit Report
 
-Full audit report: `.plans/SECURITY-AUDIT-2026-08-29.md`
+Full audit report available in internal documentation.
 
 ---
 

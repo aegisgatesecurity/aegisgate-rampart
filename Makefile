@@ -24,12 +24,12 @@ coverage:
 	@go tool cover -func=coverage.out | grep total
 
 test-coverage: coverage
-	@mkdir -p .workingdirectory
+	@mkdir -p build
 	@echo ""
 	@echo "=== Checking total coverage (excluding untestable packages) ==="
-	@go test -count=1 -coverprofile=.workingdirectory/coverage-filtered.out -covermode=atomic \
+	@go test -count=1 -coverprofile=build/coverage-filtered.out -covermode=atomic \
 		$$(go list ./... | grep -v "cmd/rampart" | grep -v "internal/tray") 2>/dev/null
-	@TOTAL=$$(go tool cover -func=.workingdirectory/coverage-filtered.out | grep total | awk '{print $$3}' | tr -d '%'); \
+	@TOTAL=$$(go tool cover -func=build/coverage-filtered.out | grep total | awk '{print $$3}' | tr -d '%'); \
 	echo "Coverage (excluding cmd/rampart, internal/tray): $${TOTAL}%"; \
 	if [ "$$(echo "$$TOTAL >= 80" | bc)" != "1" ]; then \
 		echo "FAIL: coverage $${TOTAL}% < 80%"; \

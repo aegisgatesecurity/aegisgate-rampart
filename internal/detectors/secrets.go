@@ -450,6 +450,25 @@ var SecretsPatterns = []PatternDef{
 		Regex:       `(?i)sendgrid\s+(?:api\s+)?key\s*[:=]\s*SG\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+`,
 		Description: "SendGrid API key mentioned in context (lower threshold for placeholder values)",
 	},
+	// --- Patterns ported from Lens for parity ---
+	{
+		Name:        "secret_stripe_key",
+		Severity:    SeverityCritical,
+		Regex:       `\b(?:sk|pk|rk)_(?:live|test)_[A-Za-z0-9]{20,}\b`,
+		Description: "Stripe API key (live or test, secret, publishable, or restricted)",
+	},
+	{
+		Name:        "secret_aws_sts_secret_key",
+		Severity:    SeverityHigh,
+		Regex:       `(?i)(?:aws_secret_access_key|secret_access_key|SecretAccessKey)\s*[:=]\s*["']?[A-Za-z0-9/+=]{40}["']?`,
+		Description: "AWS STS secret access key in context",
+	},
+	{
+		Name:        "secret_aws_sts_session_token",
+		Severity:    SeverityHigh,
+		Regex:       `(?i)(?:aws_session_token|aws_security_token|session_token|SessionToken|SecurityToken)\s*["']?\s*[:=]\s*["']?[A-Za-z0-9/+=_-]{400,}["']?`,
+		Description: "AWS STS session token",
+	},
 }
 
 // CompiledSecretPatterns holds pre-compiled secret regex patterns.

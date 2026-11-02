@@ -72,6 +72,30 @@ var InjectionPatterns = []PatternDef{
 		Description: "Generic SQL injection generation request",
 	},
 	{
+		Name:        "sqli_stacked_queries_gen",
+		Severity:    SeverityCritical,
+		Regex:       `(?i)\b(?:generate|write|create|build)\s+(?:a\s+)?(?:stacked\s+sql\s+queries|sql\s+queries)\s+to\s+(?:drop|delete|update|modify)\s+(?:multiple|all|several)\s+tables?\b`,
+		Description: "Stacked SQL queries generation to drop tables",
+	},
+	{
+		Name:        "sqli_red_team_bypass",
+		Severity:    SeverityHigh,
+		Regex:       `(?i)\b(?:as\s+part\s+of\s+(?:a|an)\s+(?:red\s+team|penetration\s+test|security\s+assessment).{0,50}(?:generate|write|create)\s+sql\s+to\s+(?:bypass|evade|circumvent)\s+(?:the\s+)?(?:WAF|web\s+application\s+firewall|filter|detection))\b`,
+		Description: "Red team SQL WAF bypass request",
+	},
+	{
+		Name:        "sqli_dump_passwords",
+		Severity:    SeverityCritical,
+		Regex:       `(?i)\b(?:write|generate|create)\s+sql\s+to\s+(?:dump|extract|steal|export)\s+(?:all\s+)?(?:passwords|credentials|usernames|emails?|credit\s+cards?|ssns?).{0,30}(?:from\s+(?:the\s+)?(?:users?|accounts?|customers?)\s+table)`,
+		Description: "SQL to dump passwords from users table",
+	},
+	{
+		Name:        "sqli_blind_script",
+		Severity:    SeverityHigh,
+		Regex:       `(?i)\b(?:create|write|generate|build)\s+(?:a\s+)?blind\s+sql\s+injection\s+script\b`,
+		Description: "Blind SQL injection script generation",
+	},
+	{
 		Name:        "sqli_union_select_tuned",
 		Severity:    SeverityHigh,
 		Regex:       `(?i)\bunion\s+(?:all\s+)?select\b.{0,80}(?:from\s+users|information_schema|@@version|sleep\(|concat\(|null,\s*null)`,

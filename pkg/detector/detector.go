@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/detectors"
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/ml"
@@ -260,6 +261,25 @@ func (d *Detector) DetectWithContext(ctx context.Context, text string) (*Summary
 	// Update total detections count to include all-detector results
 	summary.TotalDetections = len(summary.Results)
 
+	// 4. Educational context filtering — suppress FPs on educational/security
+	// training questions that mention attack terms in a learning context.
+	// e.g., "What is LOLBins and why do attackers use it?" should not be
+	// blocked just because it mentions "LOLBins".
+	if isEducationalContext(text) {
+		filtered := summary.Results[:0]
+		for _, r := range summary.Results {
+			if !isEducationalFP(r.Category, r.Text) {
+				filtered = append(filtered, r)
+			}
+		}
+		summary.Results = filtered
+		summary.TotalDetections = len(summary.Results)
+		if summary.TotalDetections == 0 {
+			summary.Blocked = false
+			summary.BlockReason = ""
+		}
+	}
+
 	return summary, nil
 }
 
@@ -288,4 +308,66 @@ func severityIntToString(severity int) string {
 	default:
 		return "low"
 	}
+}
+
+// isEducationalContext checks if the text starts with an educational question
+// pattern (e.g., "What is LOLBins?", "Explain the kill chain model").
+func isEducationalContext(text string) bool {
+	trimmed := strings.TrimSpace(text)
+	if len(trimmed) > 60 {
+		trimmed = trimmed[:60]
+	}
+	lower := strings.ToLower(trimmed)
+
+	eduPatterns := []string{
+		"how do i ", "how to ", "how does ", "how should ", "how can i ",
+		"what is ", "what's ", "what are ", "what's the ", "what does ",
+		"explain ", "describe ",
+		"difference between ",
+		"best practices for ", "best practice for ",
+		"why is ", "why are ", "why do ",
+		"when should ", "when is ",
+	}
+
+	for _, p := range eduPatterns {
+		if strings.HasPrefix(lower, p) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// isEducationalFP checks if a detection result is a likely false positive
+// in an educational context. These are categories where mentioning the term
+// in a question ("What is LOLBins?") should not be treated as an attack.
+func isEducationalFP(category, matchedText string) bool {
+	// Categories commonly discussed in security education where the term
+	// itself triggers the pattern (e.g., "What is LOLBins?" matches evasion_lolbin)
+	eduFPCategories := map[string]bool{
+		"evasion":           true,
+		"path-traversal":    true,
+		"pii-financial":     true,
+		"pii-us-core":       true,
+		"pii-us-extended":   true,
+		"pii-international": true,
+	}
+
+	if eduFPCategories[category] {
+		return true
+	}
+
+	// Check by pattern name (the Category field in Match is the pattern name)
+	if strings.Contains(category, "evasion") {
+		return true
+	}
+	if strings.Contains(category, "sensitive_file") {
+		return true
+	}
+	// ICD-10 codes in educational context
+	if strings.Contains(matchedText, "ICD-10") || strings.Contains(category, "icd") {
+		return true
+	}
+
+	return false
 }

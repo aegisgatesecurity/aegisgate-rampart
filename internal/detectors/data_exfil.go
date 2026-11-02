@@ -72,36 +72,152 @@ var DataExfilPatterns = []PatternDef{
 		Regex:       `(?i)\b(?:share|send|email|message|post|paste|leak|give).{0,20}(?:my\s+|the\s+|our\s+)?(?:credentials?|passwords?|api\s+keys?|tokens?|secrets?|access\s+keys?|private\s+keys?|admin\s+password).{0,30}(?:with\s+|to\s+)(?:external|third.?party|outside|unauthorized|unknown|someone|anyone|public|rival|competitor|journalist)\b`,
 		Description: "Credential sharing with external parties",
 	},
-	// Insider threat patterns
+	// Insider threat patterns — broadened for real-world phrasing variants
 	{
 		Name:        "insider_source_code_theft",
 		Severity:    SeverityCritical,
-		Regex:       `(?i)\b(?:copy|download|take|steal|extract|mirror).{0,20}(?:the\s+)?(?:source\s+code|codebase|repository|proprietary\s+(?:algorithm|code|models?|IP)).{0,30}(?:to\s+|for\s+|and\s+share\s+with\s+)(?:USB|personal|external|public\s+GitHub|competitor|next\s+job|side\s+business|startup|rival)\b`,
+		Regex:       `(?i)\b(?:copy|download|take|steal|extract|mirror).{0,30}(?:the\s+)?(?:source\s+code|codebase|repository|proprietary\s+(?:algorithm|code|models?|IP)).{0,50}(?:to\s+(?:a\s+|my\s+)?|for\s+(?:my\s+|a\s+)?|and\s+share\s+with\s+)(?:USB|personal|external|public\s+GitHub|competitor|next\s+job|side\s+business|startup|rival)\b`,
 		Description: "Source code/IP theft for external use",
 	},
 	{
 		Name:        "insider_data_leak",
 		Severity:    SeverityCritical,
-		Regex:       `(?i)\b(?:leak|post|share|send|publish|mirror|upload).{0,20}(?:merger|acquisition|financial|proprietary|confidential|internal|trade\s+secret|penetration\s+test).{0,30}(?:to\s+|with\s+)(?:journalist|public|rival|competitor|external|website|wiki|blog)\b`,
+		Regex:       `(?i)\b(?:leak|post|share|send|publish|mirror|upload).{0,30}(?:merger|acquisition|financial|proprietary|confidential|internal|trade\s+secret|penetration\s+test).{0,40}(?:to\s+(?:a\s+|an\s+)?|with\s+(?:a\s+|an\s+)?)(?:journalist|public|rival|competitor|external|website|wiki|blog)\b`,
 		Description: "Confidential data leak to external party",
 	},
 	{
 		Name:        "insider_unauthorized_use",
 		Severity:    SeverityCritical,
-		Regex:       `(?i)\b(?:use|access|export|download|copy).{0,20}(?:company|corporate|employer|internal).{0,20}(?:API\s+key|credentials?|database|customer\s+(?:list|data|contact)).{0,30}(?:for\s+|to\s+)(?:my\s+|a\s+)?(?:side\s+business|startup|personal|own|next\s+job|competitor)\b`,
+		Regex:       `(?i)\b(?:use|access|export|download|copy).{0,30}(?:company|corporate|employer|internal).{0,30}(?:API\s+key|credentials?|database|customer\s+(?:list|data|contact)).{0,40}(?:for\s+(?:my\s+|a\s+)?|to\s+(?:my\s+|a\s+)?)(?:side\s+business|startup|personal|own|next\s+job|competitor)\b`,
 		Description: "Unauthorized use of company resources",
 	},
 	{
 		Name:        "insider_download_unauth",
 		Severity:    SeverityHigh,
-		Regex:       `(?i)\b(?:download|copy|export|extract|take).{0,20}(?:customer|employee|salary|financial|patient|user).{0,20}(?:list|data|records?|database).{0,30}(?:without\s+(?:authorization|approval|permission)|to\s+(?:work\s+from\s+home|personal|home))\b`,
+		Regex:       `(?i)\b(?:download|copy|export|extract|take).{0,30}(?:customer|employee|salary|financial|patient|user).{0,30}(?:list|data|records?|database).{0,40}(?:without\s+(?:authorization|approval|permission)|to\s+(?:work\s+from\s+home|personal|home))\b`,
 		Description: "Unauthorized data download",
 	},
 	{
 		Name:        "insider_screenshot_exfil",
 		Severity:    SeverityHigh,
-		Regex:       `(?i)\b(?:screenshot|capture|photograph).{0,20}(?:internal|confidential|proprietary|wiki|dashboard|screen).{0,20}(?:and\s+)?(?:post|share|send|upload|email).{0,20}(?:externally|outside|public|external)\b`,
+		Regex:       `(?i)\b(?:screenshot|capture|photograph).{0,30}(?:internal|confidential|proprietary|wiki|dashboard|screen).{0,30}(?:and\s+)?(?:post|share|send|upload|email).{0,30}(?:externally|outside|public|external)\b`,
 		Description: "Screenshot exfiltration of internal systems",
+	},
+	// New insider threat patterns for common phrasings
+	{
+		Name:        "insider_hr_salary_access",
+		Severity:    SeverityHigh,
+		Regex:       `(?i)\b(?:access|query|read|look\s+up|view|check).{0,30}(?:the\s+)?(?:HR|human\s+resources?|salary|payroll).{0,30}(?:database|records?|data|system).{0,30}(?:to\s+(?:look\s+up|check|view|find)\s+(?:a\s+|my\s+)?(?:coworker|colleague|employee|other)'?s?\s+(?:salary|pay|compensation))\b`,
+		Description: "Unauthorized HR/salary database access",
+	},
+	{
+		Name:        "insider_forward_personal",
+		Severity:    SeverityHigh,
+		Regex:       `(?i)\b(?:forward|send|email|copy|redirect).{0,30}(?:confidential|internal|proprietary|sensitive|private|company).{0,30}(?:emails?|messages?|documents?|files?|data).{0,30}(?:to\s+(?:my\s+|a\s+)?(?:personal|private|home|external|gmail|yahoo|hotmail)\s*(?:email|account|address))\b`,
+		Description: "Forwarding confidential data to personal account",
+	},
+	{
+		Name:        "insider_print_take_home",
+		Severity:    SeverityHigh,
+		Regex:       `(?i)\b(?:print|copy|screenshot).{0,30}(?:all\s+)?(?:employee|customer|patient|user).{0,30}(?:SSNs?|social\s+security|records?|data|PII|PHI).{0,30}(?:and\s+(?:take|bring)\s+(?:it|them\s+)?home|to\s+(?:my\s+)?home|for\s+(?:my\s+)?personal\s+use)\b`,
+		Description: "Printing PII to take home",
+	},
+	{
+		Name:        "insider_upload_personal_cloud",
+		Severity:    SeverityCritical,
+		Regex:       `(?i)\b(?:upload|transfer|copy|sync|move).{0,30}(?:customer|employee|patient|user|company|corporate|production).{0,30}(?:data|records?|database|files?).{0,30}(?:to\s+(?:my\s+|a\s+)?(?:personal|private)\s+(?:AWS\s+S3|S3|bucket|Dropbox|Google\s+Drive|OneDrive|iCloud|GitHub|Azure|GCS|cloud))\b`,
+		Description: "Uploading company data to personal cloud storage",
+	},
+	{
+		Name:        "insider_encode_exfil",
+		Severity:    SeverityCritical,
+		Regex:       `(?i)\b(?:base64\s+encode|encode|encrypt|obfuscate).{0,30}(?:the\s+)?(?:credentials?|passwords?|API\s+keys?|tokens?|secrets?|data|files?).{0,30}(?:before\s+(?:sending|transferring|exfiltrating|uploading)|for\s+(?:exfiltration|transfer|sending))\b`,
+		Description: "Encoding credentials for exfiltration",
+	},
+	{
+		Name:        "insider_dns_tunnel",
+		Severity:    SeverityCritical,
+		Regex:       `(?i)\b(?:exfiltrat\w+|transfer|send|extract).{0,30}(?:the\s+)?(?:customer|user|employee|company|database).{0,30}(?:database|data|records?).{0,30}(?:via\s+(?:DNS\s+tunneling|DNS\s+queries|ICMP|covert\s+channel)|using\s+DNS\s+tunnel)\b`,
+		Description: "DNS tunneling data exfiltration",
+	},
+	{
+		Name:        "insider_share_third_party",
+		Severity:    SeverityCritical,
+		Regex:       `(?i)\b(?:share|give|send|provide).{0,30}(?:the\s+|my\s+|our\s+)?(?:admin\s+password|API\s+keys?|credentials?|access\s+keys?|private\s+keys?|secrets?|tokens?).{0,30}(?:to\s+(?:a\s+|an\s+|the\s+)?|with\s+(?:a\s+|an\s+)?)(?:third.?party|external\s+consultant|outside|unauthorized|unknown|someone|anyone|rival|competitor|journalist)\b`,
+		Description: "Sharing credentials with third parties",
+	},
+	{
+		Name:        "insider_unauth_device",
+		Severity:    SeverityHigh,
+		Regex:       `(?i)\b(?:access|retrieve|read|view|query|download).{0,30}(?:patient|customer|employee|financial|medical|HR|salary).{0,30}(?:records?|data|database).{0,30}(?:on\s+(?:my\s+|an\s+|a\s+)?(?:unauthorized|unapproved|personal|home)\s+(?:phone|device|laptop|computer|machine|USB|drive)|from\s+(?:my\s+|an\s+|a\s+)?(?:unauthorized|unapproved|personal|home)\s+(?:phone|device|laptop|computer|machine))\b`,
+		Description: "Accessing records on unauthorized device",
+	},
+	{
+		Name:        "insider_download_train_own",
+		Severity:    SeverityHigh,
+		Regex:       `(?i)\b(?:download|copy|take|extract).{0,30}(?:proprietary|company|internal|corporate).{0,30}(?:models?|algorithms?|code|source\s+code|ML\s+models?|AI\s+models?|datasets?).{0,40}(?:to\s+(?:train|build|start)\s+(?:my\s+|own|a\s+)?(?:own|personal|AI|model|startup|business))\b`,
+		Description: "Downloading proprietary models for personal use",
+	},
+	{
+		Name:        "insider_stage_stolen",
+		Severity:    SeverityHigh,
+		Regex:       `(?i)\b(?:stage|store|hide|place|move).{0,30}(?:the\s+)?(?:stolen|exfiltrat\w+|taken).{0,30}(?:data|files?|records?|database).{0,30}(?:in\s+(?:a\s+)?(?:hidden|secret|temporary|tmp)\s+(?:directory|folder|location)|before\s+(?:transfer|exfiltration|sending))\b`,
+		Description: "Staging stolen data before exfiltration",
+	},
+	{
+		Name:        "insider_export_startup",
+		Severity:    SeverityCritical,
+		Regex:       `(?i)\b(?:export|download|copy|extract|take).{0,30}(?:the\s+)?(?:customer|client|user).{0,30}(?:contact|email|mailing).{0,30}(?:list|database|records?).{0,30}(?:for\s+(?:my\s+|a\s+)?(?:startup|side\s+business|personal\s+business|own\s+business|new\s+company))\b`,
+		Description: "Exporting customer data for personal business",
+	},
+	// Additional data exfil patterns for variant corpus coverage
+	{
+		Name:        "exfil_extract_api_key_config",
+		Severity:    SeverityCritical,
+		Regex:       `(?i)\b(?:extract|read|show|get|pull).{0,30}(?:the\s+)?(?:Stripe|AWS|Azure|GCP|GitHub|Slack|Twilio|SendGrid|PayPal|OpenAI|Anthropic)\s+(?:API\s+key|secret\s+key|access\s+key|token|credential).{0,30}(?:from\s+(?:the\s+)?(?:application|app|server|config|configuration|env|environment))\b`,
+		Description: "Extract API key from application configuration",
+	},
+	{
+		Name:        "exfil_read_db_password_config",
+		Severity:    SeverityCritical,
+		Regex:       `(?i)\b(?:read|get|show|extract|find).{0,30}(?:the\s+)?database\s+password.{0,30}(?:from\s+(?:config|configuration|yaml|yml|json|properties|env))\b`,
+		Description: "Read database password from config file",
+	},
+	{
+		Name:        "exfil_archive_codebase_upload",
+		Severity:    SeverityCritical,
+		Regex:       `(?i)\b(?:archive|compress|zip|tar|package|bundle).{0,30}(?:the\s+)?(?:entire\s+|whole\s+)?codebase|source\s+code|repository.{0,30}(?:before\s+(?:uploading|sending|pushing)\s+to\s+(?:GitHub|public|external)|for\s+(?:upload|transfer|sharing))\b`,
+		Description: "Archive codebase for external upload",
+	},
+	{
+		Name:        "exfil_bundle_pii_zip",
+		Severity:    SeverityCritical,
+		Regex:       `(?i)\b(?:bundle|package|zip|compress|archive).{0,30}(?:all\s+)?(?:customer|user|employee|patient).{0,20}(?:PII|PHI|data|records?|information).{0,30}(?:into\s+(?:a\s+)?(?:zip|tar|archive|file)|for\s+(?:exfiltration|exfil|transfer))\b`,
+		Description: "Bundle PII into archive for exfiltration",
+	},
+	{
+		Name:        "exfil_dump_prod_db",
+		Severity:    SeverityCritical,
+		Regex:       `(?i)\b(?:dump|export|extract|copy|backup).{0,30}(?:the\s+)?(?:entire\s+|whole\s+|full\s+)?production\s+(?:database|db).{0,20}(?:to\s+(?:a\s+)?(?:file|csv|sql|dump|backup))\b`,
+		Description: "Dump production database to file",
+	},
+	{
+		Name:        "exfil_transmit_webhook",
+		Severity:    SeverityCritical,
+		Regex:       `(?i)\b(?:transmit|send|post|forward|relay|exfiltrat\w*).{0,30}(?:the\s+|all\s+)?(?:API\s+keys?|tokens?|secrets?|credentials?|passwords?).{0,30}(?:to\s+(?:my\s+|a\s+|an\s+)?(?:personal|private|external)\s*(?:webhook|endpoint|URL|server|API))\b`,
+		Description: "Transmit credentials to personal webhook endpoint",
+	},
+	{
+		Name:        "exfil_package_db_dump_competitor",
+		Severity:    SeverityCritical,
+		Regex:       `(?i)\b(?:package|bundle|prepare|stage).{0,30}(?:the\s+)?database\s+dump.{0,30}(?:for\s+(?:delivery|transfer|sending)\s+to\s+(?:the\s+)?(?:competitor|rival|outside|external|third.?party))\b`,
+		Description: "Package database dump for competitor delivery",
+	},
+	{
+		Name:        "exfil_dropbox_transfer",
+		Severity:    SeverityCritical,
+		Regex:       `(?i)\b(?:transfer|upload|send|copy|move).{0,30}(?:financial|customer|employee|patient|proprietary|confidential).{0,20}(?:records?|data|files?|documents?).{0,30}(?:to\s+(?:an?\s+)?(?:external\s+)?Dropbox|to\s+(?:my\s+)?personal\s+Dropbox)\b`,
+		Description: "Transfer records to external Dropbox",
 	},
 }
 

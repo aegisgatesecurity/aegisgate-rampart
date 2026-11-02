@@ -401,6 +401,55 @@ var SecretsPatterns = []PatternDef{
 		Regex:       `(?i)mongodb(\+srv)?://[^\s"\']+`,
 		Description: "MongoDB connection string",
 	},
+	// Additional secret patterns for variant corpus coverage
+	{
+		Name:        "secret_slack_webhook_url",
+		Severity:    SeverityHigh,
+		Regex:       `https://hooks\.slack\.com/services/[A-Za-z0-9/]+`,
+		Description: "Slack incoming webhook URL",
+	},
+	{
+		Name:        "secret_discord_webhook",
+		Severity:    SeverityHigh,
+		Regex:       `(?i)discord\s+webhook.{0,30}https://discord(?:app)?\.com/api/webhooks/\d+/[A-Za-z0-9_-]+|https://discord(?:app)?\.com/api/webhooks/\d+/[A-Za-z0-9_-]+`,
+		Description: "Discord webhook URL",
+	},
+	{
+		Name:        "secret_square_token",
+		Severity:    SeverityHigh,
+		Regex:       `(?i)\bsq0atp-[A-Za-z0-9_-]{20,}\b|\bsq0csp-[A-Za-z0-9_-]{40,}\b`,
+		Description: "Square access token or application secret",
+	},
+	{
+		Name:        "secret_paypal_token",
+		Severity:    SeverityHigh,
+		Regex:       `(?i)access_token\$production\$[A-Za-z0-9]+`,
+		Description: "PayPal/Braintree access token",
+	},
+	{
+		Name:        "secret_jwt_prefix",
+		Severity:    SeverityMedium,
+		Regex:       `\beyJhbGci[A-Za-z0-9_-]*`,
+		Description: "JWT token header prefix (eyJhbGci — may be truncated)",
+	},
+	{
+		Name:        "secret_k8s_token_context",
+		Severity:    SeverityHigh,
+		Regex:       `(?i)kubernetes\s+(?:service\s+account\s+)?token\s*[:=]\s*[A-Za-z0-9+/=._-]{8,}`,
+		Description: "Kubernetes token mentioned in context (lower threshold for truncated values)",
+	},
+	{
+		Name:        "secret_twilio_sid_context",
+		Severity:    SeverityMedium,
+		Regex:       `(?i)twilio\s+(?:account\s+)?SID\s+(?:is|:)\s*AC[A-Za-z0-9]{10,}`,
+		Description: "Twilio account SID mentioned in context",
+	},
+	{
+		Name:        "secret_sendgrid_context",
+		Severity:    SeverityMedium,
+		Regex:       `(?i)sendgrid\s+(?:api\s+)?key\s*[:=]\s*SG\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+`,
+		Description: "SendGrid API key mentioned in context (lower threshold for placeholder values)",
+	},
 }
 
 // CompiledSecretPatterns holds pre-compiled secret regex patterns.

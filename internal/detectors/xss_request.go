@@ -27,6 +27,24 @@ var XSSRequestPatterns = []PatternDef{
 		Description: "XSS exploit/attack generation request",
 	},
 	{
+		Name:        "xss_script_tag_injection",
+		Severity:    SeverityCritical,
+		Regex:       `(?i)\b(?:write|create|generate|build|make)\s+(?:a\s+)?script\s+tag\s+injection\b`,
+		Description: "Script tag injection request",
+	},
+	{
+		Name:        "xss_exploit_using",
+		Severity:    SeverityCritical,
+		Regex:       `(?i)\b(?:write|create|generate|build|make)\s+(?:an?\s+)?(?:XSS|cross-?site-?scripting)\s+(?:exploit|attack)\s+using\b`,
+		Description: "XSS exploit using specific technique (SVG, foreignObject, etc.)",
+	},
+	{
+		Name:        "xss_attack_for_target",
+		Severity:    SeverityCritical,
+		Regex:       `(?i)\b(?:write|create|generate|build|make)\s+(?:an?\s+)?(?:XSS|cross-?site-?scripting)\s+attack\s+for\s+(?:the\s+)?(?:profile|message|login|search|comment|forum|board|page|form)\b`,
+		Description: "XSS attack targeting specific page/component",
+	},
+	{
 		Name:        "xss_dom_based",
 		Severity:    SeverityHigh,
 		Regex:       `(?i)\b(?:DOM-?based\s+XSS|DOM\s+XSS|DOM\s+clobbering)\b`,

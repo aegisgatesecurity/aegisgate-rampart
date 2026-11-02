@@ -68,8 +68,8 @@ var SocialEngineeringPatterns = []PatternDef{
 	{
 		Name:        "socialeng_pig_butchering",
 		Severity:    SeverityCritical,
-		Regex:       `(?i)\b(?:pig\s+butchering|romance\s+scam|investment\s+scam).{0,30}(?:script|attack|campaign|message)\b`,
-		Description: "Pig butchering/romance scam generation",
+		Regex:       `(?i)\b(?:pig\s+butchering|romance\s+scam|investment\s+scam)(?:\s+(?:script|attack|campaign|message|scam))?|(?:script|attack|campaign|message).{0,30}(?:pig\s+butchering|romance\s+scam|investment\s+scam)`,
+		Description: "Pig butchering/romance/investment scam generation",
 	},
 	{
 		Name:        "socialeng_physical_access",

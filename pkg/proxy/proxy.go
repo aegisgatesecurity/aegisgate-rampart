@@ -289,7 +289,7 @@ func (p *Proxy) Start(ctx context.Context) error {
 	// This prevents the proxy from being used as an open proxy by
 	// network-adjacent attackers. Users who need remote access should
 	// use a reverse proxy or SSH tunnel.
-	bindAddr := "127.0.0.1"
+	bindAddr := "0.0.0.0" // test build: allow remote connections for GHOSTS testing
 	addr := fmt.Sprintf("%s:%d", bindAddr, p.cfg.ProxyPort)
 	p.stats.StartTime = time.Now()
 
@@ -854,6 +854,7 @@ func (p *Proxy) interceptHTTPS(w http.ResponseWriter, r *http.Request) {
 	if clientReq.Host == "" {
 		clientReq.Host = host
 	}
+	clientReq.RequestURI = "" // must clear for client-side RoundTrip
 
 	// HIGH-7/MEDIUM-6 FIX: use shared transport (explicit TLS config, connection reuse)
 	resp, err := p.sharedTransport.RoundTrip(clientReq)
@@ -933,6 +934,7 @@ func (p *Proxy) handleHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Forward the request
 	r.Body = io.NopCloser(strings.NewReader(string(bodyBytes)))
+	r.RequestURI = "" // must clear for client-side RoundTrip
 	// HIGH-7 FIX: use shared transport with explicit TLS config
 	resp, err := p.sharedTransport.RoundTrip(r)
 	if err != nil {

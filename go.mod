@@ -7,7 +7,7 @@ require (
 	github.com/gen2brain/beeep v0.11.3
 	// Onnxruntime for ML inference (CGO build tag)
 	// Only needed when CGO_ENABLED=1 — the non-CGO build uses heuristic fallback
-	github.com/yalue/onnxruntime_go v1.36.0
+	github.com/yalue/onnxruntime_go v1.38.0
 	golang.org/x/crypto v0.58.0
 	golang.org/x/sys v0.49.0
 	golang.org/x/text v0.43.0

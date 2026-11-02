@@ -98,7 +98,13 @@ func TotalCompiledPatterns() int {
 		len(CompiledAgentPoisoningPatterns) +
 		len(CompiledRAGPatterns) +
 		len(CompiledPathTraversalPatterns) +
-		len(CompiledPromptLeakagePatterns)
+		len(CompiledPromptLeakagePatterns) +
+		len(CompiledInjectionPatterns) +
+		len(CompiledMalwarePatterns) +
+		len(CompiledEvasionPatterns) +
+		len(CompiledDataExfilPatterns) +
+		len(CompiledSocialEngineeringPatterns) +
+		len(CompiledXSSRequestPatterns)
 }
 
 // DetectAll scans text with all pattern categories and returns combined results.
@@ -116,6 +122,12 @@ func DetectAll(text string) []Match {
 	all = append(all, DetectRAG(text)...)
 	all = append(all, DetectPathTraversal(text)...)
 	all = append(all, DetectPromptLeakage(text)...)
+	all = append(all, DetectInjection(text)...)
+	all = append(all, DetectMalware(text)...)
+	all = append(all, DetectEvasion(text)...)
+	all = append(all, DetectDataExfil(text)...)
+	all = append(all, DetectSocialEngineering(text)...)
+	all = append(all, DetectXSSRequest(text)...)
 
 	// Sort all matches by index
 	sort.Slice(all, func(i, j int) bool {
@@ -141,6 +153,12 @@ func DetectAllWithResults(text string) ([]Match, []DetectionResult) {
 		detectWithResult(text, CompiledRAGPatterns, CategoryRAG),
 		detectWithResult(text, CompiledPathTraversalPatterns, CategoryPathTraversal),
 		detectWithResult(text, CompiledPromptLeakagePatterns, CategoryPromptLeakage),
+		detectWithResult(text, CompiledInjectionPatterns, CategoryInjection),
+		detectWithResult(text, CompiledMalwarePatterns, CategoryMalware),
+		detectWithResult(text, CompiledEvasionPatterns, CategoryEvasion),
+		detectWithResult(text, CompiledDataExfilPatterns, CategoryDataExfil),
+		detectWithResult(text, CompiledSocialEngineeringPatterns, CategorySocialEngineering),
+		detectWithResult(text, CompiledXSSRequestPatterns, CategoryXSS),
 	}
 
 	all := DetectAll(text)

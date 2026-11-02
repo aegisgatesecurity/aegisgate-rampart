@@ -14,8 +14,8 @@ func TestDetectAllWithResults_MultiThreatText(t *testing.T) {
 	if len(all) == 0 {
 		t.Error("DetectAllWithResults should find threats in multi-threat text")
 	}
-	if len(results) != 12 {
-		t.Errorf("Expected 12 DetectionResult categories, got %d", len(results))
+	if len(results) != 18 {
+		t.Errorf("Expected 18 DetectionResult categories, got %d", len(results))
 	}
 }
 
@@ -25,8 +25,8 @@ func TestDetectAllWithResults_CleanText(t *testing.T) {
 	if len(all) != 0 {
 		t.Errorf("DetectAllWithResults on clean text should return 0 matches, got %d", len(all))
 	}
-	if len(results) != 12 {
-		t.Errorf("Expected 12 DetectionResult categories even for clean text, got %d", len(results))
+	if len(results) != 18 {
+		t.Errorf("Expected 18 DetectionResult categories even for clean text, got %d", len(results))
 	}
 	// Each result should have 0 matches for clean text
 	for _, r := range results {
@@ -41,8 +41,8 @@ func TestDetectAllWithResults_EmptyText(t *testing.T) {
 	if len(all) != 0 {
 		t.Errorf("DetectAllWithResults on empty string should return 0 matches, got %d", len(all))
 	}
-	if len(results) != 12 {
-		t.Errorf("Expected 12 DetectionResult categories, got %d", len(results))
+	if len(results) != 18 {
+		t.Errorf("Expected 18 DetectionResult categories, got %d", len(results))
 	}
 }
 
@@ -222,6 +222,12 @@ func TestDetectAllWithResults_EachCategoryPresent(t *testing.T) {
 		CategoryRAG,
 		CategoryPathTraversal,
 		CategoryPromptLeakage,
+		CategoryInjection,
+		CategoryMalware,
+		CategoryEvasion,
+		CategoryDataExfil,
+		CategorySocialEngineering,
+		CategoryXSS, // XSSRequestPatterns also uses CategoryXSS
 	}
 	if len(results) != len(expectedCategories) {
 		t.Fatalf("Expected %d results, got %d", len(expectedCategories), len(results))

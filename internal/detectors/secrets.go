@@ -484,7 +484,7 @@ var SecretsPatterns = []PatternDef{
 	{
 		Name:        "secret_exfil_context",
 		Severity:    SeverityHigh,
-		Regex:       `(?i)(?:the\s+value\s+is|here(?:'s| is)?\s+(?:the\s+)?(?:secret|key|token|password|credential|api\s+key))\s*[:=]?\s*.{8,}?.{0,20}(?:do\s+not\s+share|don'?t\s+share|keep\s+(?:it\s+)?(?:private|secret|confidential))`,
+		Regex:       `(?i)(?:the\s+value\s+is|here(?:'s| is)?\s+(?:the\s+)?(?:secret|key|token|password|credential|api\s+key))\s*[:=]?\s*.{25,}?.{0,20}(?:do\s+not\s+share|don'?t\s+share|keep\s+(?:it\s+)?(?:private|secret|confidential))`,
 		Description: "Secret value disclosure in exfiltration context",
 	},
 }

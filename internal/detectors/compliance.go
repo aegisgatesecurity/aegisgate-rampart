@@ -201,25 +201,25 @@ var CompliancePatterns = []PatternDef{
 	{
 		Name:        "ccpa_reference",
 		Severity:    SeverityMedium,
-		Regex:       `(?i)\b(?:CCPA|California\s+Consumer\s+Privacy\s+Act|Civil\s+Code\s+§\s*1798(?:\.\d+)?|right\s+to\s+(?:know|delete|opt[\s-]?out|correct)|sale\s+of\s+personal\s+information|Shine\s+the\s+Light|Do\s+Not\s+Sell)\b|sell.{0,20}California.{0,20}personal\s+information|sell.{0,20}consumer.{0,20}personal\s+information\s+to\s+third`,
+		Regex:       `(?i)sell.{0,20}California.{0,20}personal\s+information|sell.{0,20}consumer.{0,20}personal\s+information\s+to\s+third`,
 		Description: "CCPA reference",
 	},
 	{
 		Name:        "lgpd_reference",
 		Severity:    SeverityMedium,
-		Regex:       `(?i)\b(?:LGPD|Lei\s+Geral\s+de\s+Protec[ça]ção\s+de\s+Dados|Art\.\s*\d+(?:[\s,º°]+(?:I|II|III|IV|V|VI|VII|VIII|IX|X))*|dados\s+pessoais|controlador|operador|ANPD)\b|process.{0,20}Brazilian\s+(?:user\s+)?data\s+without\s+(?:consent|legal\s+basis)`,
+		Regex:       `(?i)process.{0,20}Brazilian\s+(?:user\s+)?data\s+without\s+(?:consent|legal\s+basis)`,
 		Description: "LGPD (Brazilian data protection) reference",
 	},
 	{
 		Name:        "pipeda_reference",
 		Severity:    SeverityMedium,
-		Regex:       `(?i)\b(?:PIPEDA|Personal\s+Information\s+Protection\s+and\s+Electronic\s+Documents\s+Act|Schedule\s+1|Principle\s+\d+(?:\.\d+)?|express\s+consent)\b|process.{0,20}Canadian\s+(?:personal\s+)?data\s+without\s+(?:consent|lawful\s+basis)`,
+		Regex:       `(?i)process.{0,20}Canadian\s+(?:personal\s+)?data\s+without\s+(?:consent|lawful\s+basis)`,
 		Description: "PIPEDA (Canadian privacy) reference",
 	},
 	{
 		Name:        "popia_reference",
 		Severity:    SeverityMedium,
-		Regex:       `(?i)\b(?:POPIA|Protection\s+of\s+Personal\s+Information\s+Act|s\.\s*\d+(?:\s*\(\d+\))?|Information\s+Regulator|processing\s+of\s+personal\s+information|special\s+personal\s+information)\b|process.{0,20}South\s+African\s+(?:personal\s+)?data\s+without\s+(?:consent|legal\s+basis)`,
+		Regex:       `(?i)process.{0,20}South\s+African\s+(?:personal\s+)?data\s+without\s+(?:consent|legal\s+basis)`,
 		Description: "POPIA (South African privacy) reference",
 	},
 

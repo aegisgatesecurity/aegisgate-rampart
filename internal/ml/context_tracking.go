@@ -92,16 +92,16 @@ func DefaultContextPatterns() []BenignContextPattern {
 		{Profile: ContextCustomerSupport, Name: "support_ticket", Regex: regexp.MustCompile(`(?i)(support\s+ticket|case\s+number|ticket\s+#|help\s+desk|customer\s+service)`), Weight: 12},
 		{Profile: ContextCustomerSupport, Name: "update_account", Regex: regexp.MustCompile(`(?i)(?:update|change|verify|correct|update)\s+(?:my|our)\s+(?:billing|account|contact|shipping|mailing)\s+(?:address|info|information|details)`), Weight: 15},
 		{Profile: ContextCustomerSupport, Name: "refund_warranty", Regex: regexp.MustCompile(`(?i)(?:refund|warranty|return|exchange)\s+(?:request|claim|process|status|for)`), Weight: 10},
-		{Profile: ContextCustomerSupport, Name: "billing_issue", Regex: regexp.MustCompile(`(?i)(billing\s+(?:issue|problem|dispute|question)|account\s+(?:problem|issue|verification)|identity\s+verification)`), Weight: 12},
+		{Profile: ContextCustomerSupport, Name: "billing_issue", Regex: regexp.MustCompile(`(?i)(billing\s+(?:issue|problem|dispute|question|address|info|statement)|account\s+(?:problem|issue|verification)|identity\s+verification)`), Weight: 12},
 		{Profile: ContextCustomerSupport, Name: "account_number_context", Regex: regexp.MustCompile(`(?i)(?:my|our)\s+(?:account|customer)\s+(?:number|ID)\s+(?:is|:)\s*[\w-]+`), Weight: 10},
-		{Profile: ContextCustomerSupport, Name: "contact_info_update", Regex: regexp.MustCompile(`(?i)(?:here(?:'s| is)?|this is)\s+(?:my|our)\s+(?:updated?|new|current)\s+(?:contact|phone|email|address|information)`), Weight: 12},
+		{Profile: ContextCustomerSupport, Name: "contact_info_update", Regex: regexp.MustCompile(`(?i)(?:here(?:'s| is)?|this is)?\s*(?:my|our)?\s*(?:updated?|new|current)\s+(?:contact|phone|email|address|information)`), Weight: 12},
 		{Profile: ContextCustomerSupport, Name: "registration_form", Regex: regexp.MustCompile(`(?i)(?:filling\s+out|completing|submitting)\s+(?:a\s+)?(?:registration|application|intake)\s+(?:form| paperwork)`), Weight: 10},
 
 		// Medical
-		{Profile: ContextMedical, Name: "patient_record", Regex: regexp.MustCompile(`(?i)(patient\s+(?:record|information|chart|file|intake)|medical\s+(?:record|history|file|chart))`), Weight: 15},
+		{Profile: ContextMedical, Name: "patient_record", Regex: regexp.MustCompile(`(?i)(patient\s+(?:record|information|chart|file|intake|ID|at)|medical\s+(?:record|history|file|chart|bill|appointment))`), Weight: 15},
 		{Profile: ContextMedical, Name: "diagnosis_code", Regex: regexp.MustCompile(`(?i)(diagnosis\s+code|ICD[- ]?\d|procedure\s+code|CPT\s+code|medical\s+coding)`), Weight: 12},
 		{Profile: ContextMedical, Name: "treatment_plan", Regex: regexp.MustCompile(`(?i)(treatment\s+plan|care\s+plan|prescription\s+(?:refill|information|details)|medication\s+(?:list|information))`), Weight: 12},
-		{Profile: ContextMedical, Name: "healthcare_provider", Regex: regexp.MustCompile(`(?i)(healthcare\s+provider|medical\s+provider|insurance\s+(?:claim|information|card)|medical\s+(?:bill|invoice|statement))`), Weight: 12},
+		{Profile: ContextMedical, Name: "healthcare_provider", Regex: regexp.MustCompile(`(?i)(healthcare\s+provider|medical\s+provider|insurance\s+(?:claim|information|card|verification)|medical\s+(?:bill|invoice|statement))`), Weight: 12},
 		{Profile: ContextMedical, Name: "medical_appointment", Regex: regexp.MustCompile(`(?i)(medical\s+appointment|doctor(?:'s|\s+s)?\s+(?:visit|appointment|office)|clinic\s+visit|hospital\s+(?:admission|visit|record))`), Weight: 10},
 		{Profile: ContextMedical, Name: "patient_intake", Regex: regexp.MustCompile(`(?i)(patient\s+(?:intake|admission|registration|intake\s+form)|pre-admission|pre-admit)`), Weight: 13},
 
@@ -112,9 +112,9 @@ func DefaultContextPatterns() []BenignContextPattern {
 		{Profile: ContextLegal, Name: "estate_planning", Regex: regexp.MustCompile(`(?i)(power\s+of\s+attorney|estate\s+planning|probate|retainer\s+agreement|living\s+will|trust\s+document)`), Weight: 13},
 
 		// HR
-		{Profile: ContextHR, Name: "employee_onboarding", Regex: regexp.MustCompile(`(?i)(employee\s+(?:onboarding|verification|ID|record)|personnel\s+(?:file|record)|new\s+hire\s+(?: paperwork|process|form|onboarding))`), Weight: 13},
+		{Profile: ContextHR, Name: "employee_onboarding", Regex: regexp.MustCompile(`(?i)(employee\s+(?:onboarding|verification|ID|record)|personnel\s+(?:file|record)|new\s+hire|(?:onboarding|hire|hiring)\s+(?:a\s+)?(?:new\s+)?employee)`), Weight: 13},
 		{Profile: ContextHR, Name: "payroll_benefits", Regex: regexp.MustCompile(`(?i)(payroll\s+(?:processing|information|setup)|benefits\s+(?:enrollment|information|selection)|compensation\s+(?:information|details|package))`), Weight: 12},
-		{Profile: ContextHR, Name: "tax_forms_hr", Regex: regexp.MustCompile(`(?i)\b(?:W-2|W-4|I-9|1099)\s+(?:form|tax|for|processing)|employment\s+(?:verification|background\s+check|eligibility)`), Weight: 12},
+		{Profile: ContextHR, Name: "tax_forms_hr", Regex: regexp.MustCompile(`(?i)\b(?:W-2|W-4|I-9|1099)\s+(?:form|tax|for|processing)|employment\s+(?:verification|background\s+check|eligibility)|tax\s+form`), Weight: 12},
 		{Profile: ContextHR, Name: "hire_process", Regex: regexp.MustCompile(`(?i)(?:hire|hiring|onboarding)\s+process|employee\s+(?:directory|handbook|agreement|contract)`), Weight: 10},
 
 		// Financial

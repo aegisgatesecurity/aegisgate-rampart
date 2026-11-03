@@ -187,7 +187,7 @@ func New(cfg *config.Config) (*Proxy, error) {
 		SessionTTL:               30 * time.Minute,
 		BlockThreshold:           75.0,
 		AlertThreshold:           40.0,
-		ContextSuppressThreshold: 25.0,
+		ContextSuppressThreshold: 12.0,
 		ContextMinTurns:          1,
 		ContextDecayRate:         0.10,
 		EnableLogging:            true,

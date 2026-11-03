@@ -246,7 +246,7 @@ func NewMultiTurnDetector(config MultiTurnConfig) *MultiTurnDetector {
 		config.DecayRate = 0.15
 	}
 	if config.ContextSuppressThreshold <= 0 {
-		config.ContextSuppressThreshold = 25.0
+		config.ContextSuppressThreshold = 12.0
 	}
 	if config.ContextMinTurns <= 0 {
 		config.ContextMinTurns = 1

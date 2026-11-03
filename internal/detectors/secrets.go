@@ -36,19 +36,19 @@ var SecretsPatterns = []PatternDef{
 	{
 		Name:        "secret_azure_key",
 		Severity:    SeverityHigh,
-		Regex:       `(?:AccountKey|SharedAccessKey)\s*=\s*[A-Za-z0-9+/=]{44,88}`,
+		Regex:       `(?:AccountKey|SharedAccessKey)\s*=\s*[A-Za-z0-9+/=]{16,88}`,
 		Description: "Azure storage account key or SAS",
 	},
 	{
 		Name:        "secret_private_key_pem",
 		Severity:    SeverityCritical,
-		Regex:       `-----BEGIN (?:RSA |EC |DSA |OPENSSH |PGP |ENCRYPTED )?PRIVATE KEY-----`, //nosec G101 -- regex pattern for detecting private keys, not an actual key
+		Regex:       `-----BEGIN (?:RSA |EC |DSA |OPENSSH |PGP |ENCRYPTED |TEST )?PRIVATE KEY-----`, //nosec G101 -- regex pattern for detecting private keys, not an actual key
 		Description: "PEM private key header",
 	},
 	{
 		Name:        "secret_oauth_token",
 		Severity:    SeverityHigh,
-		Regex:       `\bya29\.[0-9A-Za-z_-]{50,}\b|\b1/[0-9A-Za-z_-]{40,}\b`,
+		Regex:       `\bya29\.[0-9A-Za-z_-]{40,}\b|\b1/[0-9A-Za-z_-]{40,}\b`,
 		Description: "OAuth token (Google or generic)",
 	},
 	{
@@ -84,7 +84,7 @@ var SecretsPatterns = []PatternDef{
 	{
 		Name:        "secret_sendgrid_key",
 		Severity:    SeverityHigh,
-		Regex:       `\bSG\.[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}\b`,
+		Regex:       `\bSG\.[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}\b|\bSG\.[A-Za-z0-9_-]{20,}\b`,
 		Description: "SendGrid API key",
 	},
 	{
@@ -162,7 +162,7 @@ var SecretsPatterns = []PatternDef{
 	{
 		Name:        "secret_github_actions_token",
 		Severity:    SeverityCritical,
-		Regex:       `\bgh[osur]_[A-Za-z0-9]{30,}\b`,
+		Regex:       `\bgh[osur]_[A-Za-z0-9]{20,}\b`,
 		Description: "GitHub Actions token",
 	},
 	{
@@ -174,7 +174,7 @@ var SecretsPatterns = []PatternDef{
 	{
 		Name:        "secret_bitbucket_token",
 		Severity:    SeverityCritical,
-		Regex:       `(?:BITBUCKET_TOKEN|BITBUCKET_PAT)\s*[:=]\s*xrp[A-Za-z0-9_]{32,255}`,
+		Regex:       `(?:BITBUCKET_TOKEN|BITBUCKET_PAT)\s*[:=]\s*xrp[A-Za-z0-9_]{32,255}|\bATBB[A-Za-z0-9]{20,}\b`,
 		Description: "Bitbucket token",
 	},
 	{
@@ -210,7 +210,7 @@ var SecretsPatterns = []PatternDef{
 	{
 		Name:        "secret_digitalocean_token",
 		Severity:    SeverityCritical,
-		Regex:       `(?i)(?:(?:DO_PAT|DIGITALOCEAN_TOKEN|DO_TOKEN)\s*[:=]|DigitalOcean\s+(?:API\s+)?token\s*[:=])\s*dop_v1_[A-Za-z0-9]{30,100}`,
+		Regex:       `(?i)(?:(?:DO_PAT|DIGITALOCEAN_TOKEN|DO_TOKEN)\s*[:=]|DigitalOcean\s+(?:API\s+)?token\s*[:=])\s*dop_v1_[A-Za-z0-9]{30,100}|\bdop_v1_[A-Za-z0-9]{20,}\b`,
 		Description: "DigitalOcean token",
 	},
 	{
@@ -252,7 +252,7 @@ var SecretsPatterns = []PatternDef{
 	{
 		Name:        "secret_internal_api_key",
 		Severity:    SeverityCritical,
-		Regex:       `(?i)(?:INTERNAL[_-]?API[_-]?KEY|INTERNAL[_-]?KEY|INTERNAL[_-]?TOKEN)\s*[:=]\s*['"]?([A-Za-z0-9_\-]{10,})['"]?`,
+		Regex:       `(?i)(?:INTERNAL[_-]?API[_-]?KEY|INTERNAL[_-]?KEY|INTERNAL[_-]?TOKEN)\s*[:=]\s*['"]?([A-Za-z0-9_\-]{8,})['"]?`,
 		Description: "Internal API key assignment",
 	},
 	{
@@ -480,6 +480,12 @@ var SecretsPatterns = []PatternDef{
 		Severity:    SeverityHigh,
 		Regex:       `(?i)\b(?:share|send|post|give|leak|expose)\s+(?:my\s+|the\s+|our\s+)?discord\s+webhook\b`,
 		Description: "Discord webhook sharing/disclosure request",
+	},
+	{
+		Name:        "secret_exfil_context",
+		Severity:    SeverityHigh,
+		Regex:       `(?i)(?:the\s+value\s+is|here(?:'s| is)?\s+(?:the\s+)?(?:secret|key|token|password|credential|api\s+key))\s*[:=]?\s*.{8,}?.{0,20}(?:do\s+not\s+share|don'?t\s+share|keep\s+(?:it\s+)?(?:private|secret|confidential))`,
+		Description: "Secret value disclosure in exfiltration context",
 	},
 }
 

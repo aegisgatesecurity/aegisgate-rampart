@@ -43,7 +43,7 @@ import (
 // v13:  329fd89afe153d0b9f01143c50a9a2dd73b1d3613cc87a07b4b83a93172aeaf0
 // v11b: 8e13c793c32816aa0f6e2af13ffadd4f38f707b4ac8906b56ddfa77da51ea8e5
 // v9:   0076b66d069ca445589526624ebeb67b65a1df68d615525b83e528f03e0bd4b7
-const ExpectedModelHash = "99187453bedb2b8caf21500d2344f2bbe34272c0b3fd4c610c431378dc2f4fe7"
+const ExpectedModelHash = "85aaf9b0e79bdfd3c0f51d0225bf39c708cdf9485fae7ac37ab43b21ec4f6d26"
 
 // ThreatDetector performs neural network-based threat detection.
 // ONNX session fields are defined in build-tag-specific files:

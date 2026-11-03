@@ -830,7 +830,8 @@ func (p *Proxy) interceptHTTPS(w http.ResponseWriter, r *http.Request) {
 
 		// Block mode: check if the request should be blocked
 		if result != nil && result.TotalDetections > 0 {
-			if shouldBlock, reason := p.shouldBlock(result); shouldBlock {
+			content := string(bodyBytes)
+			if shouldBlock, reason := p.shouldBlock(result, content); shouldBlock {
 				p.mu.Lock()
 				p.stats.BlockedRequests++
 				p.mu.Unlock()
@@ -878,7 +879,8 @@ func (p *Proxy) interceptHTTPS(w http.ResponseWriter, r *http.Request) {
 
 		// Block mode: check if the response should be blocked
 		if result != nil && result.TotalDetections > 0 {
-			if shouldBlock, reason := p.shouldBlock(result); shouldBlock {
+			respContent := string(respBody)
+			if shouldBlock, reason := p.shouldBlock(result, respContent); shouldBlock {
 				p.mu.Lock()
 				p.stats.BlockedRequests++
 				p.mu.Unlock()
@@ -925,7 +927,8 @@ func (p *Proxy) handleHTTP(w http.ResponseWriter, r *http.Request) {
 
 		// Block mode: check if the request should be blocked
 		if result != nil && result.TotalDetections > 0 {
-			if shouldBlock, reason := p.shouldBlock(result); shouldBlock {
+			content := string(bodyBytes)
+			if shouldBlock, reason := p.shouldBlock(result, content); shouldBlock {
 				p.blockResponse(w, "request", host, r.URL.Path, result, reason)
 				return
 			}
@@ -955,7 +958,8 @@ func (p *Proxy) handleHTTP(w http.ResponseWriter, r *http.Request) {
 
 		// Block mode: check if the response should be blocked
 		if result != nil && result.TotalDetections > 0 {
-			if shouldBlock, reason := p.shouldBlock(result); shouldBlock {
+			respContent := string(respBody)
+			if shouldBlock, reason := p.shouldBlock(result, respContent); shouldBlock {
 				p.blockResponse(w, "response", host, r.URL.Path, result, reason)
 				return
 			}
@@ -975,7 +979,7 @@ func (p *Proxy) handleHTTP(w http.ResponseWriter, r *http.Request) {
 // shouldBlock determines if a detection result should be blocked based on
 // the current mode and block configuration. Returns true if the request/response
 // should be blocked, and the reason if applicable.
-func (p *Proxy) shouldBlock(result *detector.Summary) (bool, string) {
+func (p *Proxy) shouldBlock(result *detector.Summary, content string) (bool, string) {
 	// Monitor mode: never block
 	if p.cfg.Mode != ModeBlock {
 		return false, ""
@@ -984,6 +988,48 @@ func (p *Proxy) shouldBlock(result *detector.Summary) (bool, string) {
 	// No detections: nothing to block
 	if result.TotalDetections == 0 {
 		return false, ""
+	}
+
+	// Educational context FP mitigation: if the content is an educational
+	// question (How to, What is, Explain, etc.) and ALL threshold-meeting
+	// detections are from FP-prone patterns, skip the block to prevent FPs
+	// on security education and admin/DevOps questions.
+	if isEducationalContent(content) {
+		allExemptable := true
+		hasThresholdDetection := false
+		for _, r := range result.Results {
+			if !meetsSeverityThreshold(r.Severity, p.cfg.Block.Threshold) {
+				continue
+			}
+			hasThresholdDetection = true
+			if !isEducationalExemptPattern(r.Rule) && !isEducationalExemptPattern(r.Category) {
+				allExemptable = false
+				break
+			}
+		}
+		if hasThresholdDetection && allExemptable {
+			return false, "educational context exemption"
+		}
+	}
+
+	// ML-only no-corroboration exemption: if the ONLY threshold-meeting
+	// detection is from the ML threat detector (no regex pattern matches),
+	// don't block — require at least one regex corroboration. This mirrors
+	// Platform's L3 Tier 2 approach and prevents ML FPs on benign content.
+	hasMLOnly := false
+	hasRegexDetection := false
+	for _, r := range result.Results {
+		if !meetsSeverityThreshold(r.Severity, p.cfg.Block.Threshold) {
+			continue
+		}
+		if r.Rule == "char_cnn_bilstm" || r.Category == "ml_threat" {
+			hasMLOnly = true
+		} else {
+			hasRegexDetection = true
+		}
+	}
+	if hasMLOnly && !hasRegexDetection {
+		return false, "ML-only no corroboration"
 	}
 
 	blockCfg := p.cfg.Block
@@ -1006,6 +1052,69 @@ func (p *Proxy) shouldBlock(result *detector.Summary) (bool, string) {
 	}
 
 	return false, ""
+}
+
+// isEducationalContent checks if the content is an educational/how-to question.
+func isEducationalContent(content string) bool {
+	trimmed := strings.TrimSpace(content)
+	// Extract text from JSON if needed (look for "content" field)
+	if strings.Contains(trimmed, "{") {
+		// Try to extract content from JSON body
+		var parsed map[string]interface{}
+		if err := json.Unmarshal([]byte(trimmed), &parsed); err == nil {
+			if messages, ok := parsed["messages"].([]interface{}); ok && len(messages) > 0 {
+				if msg, ok := messages[0].(map[string]interface{}); ok {
+					if c, ok := msg["content"].(string); ok {
+						trimmed = c
+					}
+				}
+			}
+		}
+	}
+	if len(trimmed) > 80 {
+		trimmed = trimmed[:80]
+	}
+	lower := strings.ToLower(trimmed)
+	eduPatterns := []string{
+		"how do i ", "how to ", "how does ", "how should ", "how can i ",
+		"what is ", "what's ", "what are ", "what's the ", "what does ",
+		"explain ", "describe ",
+		"difference between ",
+		"best practices for ", "best practice for ",
+		"why is ", "why are ", "why do ",
+		"when should ", "when is ",
+	}
+	for _, p := range eduPatterns {
+		if strings.HasPrefix(lower, p) {
+			return true
+		}
+	}
+	return false
+}
+
+// educationalExemptPatterns are patterns that commonly trigger FPs on
+// educational/admin/DevOps questions. When in educational context, these
+// patterns alone (without other corroborating detections) won't block.
+var educationalExemptPatterns = map[string]bool{
+	"evasion_lolbin":                true,
+	"sensitive_file_ssh_key":        true,
+	"sensitive_file_env":            true,
+	"sensitive_file_aws_creds":      true,
+	"sensitive_file_hosts":          true,
+	"pii_icd10_patient_ctx":         true,
+	"pii_icd10_code":                true,
+	"pii_letter_only_id":            true,
+	"toxicity_self_harm":            true,
+	"toxicity_sexual":               true,
+	"toxicity":                      true,
+	"ml_threat":                     true,
+	"char_cnn_bilstm":               true,
+	"harmful_hacking_instructions":  true,
+	"harmful_violence_instructions": true,
+}
+
+func isEducationalExemptPattern(pattern string) bool {
+	return educationalExemptPatterns[pattern]
 }
 
 // meetsSeverityThreshold checks if a severity meets the blocking threshold.
@@ -1395,7 +1504,7 @@ func (p *Proxy) HandleDetectAPI(w http.ResponseWriter, r *http.Request) {
 		p.mu.Unlock()
 
 		// Block mode: return block response instead of detection result
-		if shouldBlock, reason := p.shouldBlock(result); shouldBlock {
+		if shouldBlock, reason := p.shouldBlock(result, req.Text); shouldBlock {
 			p.blockResponse(w, "request", "", "/detect", result, reason)
 			return
 		}

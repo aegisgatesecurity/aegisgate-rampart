@@ -50,7 +50,7 @@ var InjectionPatterns = []PatternDef{
 	{
 		Name:        "sqli_time_based",
 		Severity:    SeverityHigh,
-		Regex:       `(?i)\b(?:sleep\s*\(\s*\d+\s*\)|waitfor\s+delay\s+['"]|benchmark\s*\(|pg_sleep\s*\()\b`,
+		Regex:       `(?i)(?:(?:['";]\s*)?(?:and|or)\s+)?sleep\s*\(\s*\d+\s*\)\s*(?:--|#|/\*|;)|\b(?:and|or|union)\s+sleep\s*\(\s*\d+\s*\)|\b(?:waitfor\s+delay\s+['"]|benchmark\s*\(|pg_sleep\s*\()`,
 		Description: "Time-based blind SQL injection",
 	},
 	{
@@ -100,6 +100,12 @@ var InjectionPatterns = []PatternDef{
 		Severity:    SeverityHigh,
 		Regex:       `(?i)\bunion\s+(?:all\s+)?select\b.{0,80}(?:from\s+users|information_schema|@@version|sleep\(|concat\(|null,\s*null)`,
 		Description: "UNION SELECT injection targeting users table or schema",
+	},
+	{
+		Name:        "sqli_alter_schema",
+		Severity:    SeverityHigh,
+		Regex:       `(?i)\b(?:alter\s+table.{0,30}(?:corrupt|damage|modify|destroy|drop|truncate)|write\s+sql\s+to\s+alter\s+table)\b`,
+		Description: "SQL ALTER TABLE schema corruption",
 	},
 }
 

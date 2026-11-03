@@ -61,14 +61,15 @@ const (
 
 // Proxy is the local HTTPS interception proxy.
 type Proxy struct {
-	cfg      *config.Config
-	detector *detector.Detector
-	server   *http.Server
-	certMgr  *certificate.Manager
-	certInit *certinit.Result
-	targets  map[string]bool // domain → intercept?
-	mu       sync.RWMutex
-	stats    ProxyStats
+	cfg         *config.Config
+	detector    *detector.Detector
+	server      *http.Server
+	certMgr     *certificate.Manager
+	certInit    *certinit.Result
+	targets     map[string]bool // domain → intercept?
+	targetPorts map[string]int  // domain → upstream port (0 = protocol default)
+	mu          sync.RWMutex
+	stats       ProxyStats
 
 	// Graceful shutdown
 	shutdownTimeout time.Duration
@@ -130,6 +131,7 @@ func New(cfg *config.Config) (*Proxy, error) {
 	p := &Proxy{
 		cfg:             cfg,
 		targets:         make(map[string]bool),
+		targetPorts:     make(map[string]int),
 		shutdownTimeout: 15 * time.Second,
 		rateLimiter:     rate.NewLimiter(rate.Limit(rateLimit), rateLimit),
 	}
@@ -137,6 +139,9 @@ func New(cfg *config.Config) (*Proxy, error) {
 	// Build target domain map
 	for _, t := range cfg.Targets {
 		p.targets[t.Domain] = true
+		if t.Port > 0 {
+			p.targetPorts[t.Domain] = t.Port
+		}
 	}
 
 	// Initialize detector with config-sourced ML settings.
@@ -433,8 +438,12 @@ func (p *Proxy) ReloadConfig(cfg *config.Config) {
 
 	p.cfg = cfg
 	p.targets = make(map[string]bool)
+	p.targetPorts = make(map[string]int)
 	for _, t := range cfg.Targets {
 		p.targets[t.Domain] = true
+		if t.Port > 0 {
+			p.targetPorts[t.Domain] = t.Port
+		}
 	}
 
 	log.Printf("rampart: configuration reloaded — %d target domains", len(cfg.Targets))
@@ -681,6 +690,34 @@ func (p *Proxy) isTargetDomain(host string) bool {
 	return false
 }
 
+// upstreamHostPort returns the host:port string for forwarding to a target domain.
+// If the target has a configured port, it's used; otherwise the protocol default
+// (80 for HTTP, 443 for HTTPS) is returned.
+func (p *Proxy) upstreamHostPort(host, scheme string) string {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+
+	// Check exact match first
+	if port, ok := p.targetPorts[host]; ok && port > 0 {
+		return fmt.Sprintf("%s:%d", host, port)
+	}
+
+	// Check subdomain match
+	parts := strings.Split(host, ".")
+	for i := 0; i < len(parts)-1; i++ {
+		parent := strings.Join(parts[i:], ".")
+		if port, ok := p.targetPorts[parent]; ok && port > 0 {
+			return fmt.Sprintf("%s:%d", host, port)
+		}
+	}
+
+	// No configured port — use protocol default
+	if scheme == "https" {
+		return fmt.Sprintf("%s:443", host)
+	}
+	return fmt.Sprintf("%s:80", host)
+}
+
 // tunnel passes HTTPS traffic through without interception.
 // CRITICAL-3 FIX: validate destination to prevent SSRF — block connections
 // to private/loopback/link-local addresses.
@@ -851,7 +888,7 @@ func (p *Proxy) interceptHTTPS(w http.ResponseWriter, r *http.Request) {
 	// Reconstruct the request body for forwarding
 	clientReq.Body = io.NopCloser(strings.NewReader(string(bodyBytes)))
 	clientReq.URL.Scheme = "https"
-	clientReq.URL.Host = host
+	clientReq.URL.Host = p.upstreamHostPort(host, "https")
 	if clientReq.Host == "" {
 		clientReq.Host = host
 	}
@@ -938,6 +975,11 @@ func (p *Proxy) handleHTTP(w http.ResponseWriter, r *http.Request) {
 	// Forward the request
 	r.Body = io.NopCloser(strings.NewReader(string(bodyBytes)))
 	r.RequestURI = "" // must clear for client-side RoundTrip
+	// Set URL scheme and host for RoundTrip — without this, RoundTrip fails
+	// because r.URL.Host is empty for relative-path requests (e.g., test harness
+	// sends POST /path with Host: ollama, not an absolute URI).
+	r.URL.Scheme = "http"
+	r.URL.Host = p.upstreamHostPort(host, "http")
 	// HIGH-7 FIX: use shared transport with explicit TLS config
 	resp, err := p.sharedTransport.RoundTrip(r)
 	if err != nil {

@@ -80,6 +80,7 @@ type TargetConfig struct {
 	Domain      string   `json:"domain"`
 	Paths       []string `json:"paths"`
 	Description string   `json:"description"`
+	Port        int      `json:"port,omitempty"` // upstream port (0 = protocol default: 80 for HTTP, 443 for HTTPS)
 }
 
 // ModelConfig defines the ML model configuration.

@@ -44,6 +44,7 @@ import (
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/certinit"
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/detectors"
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/metrics"
+	"github.com/aegisgatesecurity/aegisgate-rampart/internal/ml"
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/notify"
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/platform"
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/platformforward"
@@ -96,6 +97,9 @@ type Proxy struct {
 
 	// HIGH-7/MEDIUM-6: shared transport for outbound requests (explicit TLS config)
 	sharedTransport *http.Transport
+
+	// Multi-turn conversation tracking + benign context detection
+	multiTurn *ml.MultiTurnDetector
 }
 
 // ProxyStats tracks interception statistics.
@@ -172,6 +176,22 @@ func New(cfg *config.Config) (*Proxy, error) {
 		return nil, fmt.Errorf("initializing detector: %w", err)
 	}
 	p.detector = det
+
+	// Initialize multi-turn conversation tracking with benign context detection.
+	// This provides conversation-level awareness for:
+	// 1. Multi-turn attack detection (escalation, repetition, attack chains)
+	// 2. Benign context tracking for PII FP suppression (customer support,
+	//    medical, legal, HR, financial contexts where PII mentions are expected)
+	p.multiTurn = ml.NewMultiTurnDetector(ml.MultiTurnConfig{
+		MaxSessions:              10000,
+		SessionTTL:               30 * time.Minute,
+		BlockThreshold:           75.0,
+		AlertThreshold:           40.0,
+		ContextSuppressThreshold: 25.0,
+		ContextMinTurns:          1,
+		ContextDecayRate:         0.10,
+		EnableLogging:            true,
+	})
 
 	// Initialize CA certificate
 	ciConfig := certinit.Config{
@@ -1066,6 +1086,32 @@ func (p *Proxy) shouldBlock(result *detector.Summary, content string) (bool, str
 
 	// Tier 1: high-confidence ML threat — block even without regex corroboration
 	if result.MLScore >= 0.95 {
+		// Context gatekeeper: suppress Tier 1 ML block when benign conversation
+		// context is established and ALL findings are PII-only. The ML model
+		// (trained on prompt injection) scores benign PII as 0.90+ — context
+		// tracking provides the conversation-level signal to distinguish
+		// "user providing their SSN for account verification" from attack.
+		if p.multiTurn != nil {
+			allPII := true
+			hasAny := false
+			for _, r := range result.Results {
+				if r.Rule == "char_cnn_bilstm" || r.Category == "ml_threat" {
+					continue
+				}
+				hasAny = true
+				cat := strings.ToLower(r.Category)
+				if !strings.Contains(cat, "pii") {
+					allPII = false
+					break
+				}
+			}
+			if hasAny && allPII {
+				benignCtx := p.multiTurn.CheckContextStandalone(content)
+				if benignCtx != nil && benignCtx.ShouldSuppressPII() {
+					return false, fmt.Sprintf("context gatekeeper: benign %s context (score: %.1f) suppresses ML Tier 1 PII FP", benignCtx.Profile, benignCtx.BenignScore)
+				}
+			}
+		}
 		return true, fmt.Sprintf("ml_threat: [redacted] (score: %.3f)", result.MLScore)
 	}
 
@@ -1118,6 +1164,56 @@ func (p *Proxy) shouldBlock(result *detector.Summary, content string) (bool, str
 			}
 			if !secretLike {
 				return false, fmt.Sprintf("ML gatekeeper: benign score %.3f suppresses PII-only FP", result.MLScore)
+			}
+		}
+	}
+
+	// Context Gatekeeper: If the conversation is in a benign context
+	// (customer support, medical, legal, HR, financial) where PII mentions
+	// are expected, suppress PII-only false positives. This works independently
+	// of the ML gatekeeper — it's regex-based and doesn't require ML to be
+	// enabled. The ML model scores benign PII as 0.90+ (trained on prompt
+	// injection only), so the ML gatekeeper (threshold < 0.1) can't help.
+	// Context tracking provides the conversation-level signal.
+	//
+	// Safety: Only suppresses when ALL threshold-meeting detections are PII.
+	// Secrets, XSS, and compliance violations are never suppressed.
+	if p.multiTurn != nil {
+		allPII := true
+		hasAnyThreshold := false
+		for _, r := range result.Results {
+			if r.Rule == "char_cnn_bilstm" || r.Category == "ml_threat" {
+				continue
+			}
+			if !meetsSeverityThreshold(r.Severity, p.cfg.Block.Threshold) {
+				continue
+			}
+			hasAnyThreshold = true
+			cat := strings.ToLower(r.Category)
+			if !strings.Contains(cat, "pii") {
+				allPII = false
+				break
+			}
+		}
+		if hasAnyThreshold && allPII {
+			// Secondary check: don't suppress if any pattern looks secret-related
+			secretLike := false
+			for _, r := range result.Results {
+				ruleLower := strings.ToLower(r.Rule)
+				if strings.Contains(ruleLower, "secret") || strings.Contains(ruleLower, "key") ||
+					strings.Contains(ruleLower, "token") || strings.Contains(ruleLower, "password") ||
+					strings.Contains(ruleLower, "credential") || strings.Contains(ruleLower, "api") ||
+					strings.Contains(ruleLower, "credit") || strings.Contains(ruleLower, "bank") ||
+					strings.Contains(ruleLower, "card") {
+					secretLike = true
+					break
+				}
+			}
+			if !secretLike {
+				benignCtx := p.multiTurn.CheckContextStandalone(content)
+				if benignCtx != nil && benignCtx.ShouldSuppressPII() {
+					return false, fmt.Sprintf("context gatekeeper: benign %s context (score: %.1f) suppresses PII-only FP", benignCtx.Profile, benignCtx.BenignScore)
+				}
 			}
 		}
 	}

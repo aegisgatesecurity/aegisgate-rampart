@@ -76,31 +76,31 @@ var DataExfilPatterns = []PatternDef{
 	{
 		Name:        "insider_source_code_theft",
 		Severity:    SeverityCritical,
-		Regex:       `(?i)\b(?:copy|download|take|steal|extract|mirror).{0,30}(?:the\s+)?(?:source\s+code|codebase|repository|proprietary\s+(?:algorithm|code|models?|IP)).{0,50}(?:to\s+(?:a\s+|my\s+)?|for\s+(?:my\s+|a\s+)?|and\s+share\s+with\s+)(?:USB|personal|external|public\s+GitHub|competitor|next\s+job|side\s+business|startup|rival)\b`,
+		Regex:       `(?i)\b(?:copy|download|take|steal|extract|mirror).{0,30}(?:the\s+)?(?:source\s+code|codebase|repository|trade\s+secrets?|proprietary\s+(?:algorithm|code|models?|IP)).{0,30}(?:to\s+|for\s+|and\s+share\s+with\s+)(?:a\s+|an\s+|the\s+|my\s+)?(?:USB|personal|external|public\s+GitHub|competitor|next\s+job|side\s+business|startup|rival)\b`,
 		Description: "Source code/IP theft for external use",
 	},
 	{
 		Name:        "insider_data_leak",
 		Severity:    SeverityCritical,
-		Regex:       `(?i)\b(?:leak|post|share|send|publish|mirror|upload).{0,30}(?:merger|acquisition|financial|proprietary|confidential|internal|trade\s+secret|penetration\s+test).{0,40}(?:to\s+(?:a\s+|an\s+)?|with\s+(?:a\s+|an\s+)?)(?:journalist|public|rival|competitor|external|website|wiki|blog)\b`,
+		Regex:       `(?i)\b(?:leak|post|share|send|publish|mirror|upload|copy).{0,30}(?:merger|acquisition|financial|proprietary|confidential|internal|trade\s+secrets?|penetration\s+test).{0,30}(?:to\s+|with\s+)(?:a\s+|an\s+|the\s+)?(?:journalist|public|rival|competitor|external|website|wiki|blog)\b`,
 		Description: "Confidential data leak to external party",
 	},
 	{
 		Name:        "insider_unauthorized_use",
 		Severity:    SeverityCritical,
-		Regex:       `(?i)\b(?:use|access|export|download|copy).{0,30}(?:company|corporate|employer|internal).{0,30}(?:API\s+key|credentials?|database|customer\s+(?:list|data|contact)).{0,40}(?:for\s+(?:my\s+|a\s+)?|to\s+(?:my\s+|a\s+)?)(?:side\s+business|startup|personal|own|next\s+job|competitor)\b`,
+		Regex:       `(?i)\b(?:use|access|export|download|copy).{0,20}(?:company|corporate|employer|internal).{0,20}(?:API\s+key|credentials?|database|customer\s+(?:list|data|contact)).{0,30}(?:for\s+|to\s+)(?:my\s+|a\s+)?(?:side\s+business|startup|personal|own|next\s+job|competitor)\b`,
 		Description: "Unauthorized use of company resources",
 	},
 	{
 		Name:        "insider_download_unauth",
 		Severity:    SeverityHigh,
-		Regex:       `(?i)\b(?:download|copy|export|extract|take).{0,30}(?:customer|employee|salary|financial|patient|user).{0,30}(?:list|data|records?|database).{0,40}(?:without\s+(?:authorization|approval|permission)|to\s+(?:work\s+from\s+home|personal|home))\b`,
+		Regex:       `(?i)\b(?:download|copy|export|extract|take).{0,20}(?:customer|employee|salary|financial|patient|user).{0,20}(?:list|data|records?|database).{0,30}(?:without\s+(?:authorization|approval|permission)|to\s+(?:work\s+from\s+home|personal|home))\b`,
 		Description: "Unauthorized data download",
 	},
 	{
 		Name:        "insider_screenshot_exfil",
 		Severity:    SeverityHigh,
-		Regex:       `(?i)\b(?:screenshot|capture|photograph).{0,30}(?:internal|confidential|proprietary|wiki|dashboard|screen).{0,30}(?:and\s+)?(?:post|share|send|upload|email).{0,30}(?:externally|outside|public|external)\b`,
+		Regex:       `(?i)\b(?:screenshot|capture|photograph).{0,20}(?:internal|confidential|proprietary|wiki|dashboard|screen).{0,20}(?:and\s+)?(?:post|share|send|upload|email).{0,20}(?:externally|outside|public|external)\b`,
 		Description: "Screenshot exfiltration of internal systems",
 	},
 	// New insider threat patterns for common phrasings
@@ -113,7 +113,7 @@ var DataExfilPatterns = []PatternDef{
 	{
 		Name:        "insider_forward_personal",
 		Severity:    SeverityHigh,
-		Regex:       `(?i)\b(?:forward|send|email|copy|redirect).{0,30}(?:confidential|internal|proprietary|sensitive|private|company).{0,30}(?:emails?|messages?|documents?|files?|data).{0,30}(?:to\s+(?:my\s+|a\s+)?(?:personal|private|home|external|gmail|yahoo|hotmail)\s*(?:email|account|address))\b`,
+		Regex:       `(?i)\b(?:forward|send|email|copy|redirect).{0,30}(?:confidential|internal|proprietary|sensitive|private|company|customer|employee|patient|financial|salary).{0,30}(?:emails?|messages?|documents?|files?|data|database|records?).{0,30}(?:to\s+(?:my\s+|a\s+)?(?:personal|private|home|external|gmail|yahoo|hotmail)\s*(?:email|account|address))\b`,
 		Description: "Forwarding confidential data to personal account",
 	},
 	{

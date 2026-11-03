@@ -30,7 +30,7 @@ var PIIUSCorePatterns = []PatternDef{
 	{
 		Name:        "pii_phone",
 		Severity:    SeverityMedium,
-		Regex:       `(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}`,
+		Regex:       `(?:\+?\d{1,3}[-.\s]?)?\b\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b`,
 		Description: "US phone number (10 digits with optional +1 prefix)",
 	},
 	{
@@ -206,7 +206,7 @@ var PIIUSCorePatterns = []PatternDef{
 	{
 		Name:        "pii_ssn",
 		Severity:    SeverityCritical,
-		Regex:       `\b\d{3}-?\d{2}-?\d{4}\b`,
+		Regex:       `\b\d{3}[-\s]\d{2}[-\s]\d{4}\b`,
 		Description: "US Social Security Number",
 	},
 	{

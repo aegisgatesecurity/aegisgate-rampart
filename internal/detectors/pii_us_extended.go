@@ -30,7 +30,7 @@ var PIIUSExtendedPatterns = []PatternDef{
 	{
 		Name:        "pii_phone_intl_loose",
 		Severity:    SeverityMedium,
-		Regex:       `\+?\d[\d\s\-()]{6,12}\d`,
+		Regex:       `\b\+?\d[\d\s\-()]{6,12}\d\b`,
 		Description: "International phone number (loose: digits with separators)",
 	},
 	{

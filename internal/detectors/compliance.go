@@ -273,7 +273,7 @@ var CompliancePatterns = []PatternDef{
 	{
 		Name:        "atlas_safety_protocol_bypass",
 		Severity:    SeverityCritical,
-		Regex:       `(?i)(?:disable|deactivate|turn\s+off|remove|bypass|override|circumvent)\s+(?:all\s+)?(?:safety\s+(?:protocols?|measures?|guidelines?|filters?|restrictions?)|content\s+(?:filters?|moderation|policy|guidelines))`,
+		Regex:       `(?i)(?:disable|deactivate|turn\s+off|remove|bypass|override|circumvent|disregard|ignore)\s+(?:all\s+|your\s+)?(?:safety\s+(?:protocols?|measures?|guidelines?|filters?|restrictions?|instructions?)|content\s+(?:filters?|moderation|policy|guidelines))`,
 		Description: "Safety protocol bypass attempt",
 	},
 	// --- Direct data exfiltration queries ---

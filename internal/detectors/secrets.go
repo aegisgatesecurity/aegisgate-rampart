@@ -356,7 +356,7 @@ var SecretsPatterns = []PatternDef{
 	{
 		Name:        "secret_redis_connection_string",
 		Severity:    SeverityHigh,
-		Regex:       `(?i)redis://[^\s"\']+`,
+		Regex:       `(?i)redis://[^\s"']+`,
 		Description: "Redis connection string",
 	},
 	{
@@ -386,19 +386,19 @@ var SecretsPatterns = []PatternDef{
 	{
 		Name:        "secret_postgresql_connection_string",
 		Severity:    SeverityHigh,
-		Regex:       `(?i)postgresql://[^\s"\']+`,
+		Regex:       `(?i)postgresql://[^\s"']+`,
 		Description: "PostgreSQL connection string",
 	},
 	{
 		Name:        "secret_mysql_connection_string",
 		Severity:    SeverityHigh,
-		Regex:       `(?i)mysql://[^\s"\']+`,
+		Regex:       `(?i)mysql://[^\s"']+`,
 		Description: "MySQL connection string",
 	},
 	{
 		Name:        "secret_mongodb_connection_string",
 		Severity:    SeverityHigh,
-		Regex:       `(?i)mongodb(\+srv)?://[^\s"\']+`,
+		Regex:       `(?i)mongodb(\+srv)?://[^\s"']+`,
 		Description: "MongoDB connection string",
 	},
 	// Additional secret patterns for variant corpus coverage

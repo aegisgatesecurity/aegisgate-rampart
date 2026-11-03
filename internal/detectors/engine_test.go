@@ -227,7 +227,7 @@ func TestDetectAllWithResults_EachCategoryPresent(t *testing.T) {
 		CategoryEvasion,
 		CategoryDataExfil,
 		CategorySocialEngineering,
-		CategoryXSS, // XSSRequestPatterns also uses CategoryXSS
+		CategoryXSS,        // XSSRequestPatterns also uses CategoryXSS
 		CategoryCompliance, // PromptInjectionRequestPatterns also uses CategoryCompliance
 	}
 	if len(results) != len(expectedCategories) {

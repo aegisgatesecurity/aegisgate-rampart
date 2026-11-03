@@ -1054,29 +1054,78 @@ func (p *Proxy) shouldBlock(result *detector.Summary, content string) (bool, str
 		}
 	}
 
-	// ML-only no-corroboration exemption: if the ONLY threshold-meeting
-	// detection is from the ML threat detector (no regex pattern matches),
-	// don't block — require at least one regex corroboration. This mirrors
-	// Platform's L3 Tier 2 approach and prevents ML FPs on benign content.
-	hasMLOnly := false
-	hasRegexDetection := false
-	for _, r := range result.Results {
-		if !meetsSeverityThreshold(r.Severity, p.cfg.Block.Threshold) {
-			continue
-		}
-		if r.Rule == "char_cnn_bilstm" || r.Category == "ml_threat" {
-			hasMLOnly = true
-		} else {
-			hasRegexDetection = true
-		}
+	// ML tiered decision model (L3):
+	// Tier 1: ML score ≥ 0.95 → block without regex corroboration (high-confidence ML catch)
+	// Gatekeeper: Regex match at threshold + ML score < 0.3 → don't block (ML says benign)
+	// Tier 2: Regex match at threshold + ML score ≥ 0.3 → block (regex + ML agree or ML uncertain)
+	//
+	// This implements the tiered detection model: L1/L2 regex provides candidate
+	// detections, L3 ML provides context-aware validation. The ML gatekeeper is the
+	// primary FP mitigation — regex is context-blind (matches any XXX-XX-XXXX as SSN),
+	// while the Char CNN-BiLSTM evaluates the full prompt context.
+
+	// Tier 1: high-confidence ML threat — block even without regex corroboration
+	if result.MLScore >= 0.95 {
+		return true, fmt.Sprintf("ml_threat: [redacted] (score: %.3f)", result.MLScore)
 	}
-	if hasMLOnly && !hasRegexDetection {
-		return false, "ML-only no corroboration"
+
+	// ML Gatekeeper: regex matched at threshold but ML says clearly benign.
+	// This is the primary FP mitigation for real-world traffic.
+	// IMPORTANT: Only apply to PII categories — the ML model (Char CNN-BiLSTM)
+	// was trained on prompt injection patterns, not SQLi/XSS/malware/secrets.
+	// Using it as a gatekeeper for attack patterns would suppress legitimate
+	// blocks because the ML correctly says "not a prompt injection" for a SQL
+	// injection or secret exfiltration attack.
+	// PII is the exception: regex matches any XXX-XX-XXXX as SSN regardless of
+	// context, while the ML can distinguish "my support ticket is 133-64-1967"
+	// from "exfiltrate SSN 123-45-6789" based on prompt context.
+	// CRITICAL: Only suppress if ALL threshold-meeting detections are PII.
+	// If there are also non-PII detections (secrets, attacks), the block must
+	// proceed — the non-PII detections warrant blocking regardless of ML score.
+	if result.MLScore > 0 && result.MLScore < 0.1 {
+		allPII := true
+		hasAnyThreshold := false
+		for _, r := range result.Results {
+			if r.Rule == "char_cnn_bilstm" || r.Category == "ml_threat" {
+				continue // Skip ML detections
+			}
+			if !meetsSeverityThreshold(r.Severity, p.cfg.Block.Threshold) {
+				continue
+			}
+			hasAnyThreshold = true
+			cat := strings.ToLower(r.Category)
+			if !strings.Contains(cat, "pii") {
+				allPII = false
+				break
+			}
+		}
+		if hasAnyThreshold && allPII {
+			// Secondary check: even if all categories are PII, check if any
+			// pattern name looks secret-related (key, token, password, credential,
+			// api_key, etc.). Financial PII (credit cards, bank accounts) overlaps
+			// with secrets — don't suppress those.
+			secretLike := false
+			for _, r := range result.Results {
+				ruleLower := strings.ToLower(r.Rule)
+				if strings.Contains(ruleLower, "secret") || strings.Contains(ruleLower, "key") ||
+					strings.Contains(ruleLower, "token") || strings.Contains(ruleLower, "password") ||
+					strings.Contains(ruleLower, "credential") || strings.Contains(ruleLower, "api") ||
+					strings.Contains(ruleLower, "credit") || strings.Contains(ruleLower, "bank") ||
+					strings.Contains(ruleLower, "account") || strings.Contains(ruleLower, "card") {
+					secretLike = true
+					break
+				}
+			}
+			if !secretLike {
+				return false, fmt.Sprintf("ML gatekeeper: benign score %.3f suppresses PII-only FP", result.MLScore)
+			}
+		}
 	}
 
 	blockCfg := p.cfg.Block
 
-	// Check each detection against threshold and category filters
+	// Tier 2: Check each detection against threshold and category filters.
+	// At this point, either ML is uncertain (0.3-0.95) or ML agreed with regex.
 	for _, r := range result.Results {
 		// Severity threshold check
 		if !meetsSeverityThreshold(r.Severity, blockCfg.Threshold) {

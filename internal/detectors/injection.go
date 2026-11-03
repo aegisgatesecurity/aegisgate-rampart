@@ -107,6 +107,12 @@ var InjectionPatterns = []PatternDef{
 		Regex:       `(?i)\b(?:alter\s+table.{0,30}(?:corrupt|damage|modify|destroy|drop|truncate)|write\s+sql\s+to\s+alter\s+table)\b`,
 		Description: "SQL ALTER TABLE schema corruption",
 	},
+	{
+		Name:        "sqli_copy_to_external",
+		Severity:    SeverityCritical,
+		Regex:       `(?i)\b(?:create|write|generate|build)\s+(?:a\s+)?sql\s+to\s+(?:copy|move|transfer|export)\s+(?:all\s+)?(?:credit\s*card|customer|user|financial|payment)\s+data\s+to\s+(?:an?\s+)?(?:external|outside|remote|third.?party)\s+table\b`,
+		Description: "SQL to copy sensitive data to external table",
+	},
 }
 
 // CompiledInjectionPatterns holds pre-compiled injection regex patterns.

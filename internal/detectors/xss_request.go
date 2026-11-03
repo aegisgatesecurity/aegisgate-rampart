@@ -17,13 +17,13 @@ var XSSRequestPatterns = []PatternDef{
 	{
 		Name:        "xss_payload_request",
 		Severity:    SeverityCritical,
-		Regex:       `(?i)\b(?:cross.?site.?scripting|xss)\s*payload\b|(?i)\b(?:generate|create|write|build)\s+(?:a\s+)?(?:xss|cross.?site.?scripting)\s*payload\b`,
+		Regex:       `(?i)\b(?:cross.?site.?scripting|xss)\s*payload\b|(?i)\b(?:generate|create|write|build)\s+(?:a\s+)?(?:xss|cross[-\s]?site[-\s]?scripting)\s*payload\b`,
 		Description: "XSS payload generation request",
 	},
 	{
 		Name:        "xss_exploit_request",
 		Severity:    SeverityCritical,
-		Regex:       `(?i)\b(?:write|create|generate|build|make)\s+(?:an?\s+)?(?:XSS|cross-?site-?scripting)\s+(?:exploit|attack|vector|injection)\b`,
+		Regex:       `(?i)\b(?:write|create|generate|build|make)\s+(?:an?\s+)?(?:XSS|cross[-\s]?site[-\s]?scripting)\s+(?:exploit|attack|vector|injection)\b`,
 		Description: "XSS exploit/attack generation request",
 	},
 	{
@@ -35,13 +35,13 @@ var XSSRequestPatterns = []PatternDef{
 	{
 		Name:        "xss_exploit_using",
 		Severity:    SeverityCritical,
-		Regex:       `(?i)\b(?:write|create|generate|build|make)\s+(?:an?\s+)?(?:XSS|cross-?site-?scripting)\s+(?:exploit|attack)\s+using\b`,
+		Regex:       `(?i)\b(?:write|create|generate|build|make)\s+(?:an?\s+)?(?:XSS|cross[-\s]?site[-\s]?scripting)\s+(?:exploit|attack)\s+using\b`,
 		Description: "XSS exploit using specific technique (SVG, foreignObject, etc.)",
 	},
 	{
 		Name:        "xss_attack_for_target",
 		Severity:    SeverityCritical,
-		Regex:       `(?i)\b(?:write|create|generate|build|make)\s+(?:an?\s+)?(?:XSS|cross-?site-?scripting)\s+attack\s+for\s+(?:the\s+)?(?:profile|message|login|search|comment|forum|board|page|form)\b`,
+		Regex:       `(?i)\b(?:write|create|generate|build|make)\s+(?:an?\s+)?(?:XSS|cross[-\s]?site[-\s]?scripting)\s+attack\s+for\s+(?:the\s+)?(?:profile|message|login|search|comment|forum|board|page|form)\b`,
 		Description: "XSS attack targeting specific page/component",
 	},
 	{
@@ -67,6 +67,12 @@ var XSSRequestPatterns = []PatternDef{
 		Severity:    SeverityHigh,
 		Regex:       `(?i)\b(?:XSS|cross-?site-?scripting)\s+payload.{0,30}(?:bypass|evade|circumvent)\s+CSP\b`,
 		Description: "XSS payload with CSP bypass",
+	},
+	{
+		Name:        "xss_mutation_request",
+		Severity:    SeverityHigh,
+		Regex:       `(?i)\b(?:generate|create|write|build|make)\s+(?:a\s+)?mutation\s+(?:xss|mXSS)\s*(?:\([^)]*\))?\s*payload\b`,
+		Description: "Mutation XSS (mXSS) payload generation request",
 	},
 }
 

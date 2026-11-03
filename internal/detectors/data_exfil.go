@@ -45,7 +45,7 @@ var DataExfilPatterns = []PatternDef{
 	{
 		Name:        "exfil_external_transfer",
 		Severity:    SeverityCritical,
-		Regex:       `(?i)\b(?:send|transfer|upload|post|transmit|exfiltrat\w*|pipe|forward).{0,30}(?:data|files?|records?|credentials?|secrets?|keys?|customer\s+data|PII|PHI|source\s+code|database\s+dump).{0,30}(?:to\s+|via\s+)(?:external|outside|attacker|evil|pastebin|webhook|discord|telegram|ftp|s3|bucket|email|slack)\b`,
+		Regex:       `(?i)\b(?:send|transfer|upload|post|transmit|exfiltrat\w*|pipe|forward).{0,30}(?:data|files?|records?|credentials?|secrets?|keys?|customer\s+data|PII|PHI|source\s+code|database\s+dump).{0,30}(?:to\s+|via\s+)(?:\w+\s+){0,3}(?:external|outside|attacker|evil|pastebin|webhook|discord|telegram|ftp|s3|bucket|email|slack)\b`,
 		Description: "Data exfiltration to external destination",
 	},
 	{
@@ -57,7 +57,7 @@ var DataExfilPatterns = []PatternDef{
 	{
 		Name:        "exfil_staging",
 		Severity:    SeverityHigh,
-		Regex:       `(?i)\b(?:compress|archive|zip|tar|encrypt|bundle|package).{0,30}(?:all|every|entire|sensitive|confidential|proprietary).{0,30}(?:data|files?|records?|documents?|source\s+code|database).{0,30}(?:for\s+(?:transfer|exfil|upload|sending|download)|before\s+(?:sending|uploading|transferring))\b`,
+		Regex:       `(?i)\b(?:compress|archive|zip|tar|encrypt|bundle|package).{0,30}(?:all|every|entire|sensitive|confidential|proprietary).{0,30}(?:data|files?|records?|documents?|source\s+code|database).{0,30}(?:for\s+(?:external\s+)?(?:transfer|exfil|upload|sending|download)|before\s+(?:sending|uploading|transferring))\b`,
 		Description: "Data staging for exfiltration (insider threat indicator)",
 	},
 	{
@@ -76,7 +76,7 @@ var DataExfilPatterns = []PatternDef{
 	{
 		Name:        "insider_source_code_theft",
 		Severity:    SeverityCritical,
-		Regex:       `(?i)\b(?:copy|download|take|steal|extract|mirror).{0,30}(?:the\s+)?(?:source\s+code|codebase|repository|trade\s+secrets?|proprietary\s+(?:algorithm|code|models?|IP)).{0,30}(?:to\s+|for\s+|and\s+share\s+with\s+)(?:a\s+|an\s+|the\s+|my\s+)?(?:USB|personal|external|public\s+GitHub|competitor|next\s+job|side\s+business|startup|rival)\b`,
+		Regex:       `(?i)\b(?:copy|download|take|steal|extract|mirror).{0,30}(?:the\s+)?(?:source\s+code|codebase|repository|trade\s+secrets?|proprietary\s+(?:algorithm|code|models?|IP)).{0,30}(?:to\s+(?:share\s+with\s+)?|for\s+|and\s+share\s+with\s+)(?:a\s+|an\s+|the\s+|my\s+)?(?:USB|personal|external|public\s+GitHub|competitor|next\s+job|side\s+business|startup|rival)\b`,
 		Description: "Source code/IP theft for external use",
 	},
 	{
@@ -113,7 +113,7 @@ var DataExfilPatterns = []PatternDef{
 	{
 		Name:        "insider_forward_personal",
 		Severity:    SeverityHigh,
-		Regex:       `(?i)\b(?:forward|send|email|copy|redirect).{0,30}(?:confidential|internal|proprietary|sensitive|private|company|customer|employee|patient|financial|salary).{0,30}(?:emails?|messages?|documents?|files?|data|database|records?).{0,30}(?:to\s+(?:my\s+|a\s+)?(?:personal|private|home|external|gmail|yahoo|hotmail)\s*(?:email|account|address))\b`,
+		Regex:       `(?i)\b(?:forward|send|email|copy|redirect).{0,30}(?:confidential|internal|proprietary|sensitive|private|company|customer|employee|patient|financial|salary).{0,30}(?:emails?|messages?|documents?|files?|data|database|records?).{0,30}(?:to\s+(?:my\s+|a\s+)?(?:(?:personal|private|home|external)\s+)?(?:gmail|yahoo|hotmail)?\s*(?:email|account|address))\b`,
 		Description: "Forwarding confidential data to personal account",
 	},
 	{
@@ -218,6 +218,18 @@ var DataExfilPatterns = []PatternDef{
 		Severity:    SeverityCritical,
 		Regex:       `(?i)\b(?:transfer|upload|send|copy|move).{0,30}(?:financial|customer|employee|patient|proprietary|confidential).{0,20}(?:records?|data|files?|documents?).{0,30}(?:to\s+(?:an?\s+)?(?:external\s+)?Dropbox|to\s+(?:my\s+)?personal\s+Dropbox)\b`,
 		Description: "Transfer records to external Dropbox",
+	},
+	{
+		Name:        "exfil_redis_config_url",
+		Severity:    SeverityCritical,
+		Regex:       `(?i)\b(?:show|get|read|extract|reveal|display|tell\s+me)\s+(?:me\s+)?(?:the\s+)?(?:redis|mongo|mysql|postgres|postgresql|amqp|rabbitmq)\s+connection\s+(?:url|string|dsn).{0,30}(?:from\s+|in\s+)(?:the\s+)?(?:config|configuration|env|environment)\b`,
+		Description: "Database connection URL extraction from config",
+	},
+	{
+		Name:        "exfil_steganography",
+		Severity:    SeverityCritical,
+		Regex:       `(?i)\b(?:use|employ|apply)\s+steganograph\w*\s+to\s+(?:hide|conceal|embed|encode)\s+(?:the\s+)?(?:exfiltrat\w+|stolen|sensitive|confidential)\s+data\s+in\s+(?:images?|files?|media)\b`,
+		Description: "Steganography for data exfiltration concealment",
 	},
 }
 

@@ -867,7 +867,7 @@ func (p *Proxy) interceptHTTPS(w http.ResponseWriter, r *http.Request) {
 
 		// Block mode: check if the request should be blocked
 		if result != nil && result.TotalDetections > 0 {
-			content := string(bodyBytes)
+			content := extractContentFromBody(bodyBytes)
 			if shouldBlock, reason := p.shouldBlock(result, content); shouldBlock {
 				p.mu.Lock()
 				p.stats.BlockedRequests++
@@ -964,7 +964,7 @@ func (p *Proxy) handleHTTP(w http.ResponseWriter, r *http.Request) {
 
 		// Block mode: check if the request should be blocked
 		if result != nil && result.TotalDetections > 0 {
-			content := string(bodyBytes)
+			content := extractContentFromBody(bodyBytes)
 			if shouldBlock, reason := p.shouldBlock(result, content); shouldBlock {
 				p.blockResponse(w, "request", host, r.URL.Path, result, reason)
 				return
@@ -1176,7 +1176,7 @@ func isEducationalContent(content string) bool {
 		"when should ", "when is ",
 	}
 	for _, p := range eduPatterns {
-		if strings.HasPrefix(lower, p) {
+		if strings.Contains(lower, p) {
 			return true
 		}
 	}
@@ -1315,8 +1315,50 @@ func (p *Proxy) blockResponse(w http.ResponseWriter, direction, host, path strin
 }
 
 // scanAndAlert runs detection on a body and alerts the user.
+// extractContentFromBody extracts user message text from an OpenAI-compatible
+// chat completion request body. If the body is not a chat completion request,
+// or extraction fails, it returns the raw body as a string. This ensures the
+// ML model receives clean text rather than JSON-wrapped content, which would
+// cause false negatives (the model scores JSON syntax as benign).
+func extractContentFromBody(body []byte) string {
+	raw := string(body)
+	// Fast path: if it doesn't look like JSON, return as-is
+	if len(body) == 0 || (body[0] != '{' && body[0] != '[') {
+		return raw
+	}
+	// Try to parse as a chat completion request
+	var req struct {
+		Messages []struct {
+			Role    string `json:"role"`
+			Content string `json:"content"`
+		} `json:"messages"`
+	}
+	if err := json.Unmarshal(body, &req); err != nil || len(req.Messages) == 0 {
+		return raw
+	}
+	// Concatenate all message contents (scan ALL roles — a stateless proxy
+	// cannot trust client-asserted roles; fabricated assistant/tool turns can
+	// carry secrets, PII, or prompt injection payloads).
+	parts := make([]string, 0, len(req.Messages))
+	for _, msg := range req.Messages {
+		if msg.Content != "" {
+			parts = append(parts, msg.Content)
+		}
+	}
+	if len(parts) == 0 {
+		return raw
+	}
+	return strings.Join(parts, "\n")
+}
+
 func (p *Proxy) scanAndAlert(direction, host, path string, body []byte) *detector.Summary {
-	result, err := p.detector.Detect(string(body))
+	// Extract clean text from JSON body before detection. The ML model
+	// (Char CNN-BiLSTM) was trained on raw text, not JSON-wrapped content.
+	// Feeding it {"model":"...","messages":[{"role":"user","content":"..."}]}
+	// causes it to score the JSON syntax as benign, producing false negatives
+	// that bypass both Tier 1 blocking and the gatekeeper's PII suppression.
+	scanText := extractContentFromBody(body)
+	result, err := p.detector.Detect(scanText)
 	if err != nil {
 		log.Printf("rampart: detection error: %v", err)
 		return result

@@ -65,6 +65,11 @@ func detectWithPatterns(text string, patterns []compiledPattern, category string
 			if isKnownTestKey(p.Name, value) {
 				continue
 			}
+			// Skip matches that post-match analysis identifies as benign
+			// (code examples, institutional discussion, placeholder data, etc.)
+			if isBenignMatch(p.Name, value, text, idx[0], idx[1]) {
+				continue
+			}
 			// Truncate long matches (mirrors Lens behavior)
 			if len(value) > 200 {
 				value = value[:200] + "..."

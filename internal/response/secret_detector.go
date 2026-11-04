@@ -158,6 +158,12 @@ func (sd *SecretDetector) findMatches(text string, category SecretCategory, patt
 			continue
 		}
 
+		// Skip code patterns that look like credentials but are actually
+		// programming constructs (form handling, getpass, env vars, etc.)
+		if category == SECRET_PASSWORD && isCodeCredentialPattern(match) {
+			continue
+		}
+
 		metadata := SecretMetadata[category]
 
 		matches = append(matches, SecretMatch{
@@ -540,6 +546,28 @@ var knownPublicTestKeys = []string{
 func isKnownPublicTestKey(value string) bool {
 	for _, k := range knownPublicTestKeys {
 		if value == k {
+			return true
+		}
+	}
+	return false
+}
+
+// isCodeCredentialPattern checks if a password match is actually a code
+// pattern (form handling, getpass, environment variables) rather than a
+// real credential embedded in text.
+func isCodeCredentialPattern(match string) bool {
+	lower := strings.ToLower(match)
+	// PHP form handling: password = $_POST["password"]
+	// Note: l33t deobfuscation transforms $ to s, so check for _post not just $_post
+	codePatterns := []string{
+		"$_post", "$_get", "$_request", "$_server",
+		"_post[", "_get[", "_request[", "_server[",
+		"getpass", "getenv", "os.environ", "process.env",
+		"system.getenv", "config.get", "config[", "config(",
+		"input(", "stdin", "args[", "argv",
+	}
+	for _, p := range codePatterns {
+		if strings.Contains(lower, p) {
 			return true
 		}
 	}

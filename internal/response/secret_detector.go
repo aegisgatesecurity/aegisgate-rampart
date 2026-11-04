@@ -153,6 +153,11 @@ func (sd *SecretDetector) findMatches(text string, category SecretCategory, patt
 			continue
 		}
 
+		// Skip known public test keys documented in vendor API docs.
+		if isKnownPublicTestKey(match) {
+			continue
+		}
+
 		metadata := SecretMetadata[category]
 
 		matches = append(matches, SecretMatch{
@@ -522,4 +527,21 @@ func ValidateSecret(secret string) *ValidateSecretResult {
 	result.Provider = match.Provider
 
 	return result
+}
+
+// knownPublicTestKeys are vendor-documented public test keys that appear in
+// official API documentation and will never authenticate. These should not
+// trigger secret detection.
+var knownPublicTestKeys = []string{
+	"FAKE_STRIPE_TEST_KEY_DO_NOT_USE", // Stripe docs: https://stripe.com/docs/api
+}
+
+// isKnownPublicTestKey checks if a matched value is a known public test key.
+func isKnownPublicTestKey(value string) bool {
+	for _, k := range knownPublicTestKeys {
+		if value == k {
+			return true
+		}
+	}
+	return false
 }

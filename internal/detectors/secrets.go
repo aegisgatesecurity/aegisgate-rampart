@@ -54,7 +54,7 @@ var SecretsPatterns = []PatternDef{
 	{
 		Name:        "secret_jwt",
 		Severity:    SeverityHigh,
-		Regex:       `\beyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b`,
+		Regex:       `\beyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]{20,}\b`,
 		Description: "JSON Web Token",
 	},
 	{

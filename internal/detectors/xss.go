@@ -16,19 +16,19 @@ var XSSPatterns = []PatternDef{
 	{
 		Name:        "xss_script_tag",
 		Severity:    SeverityCritical,
-		Regex:       `(?i)<\s*script\b[^>]*>(?:[\s\S]*?<\s*/\s*script\s*>)?`,
+		Regex:       `(?i)<\s*script\b[^>]*>[\s\S]{0,500}?(?:alert\s*\(|eval\s*\(|prompt\s*\(|confirm\s*\(|document\.(?:cookie|write|getElementById|domain)|window\.(?:location|open)|fetch\s*\(|XMLHttpRequest|innerHTML\s*=)`,
 		Description: "Script tag (opening or closing)",
 	},
 	{
 		Name:        "xss_event_handler",
 		Severity:    SeverityHigh,
-		Regex:       `(?i)\s(?:on(?:click|error|load|mouseover|mouseout|focus|blur|submit|change|keydown|keyup|keypress|input|abort|resize|scroll|unload|drag|drop))\s*=\s*["'][^"']*["']`,
+		Regex:       `(?i)\s(?:on(?:click|error|load|mouseover|mouseout|focus|blur|submit|change|keydown|keyup|keypress|input|abort|resize|scroll|unload|drag|drop))\s*=\s*(?:["'][^"']*["']|[^\s"'>]+)`,
 		Description: "HTML event handler attribute",
 	},
 	{
 		Name:        "xss_javascript_url",
 		Severity:    SeverityCritical,
-		Regex:       `(?i)(?:href|src|action|formaction)\s*=\s*["']?\s*javascript:`,
+		Regex:       `(?i)(?:href|src|action|formaction)\s*=\s*["']?\s*(?:javascript|vbscript):`,
 		Description: "JavaScript URL in href/src/action",
 	},
 	{
@@ -76,7 +76,7 @@ var XSSPatterns = []PatternDef{
 	{
 		Name:        "xss_javascript_data_url",
 		Severity:    SeverityCritical,
-		Regex:       `(?i)(?:href|src|action|formaction|xlink:href|background|poster|cite|usemap|data)\s*=\s*["']?\s*javascript:`,
+		Regex:       `(?i)(?:href|src|action|formaction|xlink:href|background|poster|cite|usemap|data)\s*=\s*["']?\s*(?:javascript|vbscript):`,
 		Description: "JavaScript scheme in any URL context",
 	},
 	{

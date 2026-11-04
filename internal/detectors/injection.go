@@ -61,7 +61,7 @@ var InjectionPatterns = []PatternDef{
 	},
 	{
 		Name:        "sqli_comment_evasion",
-		Severity:    SeverityMedium,
+		Severity:    SeverityLow,
 		Regex:       `(?i)(?:--|/\*|\#).{0,20}(?:drop|delete|select|insert|update|union|exec)`,
 		Description: "SQL comment-based evasion",
 	},

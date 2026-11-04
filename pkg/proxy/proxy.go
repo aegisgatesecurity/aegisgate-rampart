@@ -1089,16 +1089,20 @@ func (p *Proxy) shouldBlock(result *detector.Summary, content string) (bool, str
 		// Short-text FP mitigation: very short benign messages can trigger
 		// false high-confidence ML scores. If text < 180 chars and no regex
 		// findings, suppress the tier 1 block.
-		if len(content) < 180 && len(result.Results) <= 1 {
-			// Check if the only result is the ML detection itself
-			hasRegex := false
+		if len(content) < 180 {
+			// Check if any regex findings meet the block threshold.
+			// If not, the block is purely ML-driven — suppress for short text.
+			hasThresholdRegex := false
 			for _, r := range result.Results {
-				if r.Rule != "char_cnn_bilstm" && r.Category != "ml_threat" {
-					hasRegex = true
+				if r.Rule == "char_cnn_bilstm" || r.Category == "ml_threat" {
+					continue
+				}
+				if meetsSeverityThreshold(r.Severity, p.cfg.Block.Threshold) {
+					hasThresholdRegex = true
 					break
 				}
 			}
-			if !hasRegex {
+			if !hasThresholdRegex {
 				return false, fmt.Sprintf("ML tier 1 short-text FP mitigation (score: %.3f, len: %d)", result.MLScore, len(content))
 			}
 		}
@@ -1109,16 +1113,25 @@ func (p *Proxy) shouldBlock(result *detector.Summary, content string) (bool, str
 		if p.multiTurn != nil {
 			allPII := true
 			hasAny := false
+			hasCritical := false
 			for _, r := range result.Results {
 				if r.Rule == "char_cnn_bilstm" || r.Category == "ml_threat" {
 					continue
 				}
-				hasAny = true
 				cat := strings.ToLower(r.Category)
-				if !strings.Contains(cat, "pii") && !strings.Contains(cat, "financial") && !strings.Contains(cat, "credential") && !strings.Contains(cat, "healthcare") && !strings.Contains(cat, "context-manipulation") && !strings.Contains(cat, "ctx_constraint") && !strings.Contains(cat, "prompt") {
+				isPIICat := strings.Contains(cat, "pii") || strings.Contains(cat, "financial") || strings.Contains(cat, "credential") || strings.Contains(cat, "healthcare")
+				if r.Severity == config.SeverityCritical && !isPIICat {
+					hasCritical = true
+					continue
+				}
+				hasAny = true
+				if !strings.Contains(cat, "pii") && !strings.Contains(cat, "financial") && !strings.Contains(cat, "credential") && !strings.Contains(cat, "healthcare") && !strings.Contains(cat, "context-manipulation") && !strings.Contains(cat, "ctx_constraint") && !strings.Contains(cat, "prompt") && !strings.Contains(cat, "toxicity") {
 					allPII = false
 					break
 				}
+			}
+			if hasCritical {
+				allPII = false
 			}
 			if hasAny && allPII {
 				benignCtx := p.multiTurn.CheckContextStandalone(content)
@@ -1151,6 +1164,7 @@ func (p *Proxy) shouldBlock(result *detector.Summary, content string) (bool, str
 	if result.MLScore > 0 && result.MLScore < 0.3 {
 		hasAnyThreshold := false
 		hasAttack := false
+		hasCritical := false
 		for _, r := range result.Results {
 			if r.Rule == "char_cnn_bilstm" || r.Category == "ml_threat" {
 				continue // Skip ML detections
@@ -1158,13 +1172,24 @@ func (p *Proxy) shouldBlock(result *detector.Summary, content string) (bool, str
 			if !meetsSeverityThreshold(r.Severity, p.cfg.Block.Threshold) {
 				continue
 			}
-			hasAnyThreshold = true
+			// Critical-severity findings in non-PII categories always block.
+			// PII/Financial/Healthcare Critical findings are still gatekeepable
+			// (the ML model can distinguish benign PII from exfiltration).
 			cat := strings.ToLower(r.Category)
-			if strings.Contains(cat, "pii") || strings.Contains(cat, "financial") || strings.Contains(cat, "credential") || strings.Contains(cat, "healthcare") || strings.Contains(cat, "prompt") || strings.Contains(cat, "context-manipulation") || strings.Contains(cat, "ctx_constraint") {
+			isPIICat := strings.Contains(cat, "pii") || strings.Contains(cat, "financial") || strings.Contains(cat, "credential") || strings.Contains(cat, "healthcare")
+			if r.Severity == config.SeverityCritical && !isPIICat {
+				hasCritical = true
+				continue
+			}
+			hasAnyThreshold = true
+			if strings.Contains(cat, "pii") || strings.Contains(cat, "financial") || strings.Contains(cat, "credential") || strings.Contains(cat, "healthcare") || strings.Contains(cat, "prompt") || strings.Contains(cat, "context-manipulation") || strings.Contains(cat, "ctx_constraint") || strings.Contains(cat, "toxicity") {
 				// Gatekeepable category
 			} else {
 				hasAttack = true
 			}
+		}
+		if hasCritical {
+			hasAttack = true
 		}
 		if hasAnyThreshold && !hasAttack {
 			// Determine threshold based on category mix
@@ -1178,7 +1203,7 @@ func (p *Proxy) shouldBlock(result *detector.Summary, content string) (bool, str
 					continue
 				}
 				cat := strings.ToLower(r.Category)
-				if !strings.Contains(cat, "pii") && !strings.Contains(cat, "financial") && !strings.Contains(cat, "credential") && !strings.Contains(cat, "healthcare") && !strings.Contains(cat, "context-manipulation") && !strings.Contains(cat, "ctx_constraint") && !strings.Contains(cat, "prompt") {
+				if !strings.Contains(cat, "pii") && !strings.Contains(cat, "financial") && !strings.Contains(cat, "credential") && !strings.Contains(cat, "healthcare") && !strings.Contains(cat, "context-manipulation") && !strings.Contains(cat, "ctx_constraint") && !strings.Contains(cat, "prompt") && !strings.Contains(cat, "toxicity") {
 					hasNonPII = true
 				}
 			}
@@ -1202,6 +1227,7 @@ func (p *Proxy) shouldBlock(result *detector.Summary, content string) (bool, str
 	if p.multiTurn != nil {
 		hasAnyThreshold := false
 		hasAttack := false
+		hasCritical := false
 		for _, r := range result.Results {
 			if r.Rule == "char_cnn_bilstm" || r.Category == "ml_threat" {
 				continue
@@ -1209,13 +1235,21 @@ func (p *Proxy) shouldBlock(result *detector.Summary, content string) (bool, str
 			if !meetsSeverityThreshold(r.Severity, p.cfg.Block.Threshold) {
 				continue
 			}
-			hasAnyThreshold = true
 			cat := strings.ToLower(r.Category)
-			if strings.Contains(cat, "pii") || strings.Contains(cat, "financial") || strings.Contains(cat, "credential") || strings.Contains(cat, "healthcare") || strings.Contains(cat, "context-manipulation") || strings.Contains(cat, "ctx_constraint") || strings.Contains(cat, "prompt") {
+			isPIICat := strings.Contains(cat, "pii") || strings.Contains(cat, "financial") || strings.Contains(cat, "credential") || strings.Contains(cat, "healthcare")
+			if r.Severity == config.SeverityCritical && !isPIICat {
+				hasCritical = true
+				continue
+			}
+			hasAnyThreshold = true
+			if strings.Contains(cat, "pii") || strings.Contains(cat, "financial") || strings.Contains(cat, "credential") || strings.Contains(cat, "healthcare") || strings.Contains(cat, "context-manipulation") || strings.Contains(cat, "ctx_constraint") || strings.Contains(cat, "prompt") || strings.Contains(cat, "toxicity") {
 				// Gatekeepable
 			} else {
 				hasAttack = true
 			}
+		}
+		if hasCritical {
+			hasAttack = true
 		}
 		if hasAnyThreshold && !hasAttack {
 			benignCtx := p.multiTurn.CheckContextStandalone(content)

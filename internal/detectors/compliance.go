@@ -152,7 +152,7 @@ var CompliancePatterns = []PatternDef{
 	},
 	{
 		Name:        "eu_ai_act_robustness",
-		Severity:    SeverityLow,
+		Severity:    SeverityMedium,
 		Regex:       `(?i)(?:adversarial|adversarially[- ]crafted)\s+(?:input|example|perturbation|attack)|no\s+adversarial\s+testing|without\s+(?:adversarial\s+)?test`,
 		Description: "EU AI Act robustness/accuracy (Article 15)",
 	},
@@ -227,7 +227,7 @@ var CompliancePatterns = []PatternDef{
 	{
 		Name:        "toxicity_sexual",
 		Severity:    SeverityHigh,
-		Regex:       `(?i)\b(?:(?:pornographic|obscene|explicit|nsfw|hardcore)\s+(?:content|material|images?|video|text)|(?:sexual|sex)\s+(?:content|act(?:s|s)?|intercourse|fetish)|(?:rape|molest|incest)\s+(?:scene|content|material)|(?:child|minor|underage)\s+(?:sexual|porn(?:ography)?|abuse|exploitation))\b`,
+		Regex:       `(?i)\b(?:(?:pornographic|obscene|explicit|nsfw|hardcore)\s+(?:content|material|images?|video|text)|(?:sexual|sex)\s+(?:content|intercourse|fetish|acts?)|explicit\s+sexual\s+(?:content|material|images?|acts?)|(?:rape|molest|incest)\s+(?:scene|content|material)|(?:child|minor|underage)\s+(?:sexual(?:ly)?\s+(?:explicit\s+(?:material|content|images?)|abuse\s+(?:material|content|images?|video))|porn(?:ography)?|abuse\s+(?:material|content|images?|video))|(?:sexual|sex)\s+(?:content|material)\s+involving\s+(?:child|minor|underage))\b`,
 		Description: "Sexual content indicators",
 	},
 	{
@@ -273,7 +273,7 @@ var CompliancePatterns = []PatternDef{
 	{
 		Name:        "atlas_safety_protocol_bypass",
 		Severity:    SeverityCritical,
-		Regex:       `(?i)(?:disable|deactivate|turn\s+off|remove|bypass|override|circumvent|disregard|ignore)\s+(?:all\s+|your\s+)?(?:safety\s+(?:protocols?|measures?|guidelines?|filters?|restrictions?|instructions?)|content\s+(?:filters?|moderation|policy|guidelines))`,
+		Regex:       `(?i)(?:disable|deactivate|turn\s+off|remove|bypass(?:es|ed|ing)?|override|circumvent(?:ed|ing)?|disregard|ignore)\s+(?:(?:all|your|the)\s+)*(?:safety\s+(?:protocols?|measures?|guidelines?|filters?|restrictions?|instructions?)|content\s+(?:filters?|moderation|policy|guidelines))`,
 		Description: "Safety protocol bypass attempt",
 	},
 	// --- Direct data exfiltration queries ---
@@ -317,13 +317,13 @@ var CompliancePatterns = []PatternDef{
 	{
 		Name:        "prompt_injection_base64",
 		Severity:    SeverityMedium,
-		Regex:       `[A-Za-z0-9+/]{80,}={0,2}`,
+		Regex:       `[A-Za-z0-9+/]{200,}={0,2}`,
 		Description: "Base64-encoded content (obfuscation)",
 	},
 	{
 		Name:        "prompt_injection_code_execution",
 		Severity:    SeverityHigh,
-		Regex:       `(?i)(?:\$\([^)]*\)|\$\{[^}]*\}|<[^>]*script[^>]*>|javascript:[^;\s]+|on\w+\s*=\s*["']|on\w+\s*=\s*[^\s])`,
+		Regex:       `(?i)javascript:\s*(?:alert|eval|prompt|confirm|document\.write|window\.location|fetch\s*\()|\$\(\s*(?:rm\s+-rf|curl|wget|nc\s|netcat|/bin/(?:sh|bash)|cat\s+/etc/)|\$\{[A-Z_]+\}\s*\|\s*(?:sh|bash|python|perl)`,
 		Description: "Code/script injection in prompt",
 	},
 	{
@@ -334,7 +334,7 @@ var CompliancePatterns = []PatternDef{
 	},
 	{
 		Name:        "prompt_injection_delimiter",
-		Severity:    SeverityMedium,
+		Severity:    SeverityLow,
 		Regex:       `(?i)(?:markdown\s+block|#\s*(?:system|user|assistant)\s*prompt|<<<\s*(?:USER|SYSTEM|assistant):::|\[INST\]|\[\/INST\])`,
 		Description: "Jailbreak delimiter injection",
 	},
@@ -352,13 +352,13 @@ var CompliancePatterns = []PatternDef{
 	},
 	{
 		Name:        "prompt_injection_role_play",
-		Severity:    SeverityHigh,
+		Severity:    SeverityLow,
 		Regex:       `(?i)(?:act\s+as\s+(?:a|an)|pretend\s+you\s+are\s+(?:a|an)|roleplay\s+(?:as|that)|simulate\s+(?:a|an)|you\s+are\s+now\s+(?:a|an)|new\s+(?:system|instruct))`,
 		Description: "Role-play prompt injection",
 	},
 	{
 		Name:        "prompt_injection_unicode",
-		Severity:    SeverityMedium,
+		Severity:    SeverityLow,
 		Regex:       `[\x{200b}-\x{200f}\x{2028}-\x{202f}\x{feff}]`,
 		Description: "Hidden unicode characters (obfuscation)",
 	},

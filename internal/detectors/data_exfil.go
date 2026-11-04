@@ -45,7 +45,7 @@ var DataExfilPatterns = []PatternDef{
 	{
 		Name:        "exfil_external_transfer",
 		Severity:    SeverityCritical,
-		Regex:       `(?i)\b(?:send|transfer|upload|post|transmit|exfiltrat\w*|pipe|forward).{0,30}(?:data|files?|records?|credentials?|secrets?|keys?|customer\s+data|PII|PHI|source\s+code|database\s+dump).{0,30}(?:to\s+|via\s+)(?:\w+\s+){0,3}(?:external|outside|attacker|evil|pastebin|webhook|discord|telegram|ftp|s3|bucket|email|slack)\b`,
+		Regex:       `(?i)\b(?:send|transfer|upload|post|transmit|exfiltrat\w*|pipe|forward).{0,30}(?:data|files?|records?|credentials?|secrets?|keys?|customer\s+data|PII|PHI|source\s+code|database\s+dump).{0,30}(?:to\s+|via\s+)(?:\w+\s+){0,3}(?:external|outside|attacker|evil|pastebin|webhook|discord|telegram|ftp|email|slack)\b`,
 		Description: "Data exfiltration to external destination",
 	},
 	{

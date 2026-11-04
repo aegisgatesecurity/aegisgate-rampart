@@ -72,7 +72,7 @@ var PIIUSExtendedPatterns = []PatternDef{
 	{
 		Name:        "pii_letter_only_id",
 		Severity:    SeverityHigh,
-		Regex:       `(?i)\b(?:ID|identifier|reference|ref|customer\s+ID|account\s+ID)\s*(?:is|:|=|#|number)?\s*[A-Z]{8,12}\b`,
+		Regex:       `(?i)\b(?:ID|identifier|reference|ref|customer\s+ID|account\s+ID)\s*(?:is|:|=|#|number)?\s*(?-i:[A-Z]{8,12})\b`,
 		Description: "Pure-letter 8-12 char uppercase ID (requires ID/reference context)",
 	},
 	{

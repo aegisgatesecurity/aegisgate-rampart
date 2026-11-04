@@ -24,8 +24,8 @@ var PIIUSCorePatterns = []PatternDef{
 	{
 		Name:        "pii_email",
 		Severity:    SeverityMedium,
-		Regex:       `[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,24}`,
-		Description: "Email address",
+		Regex:       `(?:^|[\s<>('"])[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,24}`,
+		Description: "Email address (excludes URL-embedded user@host)",
 	},
 	{
 		Name:        "pii_phone",

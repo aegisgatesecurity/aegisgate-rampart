@@ -24,8 +24,8 @@ var PIIUSExtendedPatterns = []PatternDef{
 	{
 		Name:        "pii_email_intl",
 		Severity:    SeverityMedium,
-		Regex:       `[\p{L}\p{N}._%+\-]+@[\p{L}\p{N}.\-]+\.[\p{L}]{2,24}`,
-		Description: "International email (CJK/Hangul/Kana support)",
+		Regex:       `(?:^|[\s<>('"])[\p{L}\p{N}._%+\-]+@[\p{L}\p{N}.\-]+\.[\p{L}]{2,24}`,
+		Description: "International email (excludes URL-embedded user@host)",
 	},
 	{
 		Name:        "pii_phone_intl_loose",

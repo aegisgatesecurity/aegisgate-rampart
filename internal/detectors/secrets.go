@@ -90,7 +90,7 @@ var SecretsPatterns = []PatternDef{
 	{
 		Name:        "secret_mailgun_key",
 		Severity:    SeverityHigh,
-		Regex:       `\bkey-[a-f0-9]{32}\b`,
+		Regex:       `\bkey-[a-zA-Z0-9]{24,}\b`,
 		Description: "Mailgun API key",
 	},
 	{
@@ -132,7 +132,7 @@ var SecretsPatterns = []PatternDef{
 	{
 		Name:        "secret_slack_legacy",
 		Severity:    SeverityHigh,
-		Regex:       `\bxox[abprs]-[A-Za-z0-9-]{10,}\b`,
+		Regex:       `\bxox[abprs]-[A-Za-z0-9-]{25,}\b`,
 		Description: "Slack legacy token",
 	},
 	{
@@ -296,8 +296,8 @@ var SecretsPatterns = []PatternDef{
 	{
 		Name:        "SlackTokenV2",
 		Severity:    SeverityHigh,
-		Regex:       `\bxox[abprs]-[A-Za-z0-9-]{20,}\b`,
-		Description: "Slack token (relaxed format)",
+		Regex:       `\bxox[abprs]-[A-Za-z0-9-]{30,}\b`,
+		Description: "Slack token (relaxed format, 30+ chars to reduce FP)",
 	},
 	{
 		Name:        "secret_azure_connection",
@@ -484,7 +484,7 @@ var SecretsPatterns = []PatternDef{
 	{
 		Name:        "secret_exfil_context",
 		Severity:    SeverityHigh,
-		Regex:       `(?i)(?:the\s+value\s+is|here(?:'s| is)?\s+(?:the\s+)?(?:secret|key|token|password|credential|api\s+key))\s*[:=]?\s*.{25,}?.{0,20}(?:do\s+not\s+share|don'?t\s+share|keep\s+(?:it\s+)?(?:private|secret|confidential))`,
+		Regex:       `(?i)(?:the\s+value\s+is|here(?:'s| is)?\s+(?:the\s+)?(?:secret|key|token|password|credential|api\s+key))\s*[:=]\s*.{59,}?.{0,20}(?:do\s+not\s+share|don'?t\s+share|keep\s+(?:it\s+)?(?:private|secret|confidential))`,
 		Description: "Secret value disclosure in exfiltration context",
 	},
 }

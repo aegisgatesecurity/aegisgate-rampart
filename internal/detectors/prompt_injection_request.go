@@ -30,9 +30,9 @@ var PromptInjectionRequestPatterns = []PatternDef{
 	// --- Role-play jailbreaks ---
 	{
 		Name:        "pi_roleplay",
-		Severity:    SeverityLow,
+		Severity:    SeverityHigh,
 		Regex:       `(?i)(?:act\s+as\s+(?:a|an)|pretend\s+you\s+are\s+(?:a|an)|roleplay\s+(?:as|that)|simulate\s+(?:a|an|being)|you\s+are\s+now\s+(?:a|an)|play\s+the\s+role\s+of)`,
-		Description: "Role-play prompt injection / jailbreak (low severity — malicious variants caught by pi_roleplay_malicious)",
+		Description: "Role-play prompt injection / jailbreak (gatekeepable — ML distinguishes benign usage from attacks)",
 	},
 	{
 		Name:        "pi_roleplay_malicious",

@@ -1151,9 +1151,16 @@ func (p *Proxy) shouldBlock(result *detector.Summary, content string) (bool, str
 	//    Regex is overbroad for PII (matches any XXX-XX-XXXX as SSN, any
 	//    16-digit number as credit card, etc.). The ML model can distinguish
 	//    benign PII mentions from exfiltration attacks.
-	// 2. Prompt/Compliance: threshold < 0.15
+	//    IMPORTANT: The ML model does NOT detect PII — it scores PII-containing
+	//    text at 0.0. So MLScore=0 does NOT mean "benign PII." For PII
+	//    detections, we require MLScore > 0 before suppressing (i.e., the ML
+	//    model must have at least noticed the text). MLScore=0 on PII means
+	//    the model didn't evaluate it, not that it cleared it.
+	// 2. Prompt/Compliance/Toxicity: threshold < 0.05
 	//    Attack-adjacent patterns (code execution, base64, toxicity) fire on
-	//    benign code/tutorials. Only suppress when ML is very confident.
+	//    benign code/tutorials. Suppress even when MLScore=0.0 — the ML model
+	//    correctly identifies benign text with score 0.0, and these regex
+	//    patterns are notoriously overbroad.
 	//
 	// NOT gatekept: Injection, XSS, Network, Cryptographic — these are specific
 	// attack patterns where ML correctly scores non-injection as low.
@@ -1161,7 +1168,7 @@ func (p *Proxy) shouldBlock(result *detector.Summary, content string) (bool, str
 	// CRITICAL: Only suppress if ALL threshold-meeting detections are in
 	// gatekeepable categories. If there are also attack-category detections,
 	// the block must proceed.
-	if result.MLScore > 0 && result.MLScore < 0.3 {
+	if result.MLScore < 0.3 {
 		hasAnyThreshold := false
 		hasAttack := false
 		hasCritical := false
@@ -1192,8 +1199,13 @@ func (p *Proxy) shouldBlock(result *detector.Summary, content string) (bool, str
 			hasAttack = true
 		}
 		if hasAnyThreshold && !hasAttack {
-			// Determine threshold based on category mix
+			// Determine threshold and category composition.
+			// hasPII: any PII/financial/credential/healthcare detection
+			// hasNonPII: any prompt/compliance/toxicity detection
+			// (All detections are gatekeepable at this point — hasAttack
+			// would be true otherwise.)
 			threshold := 0.3
+			hasPII := false
 			hasNonPII := false
 			for _, r := range result.Results {
 				if r.Rule == "char_cnn_bilstm" || r.Category == "ml_threat" {
@@ -1203,15 +1215,26 @@ func (p *Proxy) shouldBlock(result *detector.Summary, content string) (bool, str
 					continue
 				}
 				cat := strings.ToLower(r.Category)
-				if !strings.Contains(cat, "pii") && !strings.Contains(cat, "financial") && !strings.Contains(cat, "credential") && !strings.Contains(cat, "healthcare") && !strings.Contains(cat, "context-manipulation") && !strings.Contains(cat, "ctx_constraint") && !strings.Contains(cat, "prompt") && !strings.Contains(cat, "toxicity") {
+				isPIICat := strings.Contains(cat, "pii") || strings.Contains(cat, "financial") || strings.Contains(cat, "credential") || strings.Contains(cat, "healthcare")
+				if isPIICat {
+					hasPII = true
+				} else {
 					hasNonPII = true
 				}
 			}
 			if hasNonPII {
 				threshold = 0.05 // Very conservative for Prompt/Compliance/Toxicity
 			}
-			if result.MLScore < threshold {
-				return false, fmt.Sprintf("ML gatekeeper: benign score %.3f suppresses FP (threshold: %.2f)", result.MLScore, threshold)
+			// Suppress if ML score is below the category-appropriate threshold.
+			// For PII-containing detections, require MLScore > 0 — the ML model
+			// doesn't detect PII (scores it 0.0), so MLScore=0 doesn't indicate
+			// "benign PII" the way it does for prompt-injection patterns.
+			shouldSuppress := result.MLScore < threshold
+			if hasPII && result.MLScore <= 0 {
+				shouldSuppress = false
+			}
+			if shouldSuppress {
+				return false, fmt.Sprintf("ML gatekeeper: benign score %.3f suppresses FP (threshold: %.2f, hasPII: %v)", result.MLScore, threshold, hasPII)
 			}
 		}
 	}

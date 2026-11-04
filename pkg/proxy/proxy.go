@@ -1115,7 +1115,7 @@ func (p *Proxy) shouldBlock(result *detector.Summary, content string) (bool, str
 				}
 				hasAny = true
 				cat := strings.ToLower(r.Category)
-				if !strings.Contains(cat, "pii") && !strings.Contains(cat, "financial") && !strings.Contains(cat, "credential") && !strings.Contains(cat, "healthcare") && !strings.Contains(cat, "toxicity") && !strings.Contains(cat, "context-manipulation") || strings.Contains(cat, "ctx_constraint") && !strings.Contains(cat, "secret") || strings.Contains(cat, "exfil") && !strings.Contains(cat, "compliance") && !strings.Contains(cat, "prompt") {
+				if !strings.Contains(cat, "pii") && !strings.Contains(cat, "financial") && !strings.Contains(cat, "credential") && !strings.Contains(cat, "healthcare") && !strings.Contains(cat, "context-manipulation") && !strings.Contains(cat, "ctx_constraint") && !strings.Contains(cat, "prompt") {
 					allPII = false
 					break
 				}
@@ -1160,7 +1160,7 @@ func (p *Proxy) shouldBlock(result *detector.Summary, content string) (bool, str
 			}
 			hasAnyThreshold = true
 			cat := strings.ToLower(r.Category)
-			if strings.Contains(cat, "pii") || strings.Contains(cat, "financial") || strings.Contains(cat, "credential") || strings.Contains(cat, "healthcare") || strings.Contains(cat, "prompt") || strings.Contains(cat, "compliance") || strings.Contains(cat, "toxicity") || strings.Contains(cat, "context-manipulation") || strings.Contains(cat, "ctx_constraint") || strings.Contains(cat, "secret") || strings.Contains(cat, "exfil") {
+			if strings.Contains(cat, "pii") || strings.Contains(cat, "financial") || strings.Contains(cat, "credential") || strings.Contains(cat, "healthcare") || strings.Contains(cat, "prompt") || strings.Contains(cat, "context-manipulation") || strings.Contains(cat, "ctx_constraint") {
 				// Gatekeepable category
 			} else {
 				hasAttack = true
@@ -1178,12 +1178,12 @@ func (p *Proxy) shouldBlock(result *detector.Summary, content string) (bool, str
 					continue
 				}
 				cat := strings.ToLower(r.Category)
-				if !strings.Contains(cat, "pii") && !strings.Contains(cat, "financial") && !strings.Contains(cat, "credential") && !strings.Contains(cat, "healthcare") && !strings.Contains(cat, "toxicity") && !strings.Contains(cat, "context-manipulation") || strings.Contains(cat, "ctx_constraint") && !strings.Contains(cat, "secret") || strings.Contains(cat, "exfil") && !strings.Contains(cat, "compliance") && !strings.Contains(cat, "prompt") {
+				if !strings.Contains(cat, "pii") && !strings.Contains(cat, "financial") && !strings.Contains(cat, "credential") && !strings.Contains(cat, "healthcare") && !strings.Contains(cat, "context-manipulation") && !strings.Contains(cat, "ctx_constraint") && !strings.Contains(cat, "prompt") {
 					hasNonPII = true
 				}
 			}
 			if hasNonPII {
-				threshold = 0.15 // Stricter for Prompt/Compliance
+				threshold = 0.05 // Very conservative for Prompt/Compliance/Toxicity
 			}
 			if result.MLScore < threshold {
 				return false, fmt.Sprintf("ML gatekeeper: benign score %.3f suppresses FP (threshold: %.2f)", result.MLScore, threshold)
@@ -1211,7 +1211,7 @@ func (p *Proxy) shouldBlock(result *detector.Summary, content string) (bool, str
 			}
 			hasAnyThreshold = true
 			cat := strings.ToLower(r.Category)
-			if strings.Contains(cat, "pii") || strings.Contains(cat, "financial") || strings.Contains(cat, "credential") || strings.Contains(cat, "healthcare") || strings.Contains(cat, "toxicity") || strings.Contains(cat, "context-manipulation") || strings.Contains(cat, "ctx_constraint") || strings.Contains(cat, "secret") || strings.Contains(cat, "exfil") || strings.Contains(cat, "compliance") || strings.Contains(cat, "prompt") {
+			if strings.Contains(cat, "pii") || strings.Contains(cat, "financial") || strings.Contains(cat, "credential") || strings.Contains(cat, "healthcare") || strings.Contains(cat, "context-manipulation") || strings.Contains(cat, "ctx_constraint") || strings.Contains(cat, "prompt") {
 				// Gatekeepable
 			} else {
 				hasAttack = true

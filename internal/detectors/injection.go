@@ -36,6 +36,12 @@ var InjectionPatterns = []PatternDef{
 		Description: "SQL data extraction/exfiltration request",
 	},
 	{
+		Name:        "mass_pii_retrieval",
+		Severity:    SeverityHigh,
+		Regex:       `(?i)\b(?:retrieve|access|fetch|pull|get|export|dump|extract|download|query|return|output|list|show|display|collect|gather|harvest)\b.{0,80}\b(?:all|every|entire|complete|full)\b.{0,80}\b(?:SSNs?|social\s+security|credit\s+cards?|card\s+numbers?|CVVs?|PINs?|passwords?|passports?|driver'?s?\s+licenses?|dates?\s+of\s+birth|DOBs?|bank\s+accounts?|routing\s+numbers?|national\s+IDs?)\b`,
+		Description: "Mass PII retrieval request — bulk data collection specifying sensitive PII types",
+	},
+	{
 		Name:        "sqli_union_select",
 		Severity:    SeverityHigh,
 		Regex:       `(?i)(?:['";]?)\s*union\s+(?:all\s+)?select\b.{0,100}(?:information_schema|from\s+users|--|#|/\*\*/|null|concat|@@version|version\(\)|database\(\)|sleep\()|(?i)\b(?:select|insert|update|delete|drop|alter|create)\b.{0,50}\bfrom\b.{0,100}\b(?:information_schema|mysql\.|pg_|sys\.|master\.)\b`,

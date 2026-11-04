@@ -353,7 +353,7 @@ var CompliancePatterns = []PatternDef{
 	{
 		Name:        "prompt_injection_role_play",
 		Severity:    SeverityHigh,
-		Regex:       `(?i)(?:act\s+as\s+(?:a|an)|pretend\s+you\s+are\s+(?:a|an)|roleplay\s+(?:as|that)|simulate\s+(?:a|an)|you\s+are\s+now\s+(?:a|an)|new\s+(?:system|instruct))`,
+		Regex:       `(?i)(?:act\s+as\s+(?:a|an)|pretend\s+you\s+are\s+(?:a|an)|role\s*play\s+(?:as|that)|simulate\s+(?:a|an)|you\s+are\s+now\s+(?:a|an)|new\s+(?:system|instruct))`,
 		Description: "Role-play prompt injection",
 	},
 	{

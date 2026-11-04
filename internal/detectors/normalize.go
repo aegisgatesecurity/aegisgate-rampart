@@ -36,6 +36,25 @@ var homoglyphMap = map[rune]rune{
 	// Greek → Latin lookalikes
 	'α': 'a', 'Α': 'a', 'ε': 'e', 'Ε': 'e', 'ο': 'o', 'Ο': 'o',
 	'ν': 'v', 'Ν': 'v', 'ρ': 'p', 'Ρ': 'p', 'τ': 't', 'Τ': 't',
+	// Fullwidth Latin (U+FF01–U+FF5E) → ASCII
+	'Ａ': 'A', 'Ｂ': 'B', 'Ｃ': 'C', 'Ｄ': 'D', 'Ｅ': 'E', 'Ｆ': 'F',
+	'Ｇ': 'G', 'Ｈ': 'H', 'Ｉ': 'I', 'Ｊ': 'J', 'Ｋ': 'K', 'Ｌ': 'L',
+	'Ｍ': 'M', 'Ｎ': 'N', 'Ｏ': 'O', 'Ｐ': 'P', 'Ｑ': 'Q', 'Ｒ': 'R',
+	'Ｓ': 'S', 'Ｔ': 'T', 'Ｕ': 'U', 'Ｖ': 'V', 'Ｗ': 'W', 'Ｘ': 'X',
+	'Ｙ': 'Y', 'Ｚ': 'Z',
+	'ａ': 'a', 'ｂ': 'b', 'ｃ': 'c', 'ｄ': 'd', 'ｅ': 'e', 'ｆ': 'f',
+	'ｇ': 'g', 'ｈ': 'h', 'ｉ': 'i', 'ｊ': 'j', 'ｋ': 'k', 'ｌ': 'l',
+	'ｍ': 'm', 'ｎ': 'n', 'ｏ': 'o', 'ｐ': 'p', 'ｑ': 'q', 'ｒ': 'r',
+	'ｓ': 's', 'ｔ': 't', 'ｕ': 'u', 'ｖ': 'v', 'ｗ': 'w', 'ｘ': 'x',
+	'ｙ': 'y', 'ｚ': 'z',
+	'０': '0', '１': '1', '２': '2', '３': '3', '４': '4',
+	'５': '5', '６': '6', '７': '7', '８': '8', '９': '9',
+	'　': ' ', '！': '!', '＂': '"', '＃': '#', '＄': '$', '％': '%',
+	'＆': '&', '＇': '\'', '（': '(', '）': ')', '＊': '*', '＋': '+',
+	'，': ',', '－': '-', '．': '.', '／': '/', '：': ':', '；': ';',
+	'＜': '<', '＝': '=', '＞': '>', '？': '?', '＠': '@', '［': '[',
+	'＼': '\\', '］': ']', '＾': '^', '＿': '_', '｀': '`', '｛': '{',
+	'｜': '|', '｝': '}', '～': '~',
 }
 
 // l33tMap maps l33t-speak substitutions back to their letter equivalents.
@@ -319,6 +338,17 @@ func NormalizeAllVariants(input string) []string {
 		}
 	}
 
+	// Despace variant (character-level spacing evasion)
+	despaced := NormalizeDespaced(input)
+	if despaced != input && despaced != "" {
+		variants = append(variants, despaced)
+		// Also try ROT13 of despaced (common combined evasion)
+		despaceRot13 := NormalizeROT13(despaced)
+		if despaceRot13 != despaced && despaceRot13 != input && despaceRot13 != "" {
+			variants = append(variants, despaceRot13)
+		}
+	}
+
 	// Sliding ROT13 variants (parity with Platform)
 	variants = append(variants, NormalizeSlidingROT13(input)...)
 
@@ -332,6 +362,79 @@ func NormalizeAllVariants(input string) []string {
 		}
 	}
 	return unique
+}
+
+// NormalizeDespaced collapses character-by-character spacing evasion.
+// Detects patterns like "I g n o r e   a l l" where single characters are
+// separated by single spaces within words, and words are separated by 2+ spaces.
+// Collapses to "Ignore all" by removing intra-word spaces while preserving
+// inter-word separation.
+func NormalizeDespaced(input string) string {
+	if len(input) < 5 {
+		return input
+	}
+	// Count single-char-space-single-char patterns to detect this evasion
+	singleCharSpaced := 0
+	totalAlphaNum := 0
+	runes := []rune(input)
+	for i := 0; i < len(runes); i++ {
+		if isAlphaNum(runes[i]) {
+			totalAlphaNum++
+			if i+2 < len(runes) && (runes[i+1] == ' ' || runes[i+1] == '\t') && isAlphaNum(runes[i+2]) {
+				singleCharSpaced++
+			}
+		}
+	}
+	// Only apply if significant single-char spacing detected (>40% of chars)
+	if totalAlphaNum < 4 || singleCharSpaced < totalAlphaNum*2/5 {
+		return input
+	}
+	// Detect word boundaries (2+ spaces) vs char separators (1 space).
+	// Re-parse manually.
+	var result strings.Builder
+	var currentWord strings.Builder
+	spaceRun := 0
+	for _, r := range input {
+		if r == ' ' || r == '\t' {
+			spaceRun++
+			if spaceRun >= 2 {
+				// Word boundary — flush current word
+				if currentWord.Len() > 0 {
+					result.WriteString(currentWord.String())
+					result.WriteRune(' ')
+					currentWord.Reset()
+				}
+			}
+		} else {
+			if spaceRun == 1 && currentWord.Len() > 0 {
+				// Single space between chars — skip it (this is the evasion)
+			}
+			spaceRun = 0
+			currentWord.WriteRune(r)
+		}
+	}
+	if currentWord.Len() > 0 {
+		result.WriteString(currentWord.String())
+	}
+	despaced := result.String()
+	if despaced != input && despaced != "" {
+		return despaced
+	}
+	// Fallback: if no double-space word boundaries, just remove all spaces
+	if totalAlphaNum > 0 && singleCharSpaced > totalAlphaNum/2 {
+		var b strings.Builder
+		for _, r := range input {
+			if r != ' ' && r != '\t' {
+				b.WriteRune(r)
+			}
+		}
+		return b.String()
+	}
+	return input
+}
+
+func isAlphaNum(r rune) bool {
+	return (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9')
 }
 
 // NormalizeRepeatingChars collapses 3+ consecutive identical characters to 2.

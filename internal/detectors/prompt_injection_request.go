@@ -31,7 +31,7 @@ var PromptInjectionRequestPatterns = []PatternDef{
 	{
 		Name:        "pi_roleplay",
 		Severity:    SeverityHigh,
-		Regex:       `(?i)(?:act\s+as\s+(?:a|an)|pretend\s+you\s+are\s+(?:a|an)|roleplay\s+(?:as|that)|simulate\s+(?:a|an|being)|you\s+are\s+now\s+(?:a|an)|play\s+the\s+role\s+of)`,
+		Regex:       `(?i)(?:act\s+as\s+(?:a|an)|pretend\s+you\s+are\s+(?:a|an)|role\s*play\s+(?:as|that)|simulate\s+(?:a|an|being)|you\s+are\s+now\s+(?:a|an)|play\s+the\s+role\s+of)`,
 		Description: "Role-play prompt injection / jailbreak (gatekeepable — ML distinguishes benign usage from attacks)",
 	},
 	{
@@ -157,7 +157,7 @@ var PromptInjectionRequestPatterns = []PatternDef{
 	{
 		Name:        "pi_developer_instruct",
 		Severity:    SeverityCritical,
-		Regex:       `(?i)as\s+(?:the\s+)?(?:developer|admin|administrator|creator|owner).{0,30}(?:instruct\w*|telling|ordering|directing)\s+(?:you\s+)?to\s+(?:bypass|ignore|override|disable|circumvent)\s+(?:your\s+)?(?:guidelines?|rules?|safety|restrictions?|guardrails?)`,
+		Regex:       `(?i)as\s+(?:an\s+|the\s+)?(?:developer|admin|administrator|creator|owner).{0,40}(?:instruct\w*|telling|ordering|directing|authoriz\w*|commanding)\s+(?:you\s+)?to\s+(?:bypass|ignore|override|disable|circumvent)\s+(?:(?:all|your|the)\s+)*(?:guidelines?|rules?|safety|restrictions?|guardrails?)`,
 		Description: "Developer authority claim to bypass guidelines",
 	},
 	{

@@ -78,7 +78,7 @@ var SecretsPatterns = []PatternDef{
 	{
 		Name:        "secret_twilio_key",
 		Severity:    SeverityHigh,
-		Regex:       `\b(?:SK|AC)[a-fA-F0-9]{32}\b`,
+		Regex:       `\b(?:SK|AC)[A-Za-z0-9]{30,34}\b`,
 		Description: "Twilio account SID or auth token",
 	},
 	{
@@ -486,6 +486,12 @@ var SecretsPatterns = []PatternDef{
 		Severity:    SeverityHigh,
 		Regex:       `(?i)(?:the\s+value\s+is|here(?:'s| is)?\s+(?:the\s+)?(?:secret|key|token|password|credential|api\s+key))\s*[:=]\s*.{59,}?.{0,20}(?:do\s+not\s+share|don'?t\s+share|keep\s+(?:it\s+)?(?:private|secret|confidential))`,
 		Description: "Secret value disclosure in exfiltration context",
+	},
+	{
+		Name:        "secret_exfil_context_compact",
+		Severity:    SeverityHigh,
+		Regex:       `(?i)(?:the\s+value\s+is)\s*[:=]\s*(?-i:[A-Z][A-Z0-9 \-]{19,}).{0,20}(?i:do\s+not\s+share|don'?t\s+share)`,
+		Description: "Secret value disclosure in exfiltration context (compact format, uppercase token)",
 	},
 }
 

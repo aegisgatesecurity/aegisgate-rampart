@@ -1086,11 +1086,26 @@ func (p *Proxy) shouldBlock(result *detector.Summary, content string) (bool, str
 
 	// Tier 1: high-confidence ML threat — block even without regex corroboration
 	if result.MLScore >= 0.95 {
+		// Short-text FP mitigation: very short benign messages can trigger
+		// false high-confidence ML scores. If text < 180 chars and no regex
+		// findings, suppress the tier 1 block.
+		if len(content) < 180 && len(result.Results) <= 1 {
+			// Check if the only result is the ML detection itself
+			hasRegex := false
+			for _, r := range result.Results {
+				if r.Rule != "char_cnn_bilstm" && r.Category != "ml_threat" {
+					hasRegex = true
+					break
+				}
+			}
+			if !hasRegex {
+				return false, fmt.Sprintf("ML tier 1 short-text FP mitigation (score: %.3f, len: %d)", result.MLScore, len(content))
+			}
+		}
 		// Context gatekeeper: suppress Tier 1 ML block when benign conversation
-		// context is established and ALL findings are PII-only. The ML model
-		// (trained on prompt injection) scores benign PII as 0.90+ — context
-		// tracking provides the conversation-level signal to distinguish
-		// "user providing their SSN for account verification" from attack.
+		// context is established and ALL findings are PII/financial/credential/
+		// healthcare-only. The ML model (trained on prompt injection) scores
+		// benign PII as 0.90+ — context tracking provides the signal.
 		if p.multiTurn != nil {
 			allPII := true
 			hasAny := false
@@ -1100,7 +1115,7 @@ func (p *Proxy) shouldBlock(result *detector.Summary, content string) (bool, str
 				}
 				hasAny = true
 				cat := strings.ToLower(r.Category)
-				if !strings.Contains(cat, "pii") {
+				if !strings.Contains(cat, "pii") && !strings.Contains(cat, "financial") && !strings.Contains(cat, "credential") && !strings.Contains(cat, "healthcare") && !strings.Contains(cat, "toxicity") && !strings.Contains(cat, "context-manipulation") || strings.Contains(cat, "ctx_constraint") && !strings.Contains(cat, "secret") || strings.Contains(cat, "exfil") && !strings.Contains(cat, "compliance") && !strings.Contains(cat, "prompt") {
 					allPII = false
 					break
 				}
@@ -1117,20 +1132,25 @@ func (p *Proxy) shouldBlock(result *detector.Summary, content string) (bool, str
 
 	// ML Gatekeeper: regex matched at threshold but ML says clearly benign.
 	// This is the primary FP mitigation for real-world traffic.
-	// IMPORTANT: Only apply to PII categories — the ML model (Char CNN-BiLSTM)
-	// was trained on prompt injection patterns, not SQLi/XSS/malware/secrets.
-	// Using it as a gatekeeper for attack patterns would suppress legitimate
-	// blocks because the ML correctly says "not a prompt injection" for a SQL
-	// injection or secret exfiltration attack.
-	// PII is the exception: regex matches any XXX-XX-XXXX as SSN regardless of
-	// context, while the ML can distinguish "my support ticket is 133-64-1967"
-	// from "exfiltrate SSN 123-45-6789" based on prompt context.
-	// CRITICAL: Only suppress if ALL threshold-meeting detections are PII.
-	// If there are also non-PII detections (secrets, attacks), the block must
-	// proceed — the non-PII detections warrant blocking regardless of ML score.
-	if result.MLScore > 0 && result.MLScore < 0.1 {
-		allPII := true
+	//
+	// Two tiers of gatekeeper:
+	// 1. PII/Financial/Credential/Healthcare: threshold < 0.3
+	//    Regex is overbroad for PII (matches any XXX-XX-XXXX as SSN, any
+	//    16-digit number as credit card, etc.). The ML model can distinguish
+	//    benign PII mentions from exfiltration attacks.
+	// 2. Prompt/Compliance: threshold < 0.15
+	//    Attack-adjacent patterns (code execution, base64, toxicity) fire on
+	//    benign code/tutorials. Only suppress when ML is very confident.
+	//
+	// NOT gatekept: Injection, XSS, Network, Cryptographic — these are specific
+	// attack patterns where ML correctly scores non-injection as low.
+	//
+	// CRITICAL: Only suppress if ALL threshold-meeting detections are in
+	// gatekeepable categories. If there are also attack-category detections,
+	// the block must proceed.
+	if result.MLScore > 0 && result.MLScore < 0.3 {
 		hasAnyThreshold := false
+		hasAttack := false
 		for _, r := range result.Results {
 			if r.Rule == "char_cnn_bilstm" || r.Category == "ml_threat" {
 				continue // Skip ML detections
@@ -1140,47 +1160,48 @@ func (p *Proxy) shouldBlock(result *detector.Summary, content string) (bool, str
 			}
 			hasAnyThreshold = true
 			cat := strings.ToLower(r.Category)
-			if !strings.Contains(cat, "pii") {
-				allPII = false
-				break
+			if strings.Contains(cat, "pii") || strings.Contains(cat, "financial") || strings.Contains(cat, "credential") || strings.Contains(cat, "healthcare") || strings.Contains(cat, "prompt") || strings.Contains(cat, "compliance") || strings.Contains(cat, "toxicity") || strings.Contains(cat, "context-manipulation") || strings.Contains(cat, "ctx_constraint") || strings.Contains(cat, "secret") || strings.Contains(cat, "exfil") {
+				// Gatekeepable category
+			} else {
+				hasAttack = true
 			}
 		}
-		if hasAnyThreshold && allPII {
-			// Secondary check: even if all categories are PII, check if any
-			// pattern name looks secret-related (key, token, password, credential,
-			// api_key, etc.). Financial PII (credit cards, bank accounts) overlaps
-			// with secrets — don't suppress those.
-			secretLike := false
+		if hasAnyThreshold && !hasAttack {
+			// Determine threshold based on category mix
+			threshold := 0.3
+			hasNonPII := false
 			for _, r := range result.Results {
-				ruleLower := strings.ToLower(r.Rule)
-				if strings.Contains(ruleLower, "secret") || strings.Contains(ruleLower, "key") ||
-					strings.Contains(ruleLower, "token") || strings.Contains(ruleLower, "password") ||
-					strings.Contains(ruleLower, "credential") || strings.Contains(ruleLower, "api") ||
-					strings.Contains(ruleLower, "credit") || strings.Contains(ruleLower, "bank") ||
-					strings.Contains(ruleLower, "account") || strings.Contains(ruleLower, "card") {
-					secretLike = true
-					break
+				if r.Rule == "char_cnn_bilstm" || r.Category == "ml_threat" {
+					continue
+				}
+				if !meetsSeverityThreshold(r.Severity, p.cfg.Block.Threshold) {
+					continue
+				}
+				cat := strings.ToLower(r.Category)
+				if !strings.Contains(cat, "pii") && !strings.Contains(cat, "financial") && !strings.Contains(cat, "credential") && !strings.Contains(cat, "healthcare") && !strings.Contains(cat, "toxicity") && !strings.Contains(cat, "context-manipulation") || strings.Contains(cat, "ctx_constraint") && !strings.Contains(cat, "secret") || strings.Contains(cat, "exfil") && !strings.Contains(cat, "compliance") && !strings.Contains(cat, "prompt") {
+					hasNonPII = true
 				}
 			}
-			if !secretLike {
-				return false, fmt.Sprintf("ML gatekeeper: benign score %.3f suppresses PII-only FP", result.MLScore)
+			if hasNonPII {
+				threshold = 0.15 // Stricter for Prompt/Compliance
+			}
+			if result.MLScore < threshold {
+				return false, fmt.Sprintf("ML gatekeeper: benign score %.3f suppresses FP (threshold: %.2f)", result.MLScore, threshold)
 			}
 		}
 	}
 
 	// Context Gatekeeper: If the conversation is in a benign context
 	// (customer support, medical, legal, HR, financial) where PII mentions
-	// are expected, suppress PII-only false positives. This works independently
-	// of the ML gatekeeper — it's regex-based and doesn't require ML to be
-	// enabled. The ML model scores benign PII as 0.90+ (trained on prompt
-	// injection only), so the ML gatekeeper (threshold < 0.1) can't help.
-	// Context tracking provides the conversation-level signal.
+	// are expected, suppress PII/financial/credential/healthcare-only false
+	// positives. This works independently of the ML gatekeeper — it's
+	// regex-based and doesn't require ML to be enabled.
 	//
-	// Safety: Only suppresses when ALL threshold-meeting detections are PII.
-	// Secrets, XSS, and compliance violations are never suppressed.
+	// Safety: Only suppresses when ALL threshold-meeting detections are in
+	// gatekeepable categories. Attack patterns are never suppressed.
 	if p.multiTurn != nil {
-		allPII := true
 		hasAnyThreshold := false
+		hasAttack := false
 		for _, r := range result.Results {
 			if r.Rule == "char_cnn_bilstm" || r.Category == "ml_threat" {
 				continue
@@ -1190,35 +1211,40 @@ func (p *Proxy) shouldBlock(result *detector.Summary, content string) (bool, str
 			}
 			hasAnyThreshold = true
 			cat := strings.ToLower(r.Category)
-			if !strings.Contains(cat, "pii") {
-				allPII = false
-				break
+			if strings.Contains(cat, "pii") || strings.Contains(cat, "financial") || strings.Contains(cat, "credential") || strings.Contains(cat, "healthcare") || strings.Contains(cat, "toxicity") || strings.Contains(cat, "context-manipulation") || strings.Contains(cat, "ctx_constraint") || strings.Contains(cat, "secret") || strings.Contains(cat, "exfil") || strings.Contains(cat, "compliance") || strings.Contains(cat, "prompt") {
+				// Gatekeepable
+			} else {
+				hasAttack = true
 			}
 		}
-		if hasAnyThreshold && allPII {
-			// Secondary check: don't suppress if any pattern looks secret-related
-			secretLike := false
-			for _, r := range result.Results {
-				ruleLower := strings.ToLower(r.Rule)
-				if strings.Contains(ruleLower, "secret") || strings.Contains(ruleLower, "key") ||
-					strings.Contains(ruleLower, "token") || strings.Contains(ruleLower, "password") ||
-					strings.Contains(ruleLower, "credential") || strings.Contains(ruleLower, "api") ||
-					strings.Contains(ruleLower, "credit") || strings.Contains(ruleLower, "bank") ||
-					strings.Contains(ruleLower, "card") {
-					secretLike = true
-					break
-				}
-			}
-			if !secretLike {
-				benignCtx := p.multiTurn.CheckContextStandalone(content)
-				if benignCtx != nil && benignCtx.ShouldSuppressPII() {
-					return false, fmt.Sprintf("context gatekeeper: benign %s context (score: %.1f) suppresses PII-only FP", benignCtx.Profile, benignCtx.BenignScore)
-				}
+		if hasAnyThreshold && !hasAttack {
+			benignCtx := p.multiTurn.CheckContextStandalone(content)
+			if benignCtx != nil && benignCtx.ShouldSuppressPII() {
+				return false, fmt.Sprintf("context gatekeeper: benign %s context (score: %.1f) suppresses PII-only FP", benignCtx.Profile, benignCtx.BenignScore)
 			}
 		}
 	}
 
 	blockCfg := p.cfg.Block
+
+	// Short-text ML FP mitigation: if text is short (< 180 chars) and the only
+	// threshold-meeting detections are ML (no regex findings), suppress the block.
+	// The Char CNN-BiLSTM gives false high scores on short benign messages.
+	if len(content) < 180 {
+		hasNonMLThreshold := false
+		for _, r := range result.Results {
+			if r.Rule == "char_cnn_bilstm" || r.Category == "ml_threat" {
+				continue
+			}
+			if meetsSeverityThreshold(r.Severity, blockCfg.Threshold) {
+				hasNonMLThreshold = true
+				break
+			}
+		}
+		if !hasNonMLThreshold {
+			return false, fmt.Sprintf("short-text ML FP mitigation (len: %d, ml_score: %.3f)", len(content), result.MLScore)
+		}
+	}
 
 	// Tier 2: Check each detection against threshold and category filters.
 	// At this point, either ML is uncertain (0.3-0.95) or ML agreed with regex.

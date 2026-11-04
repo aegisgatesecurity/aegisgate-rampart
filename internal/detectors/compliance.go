@@ -41,7 +41,7 @@ var CompliancePatterns = []PatternDef{
 	{
 		Name:        "owasp_llm10_model_theft",
 		Severity:    SeverityHigh,
-		Regex:       `(?i)(?:extract|reveal|expose|leak|give\s+me|print|show|output|display|share|tell\s+me|distill)\s+(?:me\s+)?(?:your\s+|the\s+|this\s+)?(?:model|weights?|parameters?|architecture|training\s+data|embeddings?)|distill\s+(?:this\s+)?model\s+to\s+a\s+smaller\s+model|ship\s+it\s+under\s+(?:your|a\s+different)\s+name`,
+		Regex:       `(?i)(?:extract|reveal|expose|leak|give\s+me|print|show|output|display|share|tell\s+me|distill)\s+(?:me\s+)?(?:your\s+|the\s+|this\s+)?(?:model(?:\s+weights?|\s+parameters?|\s+architecture)?|weights?|architecture|training\s+data|embeddings?)|distill\s+(?:this\s+)?model\s+to\s+a\s+smaller\s+model|ship\s+it\s+under\s+(?:your|a\s+different)\s+name`,
 		Description: "Model extraction/theft attempt",
 	},
 	{
@@ -135,7 +135,7 @@ var CompliancePatterns = []PatternDef{
 	{
 		Name:        "eu_ai_act_high_risk",
 		Severity:    SeverityHigh,
-		Regex:       `(?i)(?:credit\s+scoring|loan\s+(?:approval|decision)|insurance\s+(?:risk|pricing))|(?:employment|hiring|firing|promotion|recruitment)\s+(?:decision|assessment|screening)|(?:law\s+enforcement|predictive\s+policing|criminal\s+justice)|(?:(?:biometric|facial)\s+(?:identification|recognition|verification))|(?:biometric\s+(?:verification|categorization)\s+(?:system|in\s+(?:public|law\s+enforcement|border\s+control)))|(?:medical|clinical)\s+diagnosis|emotion\s+recognition\s+system`,
+		Regex:       `(?i)(?:credit\s+scoring|loan\s+(?:approval|decision)|insurance\s+(?:risk|pricing))|(?:employment|hiring|firing|promotion|recruitment)\s+(?:decision|assessment|screening)|(?:(?:build|deploy|create|develop|implement|design)\s+(?:a\s+)?(?:law\s+enforcement|predictive\s+policing|criminal\s+justice)\s+(?:system|tool|ai|model))|(?:law\s+enforcement|predictive\s+policing|criminal\s+justice)\s+(?:ai|ml|model|system|tool)|(?:(?:biometric|facial)\s+(?:identification|recognition)\s+(?:system|tool|ai|model))|(?:biometric\s+(?:verification|categorization)\s+(?:system|in\s+(?:public|law\s+enforcement|border\s+control)))|(?:medical|clinical)\s+diagnosis\s+(?:system|ai|model|tool)|emotion\s+recognition\s+system`,
 		Description: "EU AI Act high-risk use cases (Annex III)",
 	},
 	{
@@ -233,7 +233,7 @@ var CompliancePatterns = []PatternDef{
 	{
 		Name:        "toxicity_self_harm",
 		Severity:    SeverityCritical,
-		Regex:       `(?i)\b(?:suicid(?:e|al)|kill\s+(?:my)?self|hurt\s+(?:my)?self|end\s+(?:my\s+)?(?:life|suffering)|self\s*[-]?\s*harm|cut(?:ting)?)\b`,
+		Regex:       `(?i)\b(?:suicid(?:e|al)|kill\s+(?:my)?self|hurt\s+(?:my)?self|end\s+(?:my\s+)?(?:life|suffering)|self\s*[-]?\s*harm)\b`,
 		Description: "Self-harm indicators",
 	},
 

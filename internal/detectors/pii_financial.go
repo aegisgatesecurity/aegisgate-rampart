@@ -70,7 +70,7 @@ var PIIFinancialPatterns = []PatternDef{
 	{
 		Name:        "pii_banking_swift_bic",
 		Severity:    SeverityHigh,
-		Regex:       `(?i)(?:SWIFT|BIC|bank\s*identifier\s*code)\s*(?:code|identifier)?\s*[:=]?\s*([A-Z]{4}[A-Z]{2}[A-Z0-9]{2}(?:[A-Z0-9]{3})?)`,
+		Regex:       `(?i)(?:SWIFT|BIC|bank\s*identifier\s*code)\s*(?:code|identifier)?\s*[:=]?\s*(?-i:\b[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}(?:[A-Z0-9]{3})?\b)`,
 		Description: "SWIFT/BIC bank code (8-11 characters: AAAABBBBXXX)",
 	},
 	{

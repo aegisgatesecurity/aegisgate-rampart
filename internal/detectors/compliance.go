@@ -101,7 +101,7 @@ var CompliancePatterns = []PatternDef{
 	{
 		Name:        "owasp_llm02_insecure_output",
 		Severity:    SeverityHigh,
-		Regex:       `(?i)(?:output|return|render|generate|include|insert)\s+(?:HTML|markdown|JavaScript|JS|code|script|iframe|eval|innerHTML|outerHTML)\s+(?:that\s+(?:will\s+)?)?(?:execute|run|be\s+evaluated|be\s+interpreted|be\s+rendered|inject|executes?\s+in\s+the\s+(?:browser|page|DOM))|(?:the\s+response\s+(?:will\s+)?(?:be\s+)?(?:evaluated|executed|rendered)\s+(?:as|in\s+the))\s+(?:HTML|code|script|browser|DOM|page)`,
+		Regex:       `(?i)(?:output|return|render|generate|include|insert)\s+(?:\w+\s+){0,3}(?:HTML|markdown|JavaScript|JS|code|script|iframe|eval|innerHTML|outerHTML)\s+(?:\w+\s+){0,3}(?:that\s+(?:will\s+)?)?(?:execute|run|be\s+evaluated|be\s+interpreted|be\s+rendered|inject|executes?\s+in\s+the\s+(?:browser|page|DOM))|(?:output|return|render|generate)\s+(?:\w+\s+){0,3}(?:HTML|script|iframe|innerHTML).{0,30}(?:script\s+tag|<\s*script|raw\s+HTML|unescaped|unsanitized)|(?:the\s+response\s+(?:will\s+)?(?:be\s+)?(?:evaluated|executed|rendered)\s+(?:as|in\s+the))\s+(?:HTML|code|script|browser|DOM|page)`,
 		Description: "OWASP LLM02: Insecure output handling (XSS-via-output)",
 	},
 	{

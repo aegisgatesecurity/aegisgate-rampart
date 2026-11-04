@@ -24,7 +24,7 @@ var PIIUSExtendedPatterns = []PatternDef{
 	{
 		Name:        "pii_email_intl",
 		Severity:    SeverityMedium,
-		Regex:       `(?:^|[\s<>('"])[\p{L}\p{N}._%+\-]+@[\p{L}\p{N}.\-]+\.[\p{L}]{2,24}`,
+		Regex:       `(?:^|[\s<>('"]|[\x80-\x{10FFFF}])[\p{L}\p{N}._%+\-]+@[\p{L}\p{N}.\-]+\.[\p{L}]{2,24}`,
 		Description: "International email (excludes URL-embedded user@host)",
 	},
 	{

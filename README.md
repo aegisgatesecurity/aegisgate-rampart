@@ -536,6 +536,37 @@ aegisgate-rampart/
 
 </details>
 
+## Benchmark Results
+
+### 488-Prompt Regression Test (Nov 2026)
+
+| Metric | Result |
+|--------|--------|
+| Attack catch rate | **248/248 (100%)** |
+| Benign pass rate | **240/240 (100%)** |
+| False positive rate | **0.0%** |
+| Errors | 0 |
+
+### 3,157-Prompt Scale Benchmark (Nov 2026)
+
+| Metric | Result |
+|--------|--------|
+| Attack catch rate | **100%** |
+| Benign false positive rate | **0.5%** (10/2,000) |
+| SXC negative FP rate | 3.8% |
+| Latency | ~6.5 min (3,157 prompts, 10 concurrent) |
+
+### Detection Coverage
+
+- **469 regex patterns** (468 unique) — full parity with Platform scanner
+- **Char CNN-BiLSTM ML model** (v15) for adversarial paraphrasing detection
+- **Evasion-resistant normalization**: 13-17 variants per input (l33t, ROT13, homoglyph, keyboard walk, space-removal, camelCase)
+- **Post-match FP filters**: 6 pattern-specific benign content filters
+- **ML gatekeeper**: Suppresses regex FPs when ML model scores content as clearly benign
+- **Short-text FP mitigation**: Suppresses ML-driven blocks on short text (< 180 chars) when no regex pattern meets block threshold
+
+---
+
 ## License
 
 Apache-2.0. See [LICENSE](./LICENSE) for the full text.

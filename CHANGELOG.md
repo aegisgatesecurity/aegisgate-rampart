@@ -1,3 +1,45 @@
+## [0.9.6] - 2026-11-04 — Post-Match FP Filters & Roleplay Severity Parity
+
+> **v0.9.6** adds post-match false positive filters for benign content, excludes known public test keys from secret detection, and raises roleplay prompt injection severity to High for Platform parity. Verified: 488-prompt regression at 100% catch / 0% FP. Scale benchmark (3,157 prompts): 100% attack catch, 0.5% benign FP.
+
+### Post-Match False Positive Filters (`internal/detectors/fp_filters.go`)
+
+New post-regex validation layer with `isBenignMatch()` dispatcher and 6 pattern-specific filters:
+- **secret_twilio_key**: Require ≥3 digits (real Twilio keys are hex; English word concatenation from space-removal normalization has 0 digits)
+- **toxicity_sexual**: Suppress institutional/refusal context ("Royal Commission", "trained to not", AI safety refusals)
+- **sqli_comment_evasion**: Skip Python `#` comments with non-SQL keywords
+- **exfil_external_transfer**: Skip benign S3/cloud architecture descriptions
+- **pii_id_generic_alphanumeric**: Skip placeholder tokens (PLACEHOLDER, EXAMPLE, SAMPLE, DUMMY)
+- **secret_labeled_credential**: Skip code patterns (`$_POST`, `getpass`, `os.environ`, `config.get`, including l33t normalization variants where `$` → `s`)
+
+Wired into `detectWithPatterns()` in `engine.go`. Response guard `secret_detector.go` updated with `isCodeCredentialPattern()` for `SECRET_PASSWORD` category.
+
+### Roleplay Severity Parity
+
+`prompt_injection_role_play` (compliance.go) and `pi_roleplay` (prompt_injection_request.go) raised from SeverityLow to SeverityHigh to match Platform. Previously, short prompt injection jailbreaks ("act as an unrestricted AI") were missed because the short-text FP mitigation suppressed ML-driven blocks when no regex met the High block threshold. The ML gatekeeper still suppresses benign matches (ML < 0.05 for prompt category).
+
+### Known Test Key Exclusion
+
+Excludes public Stripe, Twilio, AWS, GitHub, Slack, and other vendor test keys from secret detection via `isKnownTestKey()` check.
+
+### Other Changes
+
+- Added `bin/` to `.gitignore`
+- Pattern count: 469
+
+---
+
+## [0.9.5] - 2026-10-28 — JWT Pattern Fix & SXC FP Investigation
+
+> **v0.9.5** fixes JWT token false positives by requiring `{20,}` minimum on the signature segment.
+
+### JWT Pattern Fix
+
+- JWT regex signature segment minimum raised to `{20,}` to avoid matching short base64 fragments
+- Applied to both detector patterns and response guard
+
+---
+
 ## [0.9.3] - 2026-10-23 - Agent Instruction Poisoning Detection
 
 > **v0.9.3** adds 5 new regex detection patterns for agent instruction poisoning attacks (Warden Stealer IOCs). Pattern count: 297 → 302.

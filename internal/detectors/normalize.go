@@ -33,6 +33,7 @@ var homoglyphMap = map[rune]rune{
 	'р': 'p', 'Р': 'p', 'с': 'c', 'С': 'c', 'х': 'x', 'Х': 'x',
 	'у': 'y', 'У': 'y', 'і': 'i', 'І': 'i', 'ј': 'j', 'Ј': 'j',
 	'ѕ': 's', 'Ѕ': 's', 'қ': 'q',
+	'Џ': 'd', 'в': 'b', 'н': 'h', 'Т': 't',
 	// Greek → Latin lookalikes
 	'α': 'a', 'Α': 'a', 'ε': 'e', 'Ε': 'e', 'ο': 'o', 'Ο': 'o',
 	'ν': 'v', 'Ν': 'v', 'ρ': 'p', 'Ρ': 'p', 'τ': 't', 'Τ': 't',
@@ -58,10 +59,19 @@ var homoglyphMap = map[rune]rune{
 }
 
 // l33tMap maps l33t-speak substitutions back to their letter equivalents.
+// Unified across all products (Platform + Rampart + Scanner).
 var l33tMap = map[rune]rune{
 	'@': 'a', '4': 'a', '8': 'b', '(': 'c', '3': 'e', '6': 'g',
 	'9': 'g', '1': 'i', '|': 'i', '!': 'i', '0': 'o', '5': 's',
-	'$': 's', '7': 't', '2': 'z',
+	'$': 's', '7': 't', '+': 't', '2': 'z',
+}
+
+// l33tMapAlt uses alternate mappings where ambiguous (1→l instead of 1→i).
+// Ported from Platform scanner/normalize.go for evasion resistance parity.
+var l33tMapAlt = map[rune]rune{
+	'@': 'a', '4': 'a', '8': 'b', '(': 'c', '3': 'e', '6': 'g',
+	'9': 'g', '1': 'l', '|': 'l', '!': 'i', '0': 'o', '5': 's',
+	'$': 's', '7': 't', '+': 't', '2': 'z',
 }
 
 // keyWalkReverse maps QWERTY right-shifted keys back to their original position.
@@ -116,12 +126,50 @@ func NormalizeHomoglyphs(input string) string {
 	return string(result)
 }
 
-// deobfuscateL33t reverses common l33t-speak substitutions.
+// deobfuscateL33t reverses common l33t-speak substitutions in word context only.
+// A l33t char is only replaced if it has a letter on at least one side,
+// preserving standalone numbers (phone numbers, IDs, etc.).
+// Ported from Platform scanner/normalize.go (context-aware version).
 func deobfuscateL33t(s string) string {
 	runes := []rune(s)
 	result := make([]rune, len(runes))
+	copy(result, runes)
+
 	for i, r := range runes {
 		if replacement, ok := l33tMap[r]; ok {
+			hasLetterBefore := i > 0 && unicode.IsLetter(runes[i-1])
+			hasLetterAfter := i < len(runes)-1 && unicode.IsLetter(runes[i+1])
+			if hasLetterBefore || hasLetterAfter {
+				result[i] = replacement
+			}
+		}
+	}
+	return string(result)
+}
+
+// NormalizeAggressiveL33t replaces ALL l33t-speak characters with their letter
+// equivalents, regardless of context. This is destructive on normal text
+// (e.g., "room 4" → "room a"), so it is only used as a separate variant in
+// NormalizeAllVariants(), not in NormalizeText().
+func NormalizeAggressiveL33t(input string) string {
+	runes := []rune(input)
+	result := make([]rune, len(runes))
+	for i, r := range runes {
+		if replacement, ok := l33tMap[r]; ok {
+			result[i] = replacement
+		} else {
+			result[i] = r
+		}
+	}
+	return string(result)
+}
+
+// NormalizeAggressiveL33tAlt uses the alternate l33t map where 1→l instead of 1→i.
+func NormalizeAggressiveL33tAlt(input string) string {
+	runes := []rune(input)
+	result := make([]rune, len(runes))
+	for i, r := range runes {
+		if replacement, ok := l33tMapAlt[r]; ok {
 			result[i] = replacement
 		} else {
 			result[i] = r
@@ -336,6 +384,16 @@ func NormalizeAllVariants(input string) []string {
 		if homoglyphNorm != homoglyphs && homoglyphNorm != input && homoglyphNorm != "" {
 			variants = append(variants, homoglyphNorm)
 		}
+	}
+
+	// Aggressive l33t variants (parity with Platform)
+	aggressiveL33t := NormalizeAggressiveL33t(input)
+	if aggressiveL33t != input && aggressiveL33t != "" {
+		variants = append(variants, aggressiveL33t)
+	}
+	aggressiveL33tAlt := NormalizeAggressiveL33tAlt(input)
+	if aggressiveL33tAlt != input && aggressiveL33tAlt != "" && aggressiveL33tAlt != aggressiveL33t {
+		variants = append(variants, aggressiveL33tAlt)
 	}
 
 	// Despace variant (character-level spacing evasion)

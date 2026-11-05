@@ -1085,13 +1085,15 @@ func (p *Proxy) shouldBlock(result *detector.Summary, content string) (bool, str
 	// while the Char CNN-BiLSTM evaluates the full prompt context.
 
 	// Tier 1: high-confidence ML threat — block even without regex corroboration
+	// Threshold maintained at 0.95 — benchmark testing showed lowering to 0.80
+	// or 0.90 introduced 44-71 FPs with negligible catch improvement.
+	// FP mitigation: short text < 50 chars with no regex findings (lowered
+	// from 180 after 10K benchmark). PII-only context gatekeeper also retained.
 	if result.MLScore >= 0.95 {
-		// Short-text FP mitigation: very short benign messages can trigger
-		// false high-confidence ML scores. If text < 180 chars and no regex
-		// findings, suppress the tier 1 block.
-		if len(content) < 180 {
-			// Check if any regex findings meet the block threshold.
-			// If not, the block is purely ML-driven — suppress for short text.
+		// Short-text FP mitigation: truly short benign messages can trigger
+		// false high-confidence ML scores. Threshold lowered from 180 to 50
+		// chars — 180 was too aggressive, 50 is conservative.
+		if len(content) < 50 {
 			hasThresholdRegex := false
 			for _, r := range result.Results {
 				if r.Rule == "char_cnn_bilstm" || r.Category == "ml_threat" {

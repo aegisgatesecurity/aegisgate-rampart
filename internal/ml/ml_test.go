@@ -75,8 +75,8 @@ func TestDetectorConfigDefaults(t *testing.T) {
 	if cfg.Threshold != 0.5 {
 		t.Errorf("Default Threshold = %f, want 0.5", cfg.Threshold)
 	}
-	if cfg.MaxSequenceLength != 256 {
-		t.Errorf("Default MaxSequenceLength = %d, want 256", cfg.MaxSequenceLength)
+	if cfg.MaxSequenceLength != 512 {
+		t.Errorf("Default MaxSequenceLength = %d, want 512", cfg.MaxSequenceLength)
 	}
 	if cfg.Timeout != 10 {
 		t.Errorf("Default Timeout = %d, want 10", cfg.Timeout)

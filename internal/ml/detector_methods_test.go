@@ -332,8 +332,8 @@ func TestGetStats_DefaultConfig(t *testing.T) {
 	if !ok {
 		t.Error("Stats should contain 'max_seq_len' int key")
 	}
-	if maxSeqLen != 256 {
-		t.Errorf("Default max_seq_len = %d, want 256", maxSeqLen)
+	if maxSeqLen != 512 {
+		t.Errorf("Default max_seq_len = %d, want 512", maxSeqLen)
 	}
 
 	timeoutMs, ok := stats["timeout_ms"].(int)

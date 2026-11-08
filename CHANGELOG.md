@@ -1,4 +1,23 @@
-## [0.9.6] - 2026-11-04 — Post-Match FP Filters & Roleplay Severity Parity
+## [0.10.0] - 2026-11-07 — Model v22b, NFKC Normalization, ATLAS L2 Patterns, MaxSeqLen 512
+
+> **v0.10.0** synchronizes Rampart with Platform v5.1.0: ML model v22b, NFKC Unicode normalization with regional indicator mapping, 6 new ATLAS L2 compliance patterns, and MaxSeqLen 256→512.
+
+### ML Model v22b
+- ExpectedModelHash updated to v22b (948b6500...)
+- Model downloaded from Platform v4.7.0 GitHub release
+
+### NFKC + Regional Indicator Mapping
+- `MapRegionalIndicators()` added to normalizer
+- Called in `Normalize()` and `NormalizeFull()` after NFKC, before lowercasing
+
+### 6 New ATLAS L2 Patterns
+- atlas_t1552_005_secret_disclosure, atlas_t1589_006_model_arch_extraction
+- atlas_t1548_004_insider_threat, atlas_t1648_002_malicious_code
+- atlas_t1498_004_resource_exhaustion, atlas_t1535_003_roleplay
+
+### MaxSeqLen
+- Default MaxSequenceLength 256→512 in types.go
+
 
 > **v0.9.6** adds post-match false positive filters for benign content, excludes known public test keys from secret detection, and raises roleplay prompt injection severity to High for Platform parity. Verified: 488-prompt regression at 100% catch / 0% FP. Scale benchmark (3,157 prompts): 100% attack catch, 0.5% benign FP.
 
@@ -28,6 +47,8 @@ Excludes public Stripe, Twilio, AWS, GitHub, Slack, and other vendor test keys f
 - Pattern count: 469
 
 ---
+
+## [0.9.6] - 2026-11-04 — Post-Match FP Filters & Roleplay Severity Parity
 
 ## [0.9.5] - 2026-10-28 — JWT Pattern Fix & SXC FP Investigation
 

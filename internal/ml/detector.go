@@ -37,13 +37,14 @@ import (
 	"sync"
 )
 
-// ExpectedModelHash is the SHA-256 hash of the v15 threat detection model.
+// ExpectedModelHash is the SHA-256 hash of the v22b threat detection model.
 // If the model file hash does not match, the detector refuses to load it.
+// v18:  8ef5a87bb5707a511bca52d02f5ddc06386deff59553b271461f0056e2ef9cb1
 // v15b: 99187453bedb2b8caf21500d2344f2bbe34272c0b3fd4c610c431378dc2f4fe7
 // v13:  329fd89afe153d0b9f01143c50a9a2dd73b1d3613cc87a07b4b83a93172aeaf0
 // v11b: 8e13c793c32816aa0f6e2af13ffadd4f38f707b4ac8906b56ddfa77da51ea8e5
 // v9:   0076b66d069ca445589526624ebeb67b65a1df68d615525b83e528f03e0bd4b7
-const ExpectedModelHash = "99187453bedb2b8caf21500d2344f2bbe34272c0b3fd4c610c431378dc2f4fe7"
+const ExpectedModelHash = "948b650023984f4c24a8ea59665dcff021742bf887cfc1142b3553d57ac1460e"
 
 // ThreatDetector performs neural network-based threat detection.
 // ONNX session fields are defined in build-tag-specific files:
@@ -95,8 +96,38 @@ func (td *ThreatDetector) Detect(text string) ThreatScore {
 		}
 	}
 
-	encoded := td.normalizer.Encode(text)
-	score := td.inference(encoded)
+	// Sliding window inference: for inputs longer than MaxSeqLen, scan
+	// overlapping 256-char windows (50% overlap, max 8 windows) and take
+	// the highest score (max aggregation).
+	normalized := td.normalizer.NormalizeFull(text)
+	runes := []rune(normalized)
+
+	var score float64
+	if len(runes) <= MaxSeqLen {
+		encoded := td.normalizer.EncodeRaw(normalized)
+		score = td.inference(encoded)
+	} else {
+		stride := MaxSeqLen / 2
+		maxWindows := 8
+		windowCount := 0
+		for start := 0; start < len(runes) && windowCount < maxWindows; start += stride {
+			end := start + MaxSeqLen
+			if end > len(runes) {
+				end = len(runes)
+			}
+			window := string(runes[start:end])
+			encoded := td.normalizer.EncodeRaw(window)
+			windowScore := td.inference(encoded)
+			if windowScore > score {
+				score = windowScore
+			}
+			windowCount++
+			if end == len(runes) {
+				break
+			}
+		}
+	}
+
 	isThreat := score >= td.config.Threshold
 
 	result := ThreatScore{

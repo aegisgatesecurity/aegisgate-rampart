@@ -59,6 +59,17 @@ func detectWithPatterns(text string, patterns []compiledPattern, category string
 		indices := p.Compiled.FindAllStringIndex(text, -1)
 		for _, idx := range indices {
 			value := text[idx[0]:idx[1]]
+			// Skip known public test keys documented in vendor API docs.
+			// These are real-format keys that will never authenticate but
+			// trigger false positives in secret detection patterns.
+			if isKnownTestKey(p.Name, value) {
+				continue
+			}
+			// Skip matches that post-match analysis identifies as benign
+			// (code examples, institutional discussion, placeholder data, etc.)
+			if isBenignMatch(p.Name, value, text, idx[0], idx[1]) {
+				continue
+			}
 			// Truncate long matches (mirrors Lens behavior)
 			if len(value) > 200 {
 				value = value[:200] + "..."
@@ -98,7 +109,15 @@ func TotalCompiledPatterns() int {
 		len(CompiledAgentPoisoningPatterns) +
 		len(CompiledRAGPatterns) +
 		len(CompiledPathTraversalPatterns) +
-		len(CompiledPromptLeakagePatterns)
+		len(CompiledPromptLeakagePatterns) +
+		len(CompiledInjectionPatterns) +
+		len(CompiledMalwarePatterns) +
+		len(CompiledEvasionPatterns) +
+		len(CompiledDataExfilPatterns) +
+		len(CompiledSocialEngineeringPatterns) +
+		len(CompiledXSSRequestPatterns) +
+		len(CompiledPromptInjectionRequestPatterns) +
+		len(CompiledContextManipulationPatterns)
 }
 
 // DetectAll scans text with all pattern categories and returns combined results.
@@ -116,6 +135,14 @@ func DetectAll(text string) []Match {
 	all = append(all, DetectRAG(text)...)
 	all = append(all, DetectPathTraversal(text)...)
 	all = append(all, DetectPromptLeakage(text)...)
+	all = append(all, DetectInjection(text)...)
+	all = append(all, DetectMalware(text)...)
+	all = append(all, DetectEvasion(text)...)
+	all = append(all, DetectDataExfil(text)...)
+	all = append(all, DetectSocialEngineering(text)...)
+	all = append(all, DetectXSSRequest(text)...)
+	all = append(all, DetectPromptInjectionRequest(text)...)
+	all = append(all, DetectContextManipulation(text)...)
 
 	// Sort all matches by index
 	sort.Slice(all, func(i, j int) bool {
@@ -141,6 +168,14 @@ func DetectAllWithResults(text string) ([]Match, []DetectionResult) {
 		detectWithResult(text, CompiledRAGPatterns, CategoryRAG),
 		detectWithResult(text, CompiledPathTraversalPatterns, CategoryPathTraversal),
 		detectWithResult(text, CompiledPromptLeakagePatterns, CategoryPromptLeakage),
+		detectWithResult(text, CompiledInjectionPatterns, CategoryInjection),
+		detectWithResult(text, CompiledMalwarePatterns, CategoryMalware),
+		detectWithResult(text, CompiledEvasionPatterns, CategoryEvasion),
+		detectWithResult(text, CompiledDataExfilPatterns, CategoryDataExfil),
+		detectWithResult(text, CompiledSocialEngineeringPatterns, CategorySocialEngineering),
+		detectWithResult(text, CompiledXSSRequestPatterns, CategoryXSS),
+		detectWithResult(text, CompiledPromptInjectionRequestPatterns, CategoryCompliance),
+		detectWithResult(text, CompiledContextManipulationPatterns, CategoryContextManipulation),
 	}
 
 	all := DetectAll(text)
@@ -157,4 +192,43 @@ func detectWithResult(text string, patterns []compiledPattern, category Category
 		PatternCount: len(patterns),
 		ElapsedNS:    time.Since(start).Nanoseconds(),
 	}
+}
+
+// knownTestKeys maps pattern names to vendor-documented public test keys
+// that should not trigger secret detection. These keys appear in official
+// API documentation and will never authenticate.
+var knownTestKeys = map[string][]string{
+	"secret_stripe_key": {
+		"FAKE_STRIPE_TEST_KEY_DO_NOT_USE", // Stripe docs: https://stripe.com/docs/api
+	},
+}
+
+// knownTestKeyVariants holds all normalization variants of known test keys,
+// pre-computed at init time so that l33t-deobfuscated or otherwise normalized
+// forms of test keys are still recognized during variant scanning.
+var knownTestKeyVariants map[string]map[string]bool
+
+func init() {
+	knownTestKeyVariants = make(map[string]map[string]bool)
+	for patternName, keys := range knownTestKeys {
+		variantSet := make(map[string]bool)
+		for _, key := range keys {
+			variantSet[key] = true
+			for _, v := range NormalizeAllVariants(key) {
+				variantSet[v] = true
+			}
+		}
+		knownTestKeyVariants[patternName] = variantSet
+	}
+}
+
+// isKnownTestKey checks if a matched value is a known public test key.
+// It checks both the exact value and all normalization variants to handle
+// cases where the scanner is processing a normalized form of the input.
+func isKnownTestKey(patternName, value string) bool {
+	variants, ok := knownTestKeyVariants[patternName]
+	if !ok {
+		return false
+	}
+	return variants[value]
 }

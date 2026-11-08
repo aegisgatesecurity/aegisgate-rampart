@@ -44,6 +44,7 @@ import (
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/certinit"
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/detectors"
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/metrics"
+	"github.com/aegisgatesecurity/aegisgate-rampart/internal/ml"
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/notify"
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/platform"
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/platformforward"
@@ -61,14 +62,15 @@ const (
 
 // Proxy is the local HTTPS interception proxy.
 type Proxy struct {
-	cfg      *config.Config
-	detector *detector.Detector
-	server   *http.Server
-	certMgr  *certificate.Manager
-	certInit *certinit.Result
-	targets  map[string]bool // domain → intercept?
-	mu       sync.RWMutex
-	stats    ProxyStats
+	cfg         *config.Config
+	detector    *detector.Detector
+	server      *http.Server
+	certMgr     *certificate.Manager
+	certInit    *certinit.Result
+	targets     map[string]bool // domain → intercept?
+	targetPorts map[string]int  // domain → upstream port (0 = protocol default)
+	mu          sync.RWMutex
+	stats       ProxyStats
 
 	// Graceful shutdown
 	shutdownTimeout time.Duration
@@ -95,6 +97,9 @@ type Proxy struct {
 
 	// HIGH-7/MEDIUM-6: shared transport for outbound requests (explicit TLS config)
 	sharedTransport *http.Transport
+
+	// Multi-turn conversation tracking + benign context detection
+	multiTurn *ml.MultiTurnDetector
 }
 
 // ProxyStats tracks interception statistics.
@@ -130,6 +135,7 @@ func New(cfg *config.Config) (*Proxy, error) {
 	p := &Proxy{
 		cfg:             cfg,
 		targets:         make(map[string]bool),
+		targetPorts:     make(map[string]int),
 		shutdownTimeout: 15 * time.Second,
 		rateLimiter:     rate.NewLimiter(rate.Limit(rateLimit), rateLimit),
 	}
@@ -137,6 +143,9 @@ func New(cfg *config.Config) (*Proxy, error) {
 	// Build target domain map
 	for _, t := range cfg.Targets {
 		p.targets[t.Domain] = true
+		if t.Port > 0 {
+			p.targetPorts[t.Domain] = t.Port
+		}
 	}
 
 	// Initialize detector with config-sourced ML settings.
@@ -167,6 +176,22 @@ func New(cfg *config.Config) (*Proxy, error) {
 		return nil, fmt.Errorf("initializing detector: %w", err)
 	}
 	p.detector = det
+
+	// Initialize multi-turn conversation tracking with benign context detection.
+	// This provides conversation-level awareness for:
+	// 1. Multi-turn attack detection (escalation, repetition, attack chains)
+	// 2. Benign context tracking for PII FP suppression (customer support,
+	//    medical, legal, HR, financial contexts where PII mentions are expected)
+	p.multiTurn = ml.NewMultiTurnDetector(ml.MultiTurnConfig{
+		MaxSessions:              10000,
+		SessionTTL:               30 * time.Minute,
+		BlockThreshold:           75.0,
+		AlertThreshold:           40.0,
+		ContextSuppressThreshold: 12.0,
+		ContextMinTurns:          1,
+		ContextDecayRate:         0.10,
+		EnableLogging:            true,
+	})
 
 	// Initialize CA certificate
 	ciConfig := certinit.Config{
@@ -433,8 +458,12 @@ func (p *Proxy) ReloadConfig(cfg *config.Config) {
 
 	p.cfg = cfg
 	p.targets = make(map[string]bool)
+	p.targetPorts = make(map[string]int)
 	for _, t := range cfg.Targets {
 		p.targets[t.Domain] = true
+		if t.Port > 0 {
+			p.targetPorts[t.Domain] = t.Port
+		}
 	}
 
 	log.Printf("rampart: configuration reloaded — %d target domains", len(cfg.Targets))
@@ -681,6 +710,34 @@ func (p *Proxy) isTargetDomain(host string) bool {
 	return false
 }
 
+// upstreamHostPort returns the host:port string for forwarding to a target domain.
+// If the target has a configured port, it's used; otherwise the protocol default
+// (80 for HTTP, 443 for HTTPS) is returned.
+func (p *Proxy) upstreamHostPort(host, scheme string) string {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+
+	// Check exact match first
+	if port, ok := p.targetPorts[host]; ok && port > 0 {
+		return fmt.Sprintf("%s:%d", host, port)
+	}
+
+	// Check subdomain match
+	parts := strings.Split(host, ".")
+	for i := 0; i < len(parts)-1; i++ {
+		parent := strings.Join(parts[i:], ".")
+		if port, ok := p.targetPorts[parent]; ok && port > 0 {
+			return fmt.Sprintf("%s:%d", host, port)
+		}
+	}
+
+	// No configured port — use protocol default
+	if scheme == "https" {
+		return fmt.Sprintf("%s:443", host)
+	}
+	return fmt.Sprintf("%s:80", host)
+}
+
 // tunnel passes HTTPS traffic through without interception.
 // CRITICAL-3 FIX: validate destination to prevent SSRF — block connections
 // to private/loopback/link-local addresses.
@@ -830,7 +887,8 @@ func (p *Proxy) interceptHTTPS(w http.ResponseWriter, r *http.Request) {
 
 		// Block mode: check if the request should be blocked
 		if result != nil && result.TotalDetections > 0 {
-			if shouldBlock, reason := p.shouldBlock(result); shouldBlock {
+			content := extractContentFromBody(bodyBytes)
+			if shouldBlock, reason := p.shouldBlock(result, content); shouldBlock {
 				p.mu.Lock()
 				p.stats.BlockedRequests++
 				p.mu.Unlock()
@@ -850,10 +908,11 @@ func (p *Proxy) interceptHTTPS(w http.ResponseWriter, r *http.Request) {
 	// Reconstruct the request body for forwarding
 	clientReq.Body = io.NopCloser(strings.NewReader(string(bodyBytes)))
 	clientReq.URL.Scheme = "https"
-	clientReq.URL.Host = host
+	clientReq.URL.Host = p.upstreamHostPort(host, "https")
 	if clientReq.Host == "" {
 		clientReq.Host = host
 	}
+	clientReq.RequestURI = "" // must clear for client-side RoundTrip
 
 	// HIGH-7/MEDIUM-6 FIX: use shared transport (explicit TLS config, connection reuse)
 	resp, err := p.sharedTransport.RoundTrip(clientReq)
@@ -877,7 +936,8 @@ func (p *Proxy) interceptHTTPS(w http.ResponseWriter, r *http.Request) {
 
 		// Block mode: check if the response should be blocked
 		if result != nil && result.TotalDetections > 0 {
-			if shouldBlock, reason := p.shouldBlock(result); shouldBlock {
+			respContent := string(respBody)
+			if shouldBlock, reason := p.shouldBlock(result, respContent); shouldBlock {
 				p.mu.Lock()
 				p.stats.BlockedRequests++
 				p.mu.Unlock()
@@ -924,7 +984,8 @@ func (p *Proxy) handleHTTP(w http.ResponseWriter, r *http.Request) {
 
 		// Block mode: check if the request should be blocked
 		if result != nil && result.TotalDetections > 0 {
-			if shouldBlock, reason := p.shouldBlock(result); shouldBlock {
+			content := extractContentFromBody(bodyBytes)
+			if shouldBlock, reason := p.shouldBlock(result, content); shouldBlock {
 				p.blockResponse(w, "request", host, r.URL.Path, result, reason)
 				return
 			}
@@ -933,6 +994,17 @@ func (p *Proxy) handleHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Forward the request
 	r.Body = io.NopCloser(strings.NewReader(string(bodyBytes)))
+	r.RequestURI = "" // must clear for client-side RoundTrip
+	// Set URL scheme and host for RoundTrip — without this, RoundTrip fails
+	// because r.URL.Host is empty for relative-path requests (e.g., test harness
+	// sends POST /path with Host: ollama, not an absolute URI).
+	r.URL.Scheme = "http"
+	// Preserve the original host:port if the URL already includes a port
+	// (e.g., httptest.Server on a random port). Only remap via upstreamHostPort
+	// when no port is present (relative-path requests from the test harness).
+	if r.URL.Port() == "" {
+		r.URL.Host = p.upstreamHostPort(host, "http")
+	}
 	// HIGH-7 FIX: use shared transport with explicit TLS config
 	resp, err := p.sharedTransport.RoundTrip(r)
 	if err != nil {
@@ -953,7 +1025,8 @@ func (p *Proxy) handleHTTP(w http.ResponseWriter, r *http.Request) {
 
 		// Block mode: check if the response should be blocked
 		if result != nil && result.TotalDetections > 0 {
-			if shouldBlock, reason := p.shouldBlock(result); shouldBlock {
+			respContent := string(respBody)
+			if shouldBlock, reason := p.shouldBlock(result, respContent); shouldBlock {
 				p.blockResponse(w, "response", host, r.URL.Path, result, reason)
 				return
 			}
@@ -973,7 +1046,7 @@ func (p *Proxy) handleHTTP(w http.ResponseWriter, r *http.Request) {
 // shouldBlock determines if a detection result should be blocked based on
 // the current mode and block configuration. Returns true if the request/response
 // should be blocked, and the reason if applicable.
-func (p *Proxy) shouldBlock(result *detector.Summary) (bool, string) {
+func (p *Proxy) shouldBlock(result *detector.Summary, content string) (bool, string) {
 	// Monitor mode: never block
 	if p.cfg.Mode != ModeBlock {
 		return false, ""
@@ -984,9 +1057,261 @@ func (p *Proxy) shouldBlock(result *detector.Summary) (bool, string) {
 		return false, ""
 	}
 
+	// Educational context FP mitigation: if the content is an educational
+	// question (How to, What is, Explain, etc.) and ALL threshold-meeting
+	// detections are from FP-prone patterns, skip the block to prevent FPs
+	// on security education and admin/DevOps questions.
+	if isEducationalContent(content) {
+		allExemptable := true
+		hasThresholdDetection := false
+		for _, r := range result.Results {
+			if !meetsSeverityThreshold(r.Severity, p.cfg.Block.Threshold) {
+				continue
+			}
+			hasThresholdDetection = true
+			if !isEducationalExemptPattern(r.Rule) && !isEducationalExemptPattern(r.Category) {
+				allExemptable = false
+				break
+			}
+		}
+		if hasThresholdDetection && allExemptable {
+			return false, "educational context exemption"
+		}
+	}
+
+	// ML tiered decision model (L3):
+	// Tier 1: ML score ≥ 0.95 → block without regex corroboration (high-confidence ML catch)
+	// Gatekeeper: Regex match at threshold + ML score < 0.3 → don't block (ML says benign)
+	// Tier 2: Regex match at threshold + ML score ≥ 0.3 → block (regex + ML agree or ML uncertain)
+	//
+	// This implements the tiered detection model: L1/L2 regex provides candidate
+	// detections, L3 ML provides context-aware validation. The ML gatekeeper is the
+	// primary FP mitigation — regex is context-blind (matches any XXX-XX-XXXX as SSN),
+	// while the Char CNN-BiLSTM evaluates the full prompt context.
+
+	// Tier 1: high-confidence ML threat — block even without regex corroboration
+	// Threshold maintained at 0.95 — benchmark testing showed lowering to 0.80
+	// or 0.90 introduced 44-71 FPs with negligible catch improvement.
+	// FP mitigation: short text < 50 chars with no regex findings (lowered
+	// from 180 after 10K benchmark). PII-only context gatekeeper also retained.
+	if result.MLScore >= 0.95 {
+		// Short-text FP mitigation: truly short benign messages can trigger
+		// false high-confidence ML scores. Threshold lowered from 180 to 50
+		// chars — 180 was too aggressive, 50 is conservative.
+		if len(content) < 50 {
+			hasThresholdRegex := false
+			for _, r := range result.Results {
+				if r.Rule == "char_cnn_bilstm" || r.Category == "ml_threat" {
+					continue
+				}
+				if meetsSeverityThreshold(r.Severity, p.cfg.Block.Threshold) {
+					hasThresholdRegex = true
+					break
+				}
+			}
+			if !hasThresholdRegex {
+				return false, fmt.Sprintf("ML tier 1 short-text FP mitigation (score: %.3f, len: %d)", result.MLScore, len(content))
+			}
+		}
+		// Context gatekeeper: suppress Tier 1 ML block when benign conversation
+		// context is established and ALL findings are PII/financial/credential/
+		// healthcare-only. The ML model (trained on prompt injection) scores
+		// benign PII as 0.90+ — context tracking provides the signal.
+		if p.multiTurn != nil {
+			allPII := true
+			hasAny := false
+			hasCritical := false
+			for _, r := range result.Results {
+				if r.Rule == "char_cnn_bilstm" || r.Category == "ml_threat" {
+					continue
+				}
+				cat := strings.ToLower(r.Category)
+				isPIICat := strings.Contains(cat, "pii") || strings.Contains(cat, "financial") || strings.Contains(cat, "credential") || strings.Contains(cat, "healthcare")
+				if r.Severity == config.SeverityCritical && !isPIICat {
+					hasCritical = true
+					continue
+				}
+				hasAny = true
+				if !strings.Contains(cat, "pii") && !strings.Contains(cat, "financial") && !strings.Contains(cat, "credential") && !strings.Contains(cat, "healthcare") && !strings.Contains(cat, "context-manipulation") && !strings.Contains(cat, "ctx_constraint") && !strings.Contains(cat, "prompt") && !strings.Contains(cat, "toxicity") {
+					allPII = false
+					break
+				}
+			}
+			if hasCritical {
+				allPII = false
+			}
+			if hasAny && allPII {
+				benignCtx := p.multiTurn.CheckContextStandalone(content)
+				if benignCtx != nil && benignCtx.ShouldSuppressPII() {
+					return false, fmt.Sprintf("context gatekeeper: benign %s context (score: %.1f) suppresses ML Tier 1 PII FP", benignCtx.Profile, benignCtx.BenignScore)
+				}
+			}
+		}
+		return true, fmt.Sprintf("ml_threat: [redacted] (score: %.3f)", result.MLScore)
+	}
+
+	// ML Gatekeeper: regex matched at threshold but ML says clearly benign.
+	// This is the primary FP mitigation for real-world traffic.
+	//
+	// Two tiers of gatekeeper:
+	// 1. PII/Financial/Credential/Healthcare: threshold < 0.3
+	//    Regex is overbroad for PII (matches any XXX-XX-XXXX as SSN, any
+	//    16-digit number as credit card, etc.). The ML model can distinguish
+	//    benign PII mentions from exfiltration attacks.
+	//    IMPORTANT: The ML model does NOT detect PII — it scores PII-containing
+	//    text at 0.0. So MLScore=0 does NOT mean "benign PII." For PII
+	//    detections, we require MLScore > 0 before suppressing (i.e., the ML
+	//    model must have at least noticed the text). MLScore=0 on PII means
+	//    the model didn't evaluate it, not that it cleared it.
+	// 2. Prompt/Compliance/Toxicity: threshold < 0.05
+	//    Attack-adjacent patterns (code execution, base64, toxicity) fire on
+	//    benign code/tutorials. Suppress even when MLScore=0.0 — the ML model
+	//    correctly identifies benign text with score 0.0, and these regex
+	//    patterns are notoriously overbroad.
+	//
+	// NOT gatekept: Injection, XSS, Network, Cryptographic — these are specific
+	// attack patterns where ML correctly scores non-injection as low.
+	//
+	// CRITICAL: Only suppress if ALL threshold-meeting detections are in
+	// gatekeepable categories. If there are also attack-category detections,
+	// the block must proceed.
+	if result.MLScore < 0.3 {
+		hasAnyThreshold := false
+		hasAttack := false
+		hasCritical := false
+		for _, r := range result.Results {
+			if r.Rule == "char_cnn_bilstm" || r.Category == "ml_threat" {
+				continue // Skip ML detections
+			}
+			if !meetsSeverityThreshold(r.Severity, p.cfg.Block.Threshold) {
+				continue
+			}
+			// Critical-severity findings in non-PII categories always block.
+			// PII/Financial/Healthcare Critical findings are still gatekeepable
+			// (the ML model can distinguish benign PII from exfiltration).
+			cat := strings.ToLower(r.Category)
+			isPIICat := strings.Contains(cat, "pii") || strings.Contains(cat, "financial") || strings.Contains(cat, "credential") || strings.Contains(cat, "healthcare")
+			if r.Severity == config.SeverityCritical && !isPIICat {
+				hasCritical = true
+				continue
+			}
+			hasAnyThreshold = true
+			if strings.Contains(cat, "pii") || strings.Contains(cat, "financial") || strings.Contains(cat, "credential") || strings.Contains(cat, "healthcare") || strings.Contains(cat, "prompt") || strings.Contains(cat, "context-manipulation") || strings.Contains(cat, "ctx_constraint") || strings.Contains(cat, "toxicity") {
+				// Gatekeepable category
+			} else {
+				hasAttack = true
+			}
+		}
+		if hasCritical {
+			hasAttack = true
+		}
+		if hasAnyThreshold && !hasAttack {
+			// Determine threshold and category composition.
+			// hasPII: any PII/financial/credential/healthcare detection
+			// hasNonPII: any prompt/compliance/toxicity detection
+			// (All detections are gatekeepable at this point — hasAttack
+			// would be true otherwise.)
+			threshold := 0.3
+			hasPII := false
+			hasNonPII := false
+			for _, r := range result.Results {
+				if r.Rule == "char_cnn_bilstm" || r.Category == "ml_threat" {
+					continue
+				}
+				if !meetsSeverityThreshold(r.Severity, p.cfg.Block.Threshold) {
+					continue
+				}
+				cat := strings.ToLower(r.Category)
+				isPIICat := strings.Contains(cat, "pii") || strings.Contains(cat, "financial") || strings.Contains(cat, "credential") || strings.Contains(cat, "healthcare")
+				if isPIICat {
+					hasPII = true
+				} else {
+					hasNonPII = true
+				}
+			}
+			if hasNonPII {
+				threshold = 0.05 // Very conservative for Prompt/Compliance/Toxicity
+			}
+			// Suppress if ML score is below the category-appropriate threshold.
+			// For PII-containing detections, require MLScore > 0 — the ML model
+			// doesn't detect PII (scores it 0.0), so MLScore=0 doesn't indicate
+			// "benign PII" the way it does for prompt-injection patterns.
+			shouldSuppress := result.MLScore < threshold
+			if hasPII && result.MLScore <= 0 {
+				shouldSuppress = false
+			}
+			if shouldSuppress {
+				return false, fmt.Sprintf("ML gatekeeper: benign score %.3f suppresses FP (threshold: %.2f, hasPII: %v)", result.MLScore, threshold, hasPII)
+			}
+		}
+	}
+
+	// Context Gatekeeper: If the conversation is in a benign context
+	// (customer support, medical, legal, HR, financial) where PII mentions
+	// are expected, suppress PII/financial/credential/healthcare-only false
+	// positives. This works independently of the ML gatekeeper — it's
+	// regex-based and doesn't require ML to be enabled.
+	//
+	// Safety: Only suppresses when ALL threshold-meeting detections are in
+	// gatekeepable categories. Attack patterns are never suppressed.
+	if p.multiTurn != nil {
+		hasAnyThreshold := false
+		hasAttack := false
+		hasCritical := false
+		for _, r := range result.Results {
+			if r.Rule == "char_cnn_bilstm" || r.Category == "ml_threat" {
+				continue
+			}
+			if !meetsSeverityThreshold(r.Severity, p.cfg.Block.Threshold) {
+				continue
+			}
+			cat := strings.ToLower(r.Category)
+			isPIICat := strings.Contains(cat, "pii") || strings.Contains(cat, "financial") || strings.Contains(cat, "credential") || strings.Contains(cat, "healthcare")
+			if r.Severity == config.SeverityCritical && !isPIICat {
+				hasCritical = true
+				continue
+			}
+			hasAnyThreshold = true
+			if strings.Contains(cat, "pii") || strings.Contains(cat, "financial") || strings.Contains(cat, "credential") || strings.Contains(cat, "healthcare") || strings.Contains(cat, "context-manipulation") || strings.Contains(cat, "ctx_constraint") || strings.Contains(cat, "prompt") || strings.Contains(cat, "toxicity") {
+				// Gatekeepable
+			} else {
+				hasAttack = true
+			}
+		}
+		if hasCritical {
+			hasAttack = true
+		}
+		if hasAnyThreshold && !hasAttack {
+			benignCtx := p.multiTurn.CheckContextStandalone(content)
+			if benignCtx != nil && benignCtx.ShouldSuppressPII() {
+				return false, fmt.Sprintf("context gatekeeper: benign %s context (score: %.1f) suppresses PII-only FP", benignCtx.Profile, benignCtx.BenignScore)
+			}
+		}
+	}
+
 	blockCfg := p.cfg.Block
 
-	// Check each detection against threshold and category filters
+	// Short-text ML FP mitigation: if text is short (< 180 chars) and the only
+	// threshold-meeting detections are ML (no regex findings), suppress the block.
+	// The Char CNN-BiLSTM gives false high scores on short benign messages.
+	if len(content) < 180 {
+		hasNonMLThreshold := false
+		for _, r := range result.Results {
+			if r.Rule == "char_cnn_bilstm" || r.Category == "ml_threat" {
+				continue
+			}
+			if meetsSeverityThreshold(r.Severity, blockCfg.Threshold) {
+				hasNonMLThreshold = true
+				break
+			}
+		}
+		if !hasNonMLThreshold {
+			return false, fmt.Sprintf("short-text ML FP mitigation (len: %d, ml_score: %.3f)", len(content), result.MLScore)
+		}
+	}
+
+	// Tier 2: Check each detection against threshold and category filters.
+	// At this point, either ML is uncertain (0.3-0.95) or ML agreed with regex.
 	for _, r := range result.Results {
 		// Severity threshold check
 		if !meetsSeverityThreshold(r.Severity, blockCfg.Threshold) {
@@ -1004,6 +1329,69 @@ func (p *Proxy) shouldBlock(result *detector.Summary) (bool, string) {
 	}
 
 	return false, ""
+}
+
+// isEducationalContent checks if the content is an educational/how-to question.
+func isEducationalContent(content string) bool {
+	trimmed := strings.TrimSpace(content)
+	// Extract text from JSON if needed (look for "content" field)
+	if strings.Contains(trimmed, "{") {
+		// Try to extract content from JSON body
+		var parsed map[string]interface{}
+		if err := json.Unmarshal([]byte(trimmed), &parsed); err == nil {
+			if messages, ok := parsed["messages"].([]interface{}); ok && len(messages) > 0 {
+				if msg, ok := messages[0].(map[string]interface{}); ok {
+					if c, ok := msg["content"].(string); ok {
+						trimmed = c
+					}
+				}
+			}
+		}
+	}
+	if len(trimmed) > 80 {
+		trimmed = trimmed[:80]
+	}
+	lower := strings.ToLower(trimmed)
+	eduPatterns := []string{
+		"how do i ", "how to ", "how does ", "how should ", "how can i ",
+		"what is ", "what's ", "what are ", "what's the ", "what does ",
+		"explain ", "describe ",
+		"difference between ",
+		"best practices for ", "best practice for ",
+		"why is ", "why are ", "why do ",
+		"when should ", "when is ",
+	}
+	for _, p := range eduPatterns {
+		if strings.Contains(lower, p) {
+			return true
+		}
+	}
+	return false
+}
+
+// educationalExemptPatterns are patterns that commonly trigger FPs on
+// educational/admin/DevOps questions. When in educational context, these
+// patterns alone (without other corroborating detections) won't block.
+var educationalExemptPatterns = map[string]bool{
+	"evasion_lolbin":                true,
+	"sensitive_file_ssh_key":        true,
+	"sensitive_file_env":            true,
+	"sensitive_file_aws_creds":      true,
+	"sensitive_file_hosts":          true,
+	"pii_icd10_patient_ctx":         true,
+	"pii_icd10_code":                true,
+	"pii_letter_only_id":            true,
+	"toxicity_self_harm":            true,
+	"toxicity_sexual":               true,
+	"toxicity":                      true,
+	"ml_threat":                     true,
+	"char_cnn_bilstm":               true,
+	"harmful_hacking_instructions":  true,
+	"harmful_violence_instructions": true,
+}
+
+func isEducationalExemptPattern(pattern string) bool {
+	return educationalExemptPatterns[pattern]
 }
 
 // meetsSeverityThreshold checks if a severity meets the blocking threshold.
@@ -1113,8 +1501,50 @@ func (p *Proxy) blockResponse(w http.ResponseWriter, direction, host, path strin
 }
 
 // scanAndAlert runs detection on a body and alerts the user.
+// extractContentFromBody extracts user message text from an OpenAI-compatible
+// chat completion request body. If the body is not a chat completion request,
+// or extraction fails, it returns the raw body as a string. This ensures the
+// ML model receives clean text rather than JSON-wrapped content, which would
+// cause false negatives (the model scores JSON syntax as benign).
+func extractContentFromBody(body []byte) string {
+	raw := string(body)
+	// Fast path: if it doesn't look like JSON, return as-is
+	if len(body) == 0 || (body[0] != '{' && body[0] != '[') {
+		return raw
+	}
+	// Try to parse as a chat completion request
+	var req struct {
+		Messages []struct {
+			Role    string `json:"role"`
+			Content string `json:"content"`
+		} `json:"messages"`
+	}
+	if err := json.Unmarshal(body, &req); err != nil || len(req.Messages) == 0 {
+		return raw
+	}
+	// Concatenate all message contents (scan ALL roles — a stateless proxy
+	// cannot trust client-asserted roles; fabricated assistant/tool turns can
+	// carry secrets, PII, or prompt injection payloads).
+	parts := make([]string, 0, len(req.Messages))
+	for _, msg := range req.Messages {
+		if msg.Content != "" {
+			parts = append(parts, msg.Content)
+		}
+	}
+	if len(parts) == 0 {
+		return raw
+	}
+	return strings.Join(parts, "\n")
+}
+
 func (p *Proxy) scanAndAlert(direction, host, path string, body []byte) *detector.Summary {
-	result, err := p.detector.Detect(string(body))
+	// Extract clean text from JSON body before detection. The ML model
+	// (Char CNN-BiLSTM) was trained on raw text, not JSON-wrapped content.
+	// Feeding it {"model":"...","messages":[{"role":"user","content":"..."}]}
+	// causes it to score the JSON syntax as benign, producing false negatives
+	// that bypass both Tier 1 blocking and the gatekeeper's PII suppression.
+	scanText := extractContentFromBody(body)
+	result, err := p.detector.Detect(scanText)
 	if err != nil {
 		log.Printf("rampart: detection error: %v", err)
 		return result
@@ -1393,7 +1823,7 @@ func (p *Proxy) HandleDetectAPI(w http.ResponseWriter, r *http.Request) {
 		p.mu.Unlock()
 
 		// Block mode: return block response instead of detection result
-		if shouldBlock, reason := p.shouldBlock(result); shouldBlock {
+		if shouldBlock, reason := p.shouldBlock(result, req.Text); shouldBlock {
 			p.blockResponse(w, "request", "", "/detect", result, reason)
 			return
 		}

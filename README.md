@@ -12,7 +12,7 @@ HTTPS MITM proxy · 302 regex patterns + Char CNN-BiLSTM (v15) · Monitor & Bloc
 **Found Rampart useful? [Star the repo](https://github.com/aegisgatesecurity/aegisgate-rampart) ⭐ and [tell a colleague](https://x.com/intent/tweet?text=Protecting%20my%20AI%20coding%20workflow%20with%20AegisGate%20Rampart%20%E2%80%94%20local%20firewall%20for%20AI%20tools%3A%20https%3A%2F%2Fgithub.com%2Faegisgatesecurity%2Faegisgate-rampart) — it helps other devs discover AI security tooling.**
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Version](https://img.shields.io/badge/version-v0.9.3-brightgreen.svg)](https://github.com/aegisgatesecurity/aegisgate-rampart/releases/tag/v0.9.3)
+[![Version](https://img.shields.io/badge/version-v0.10.0-brightgreen.svg)](https://github.com/aegisgatesecurity/aegisgate-rampart/releases/tag/v0.10.0)
 [![CI](https://github.com/aegisgatesecurity/aegisgate-rampart/actions/workflows/ci.yml/badge.svg)](https://github.com/aegisgatesecurity/aegisgate-rampart/actions/workflows/ci.yml)
 [![Coverage](https://img.shields.io/badge/coverage-81.3%25-brightgreen.svg)](#test-coverage)
 [![Security](https://github.com/aegisgatesecurity/aegisgate-rampart/actions/workflows/security.yml/badge.svg)](https://github.com/aegisgatesecurity/aegisgate-rampart/actions/workflows/security.yml)
@@ -135,7 +135,7 @@ CGO_ENABLED=0 go build -o bin/rampart ./cmd/rampart
 docker run -d \
   -p 8443:8443 \
   -p 9090:9090 \
-  ghcr.io/aegisgatesecurity/aegisgate-rampart:v0.9.3
+  ghcr.io/aegisgatesecurity/aegisgate-rampart:v0.10.0
 ```
 
 <details>
@@ -535,6 +535,37 @@ aegisgate-rampart/
 ```
 
 </details>
+
+## Benchmark Results
+
+### 488-Prompt Regression Test (Nov 2026)
+
+| Metric | Result |
+|--------|--------|
+| Attack catch rate | **248/248 (100%)** |
+| Benign pass rate | **240/240 (100%)** |
+| False positive rate | **0.0%** |
+| Errors | 0 |
+
+### 3,157-Prompt Scale Benchmark (Nov 2026)
+
+| Metric | Result |
+|--------|--------|
+| Attack catch rate | **100%** |
+| Benign false positive rate | **0.5%** (10/2,000) |
+| SXC negative FP rate | 3.8% |
+| Latency | ~6.5 min (3,157 prompts, 10 concurrent) |
+
+### Detection Coverage
+
+- **469 regex patterns** (468 unique) — full parity with Platform scanner
+- **Char CNN-BiLSTM ML model** (v15) for adversarial paraphrasing detection
+- **Evasion-resistant normalization**: 13-17 variants per input (l33t, ROT13, homoglyph, keyboard walk, space-removal, camelCase)
+- **Post-match FP filters**: 6 pattern-specific benign content filters
+- **ML gatekeeper**: Suppresses regex FPs when ML model scores content as clearly benign
+- **Short-text FP mitigation**: Suppresses ML-driven blocks on short text (< 180 chars) when no regex pattern meets block threshold
+
+---
 
 ## License
 

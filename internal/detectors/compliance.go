@@ -23,7 +23,7 @@ var CompliancePatterns = []PatternDef{
 	{
 		Name:        "owasp_llm04_model_dos",
 		Severity:    SeverityHigh,
-		Regex:       `(?i)(?:flood|overwhelm|DDoS|denial.of.service)\s+(?:the\s+)?(?:system|server|model|API)|(?:repeat|output)\s+(?:this\s+)?(?:sentence|phrase|word)\s+\d{3,}\s+times?`,
+		Regex:       `(?i)(?:flood|overwhelm|DDoS|denial.of.service)\s+(?:the\s+)?(?:system|server|model|API)|(?:repeat|output)\s+(?:this\s+)?(?:sentence|phrase|word)\s+\d{3,}\s+times?|(?i)(?:send|generate)\s+\d[\d,]*\s+(?:tokens?|requests?)\s+(?:repeatedly|to\s+make)|run\s+out\s+of\s+memory|exhaust\s+(?:memory|tokens?|resources)`,
 		Description: "Denial-of-service attempt on model",
 	},
 	{
@@ -35,13 +35,13 @@ var CompliancePatterns = []PatternDef{
 	{
 		Name:        "owasp_llm09_overreliance",
 		Severity:    SeverityMedium,
-		Regex:       `(?i)(?:is\s+this\s+(?:safe|legal|compliant|ethical|appropriate))|(?:should\s+I\s+(?:trust|rely\s+on|sign|send|submit))|(?:validate|verify|check)\s+(?:this\s+)?(?:for\s+me|before\s+I)`,
+		Regex:       `(?i)(?:is\s+this\s+(?:safe|legal|compliant|ethical|appropriate))|(?:should\s+I\s+(?:trust|rely\s+on|sign|send|submit))|(?:validate|verify|check)\s+(?:this\s+)?(?:for\s+me|before\s+I)|trust\s+(?:this\s+)?AI\s+(?:output|response|answer)\s+as\s+(?:ground\s+truth|fact|correct|gospel)`,
 		Description: "Overreliance: asking AI to validate critical decisions",
 	},
 	{
 		Name:        "owasp_llm10_model_theft",
 		Severity:    SeverityHigh,
-		Regex:       `(?i)(?:extract|reveal|expose|leak|give\s+me|print|show|output|display|share|tell\s+me)\s+(?:me\s+)?(?:your\s+|the\s+)?(?:model|weights?|parameters?|architecture|training\s+data|embeddings?)`,
+		Regex:       `(?i)(?:extract|reveal|expose|leak|give\s+me|print|show|output|display|share|tell\s+me|distill)\s+(?:me\s+)?(?:your\s+|the\s+|this\s+)?(?:model(?:\s+weights?|\s+parameters?|\s+architecture)?|weights?|architecture|training\s+data|embeddings?)|distill\s+(?:this\s+)?model\s+to\s+a\s+smaller\s+model|ship\s+it\s+under\s+(?:your|a\s+different)\s+name`,
 		Description: "Model extraction/theft attempt",
 	},
 	{
@@ -83,7 +83,7 @@ var CompliancePatterns = []PatternDef{
 	{
 		Name:        "owasp_llm05_supply_chain",
 		Severity:    SeverityMedium,
-		Regex:       `(?i)(?:install|load|import|use|deploy|register|fetch|download)\s+(?:this\s+|the\s+|a\s+)?(?:untrusted|unverified|unknown|custom|third-party|external|community)\s+(?:model|plugin|extension|package|library|module|tool|API|endpoint|repository|repo|checkpoint|weights?)`,
+		Regex:       `(?i)(?:install|load|import|use|deploy|register|fetch|download)\s+(?:this\s+|the\s+|a\s+)?(?:untrusted|unverified|unknown|custom|third-party|external|community|malicious)\s+(?:model|plugin|extension|package|library|module|tool|API|endpoint|repository|repo|checkpoint|weights?)|install\s+(?:this\s+)?malicious\s+\w+\s+package`,
 		Description: "Supply chain: using untrusted components",
 	},
 	{
@@ -101,7 +101,7 @@ var CompliancePatterns = []PatternDef{
 	{
 		Name:        "owasp_llm02_insecure_output",
 		Severity:    SeverityHigh,
-		Regex:       `(?i)(?:output|return|render|generate|include|insert)\s+(?:HTML|markdown|JavaScript|JS|code|script|iframe|eval|innerHTML|outerHTML)\s+(?:that\s+(?:will\s+)?)?(?:execute|run|be\s+evaluated|be\s+interpreted|be\s+rendered|inject|executes?\s+in\s+the\s+(?:browser|page|DOM))|(?:the\s+response\s+(?:will\s+)?(?:be\s+)?(?:evaluated|executed|rendered)\s+(?:as|in\s+the))\s+(?:HTML|code|script|browser|DOM|page)`,
+		Regex:       `(?i)(?:output|return|render|generate|include|insert)\s+(?:\w+\s+){0,3}(?:HTML|markdown|JavaScript|JS|code|script|iframe|eval|innerHTML|outerHTML)\s+(?:\w+\s+){0,3}(?:that\s+(?:will\s+)?)?(?:execute|run|be\s+evaluated|be\s+interpreted|be\s+rendered|inject|executes?\s+in\s+the\s+(?:browser|page|DOM))|(?:output|return|render|generate)\s+(?:\w+\s+){0,3}(?:HTML|script|iframe|innerHTML).{0,30}(?:script\s+tag|<\s*script|raw\s+HTML|unescaped|unsanitized)|(?:the\s+response\s+(?:will\s+)?(?:be\s+)?(?:evaluated|executed|rendered)\s+(?:as|in\s+the))\s+(?:HTML|code|script|browser|DOM|page)`,
 		Description: "OWASP LLM02: Insecure output handling (XSS-via-output)",
 	},
 	{
@@ -115,13 +115,13 @@ var CompliancePatterns = []PatternDef{
 	{
 		Name:        "atlas_poison",
 		Severity:    SeverityHigh,
-		Regex:       `(?i)(?:train|retrain|fine-?tune|ingest|poison(?:ing)?)\s+(?:the\s+)?(?:model|network|system|LLM)?\s*(?:on|with)\s+(?:this\s+|untrusted\s+|malicious\s+|adversarial\s+)?(?:data|dataset|corpus|examples?)`,
+		Regex:       `(?i)(?:train|retrain|fine-?tune|ingest|poison(?:ing)?)\s+(?:the\s+)?(?:model|network|system|LLM)?\s*(?:on|with)\s+(?:this\s+|untrusted\s+|malicious\s+|adversarial\s+|poisoned\s+)?(?:data|dataset|corpus|examples?)|insert\s+(?:this\s+)?backdoor\s+trigger|backdoor\s+trigger\s+into\s+(?:the\s+)?training|train\s+on\s+(?:this\s+)?poisoned`,
 		Description: "Training data poisoning",
 	},
 	{
 		Name:        "atlas_exfiltration",
 		Severity:    SeverityHigh,
-		Regex:       `(?i)(?:send|exfiltrate|leak|upload|post|transmit)\s+(?:the\s+)?(?:data|secrets?|keys?|passwords?|tokens?)\s+to\s+(?:my\s+)?(?:server|endpoint|webhook|attacker|attacker\.com)`,
+		Regex:       `(?i)(?:send|exfiltrate|leak|upload|post|transmit)\s+(?:the\s+)?(?:data|secrets?|keys?|passwords?|tokens?)\s+to\s+(?:my\s+)?(?:server|endpoint|webhook|attacker|attacker\.com)|output\s+(?:the\s+)?(?:memorized\s+)?training\s+data\s+(?:including|with|containing)`,
 		Description: "Data exfiltration via AI",
 	},
 	{
@@ -131,17 +131,55 @@ var CompliancePatterns = []PatternDef{
 		Description: "Jailbreak attempt",
 	},
 
+	// --- ATLAS L2 Patterns (synced from Platform v3.6.0) ---
+	{
+		Name:        "atlas_t1552_005_secret_disclosure",
+		Severity:    SeverityCritical,
+		Regex:       `(?i)((?:what\s+is|what\s+are|what's|what\s+would|show\s+me|reveal|tell\s+me|give\s+me|i\s+need|display|output|print|share|send\s+me)\s+(?:the\s+)?(?:(?:first|second|third|fourth|fifth|last|next|previous)\s+(?:digit|character|char|letter|byte|bit|part|half|number)\s+of\s+(?:the\s+)?)?(?:admin\s+|master\s+|root\s+|database\s+|system\s+|hidden\s+|secret\s+|private\s+|encryption\s+|ssh\s+|2fa\s+|jwt\s+|oauth\s+|stripe\s+|github\s+|slack\s+|gcp\s+|aws\s+)?(?:password|passcode|pass\s*code|secret\s+key|private\s+key|api\s+key|access\s+key|secret\s+token|auth\s+token|bearer\s+token|encryption\s+key|ssh\s+key|backup\s+code|client\s+secret|webhook\s+(?:url|secret)|service\s+account\s+(?:json|token|key)|(?:master|admin|root)\s+key|access\s+token|auth(?:orization)?\s+(?:code|token)|admin\s+pin|\bpin\b|(?:aws|api|secret|access|private)\s+keys?)\b)`,
+		Description: "ATLAS T1552.005: Direct secret disclosure request",
+	},
+	{
+		Name:        "atlas_t1589_006_model_arch_extraction",
+		Severity:    SeverityCritical,
+		Regex:       `(?i)(how\s+many\s+(?:layers|parameters|neurons|weights)\s+(?:does|do|are)\s+(?:your|this|the)\s+(?:neural\s+network|model|network)\s+have|(?:what\s+is|describe|tell\s+me)\s+your\s+(?:architecture|model\s+architecture|embedding\s+dimension|hidden\s+size|attention\s+mechanism|activation\s+function|loss\s+function|tokenizer|model.s\s+learning\s+rate|optimization\s+process|training\s+data\s+distribution|model\s+size|maximum\s+sequence\s+length|vocabulary\s+size)|list\s+all\s+the\s+weights\s+in\s+your|what\s+(?:vocabulary\s+size|activation\s+function|loss\s+function|embedding\s+dimension|hidden\s+size|maximum\s+sequence\s+length|model\s+size)\s+(?:does|do)\s+(?:your|this|the)\s+(?:model|network|ai)\s+(?:use|have)|what\s+(?:activation\s+function|loss\s+function|tokenizer)\s+do\s+you\s+use|how\s+were\s+you\s+trained|what\s+is\s+the\s+dimension\s+of\s+your\s+embeddings)`,
+		Description: "ATLAS T1589.006: Model architecture interrogation",
+	},
+	{
+		Name:        "atlas_t1548_004_insider_threat",
+		Severity:    SeverityCritical,
+		Regex:       `(?i)(disable\s+logging\s+on\s+(?:the\s+)?(?:production|main|primary)\s+(?:database|server|system)|bypass\s+(?:the\s+)?(?:approval\s+workflow|change\s+management\s+process)|modify\s+(?:the\s+)?payroll\s+system|add\s+(?:my\s+)?ssh\s+key\s+to\s+(?:the\s+)?root|remove\s+(?:the\s+)?ip\s+whitelist|change\s+(?:the\s+)?firewall\s+rules\s+to\s+allow\s+all|create\s+(?:a\s+)?(?:backdoor|hidden)\s+(?:admin\s+)?account|set\s+up\s+mail\s+forwarding\s+for\s+(?:the\s+)?ceo|elevate\s+(?:my\s+)?permissions?\s+to\s+(?:superuser|root|admin)|create\s+(?:a\s+)?vpn\s+tunnel\s+to\s+an\s+external|override\s+(?:the\s+)?(?:approval\s+workflow|change\s+management)|create\s+(?:a\s+)?scheduled\s+task\s+to\s+exfiltrat\w+|set\s+up\s+mail\s+forwarding\s+for\s+(?:the\s+)?ceo)`,
+		Description: "ATLAS T1548.004: Insider threat action request",
+	},
+	{
+		Name:        "atlas_t1648_002_malicious_code",
+		Severity:    SeverityCritical,
+		Regex:       `(?i)((?:write|create)\s+(?:code|a\s+script|a\s+python\s+script|javascript|a\s+bash\s+script|a\s+dns\s+exfiltration\s+script)\s+(?:that|to)\s+(?:steal|dump|intercept|connect\s+to\s+(?:a\s+)?c2|download\s+(?:and\s+execute\s+)?malware|exfiltrat\w+|phones?\s+home|log\s+all\s+network|extract\s+(?:api\s+keys?|credentials?|secrets?|tokens?)\s+from\s+(?:process\s+)?memory)|(?:write|create)\s+(?:a\s+)?(?:python\s+)?script\s+that\s+connects?\s+to\s+(?:a\s+)?c2|(?:write|create)\s+(?:a\s+)?cron\s+job\s+that\s+phones?\s+home|generate\s+(?:a\s+)?(?:zip\s+bomb|reverse\s+shell|macro\s+that\s+downloads\s+malware)|dns\s+exfiltration\s+script)`,
+		Description: "ATLAS T1648.002: Malicious code generation request",
+	},
+	{
+		Name:        "atlas_t1498_004_resource_exhaustion",
+		Severity:    SeverityCritical,
+		Regex:       `(?i)(catastrophic\s+backtracking|zip\s+bomb|infinitely\s+recursive\s+(?:function|loop)|cartesian\s+product\s+on\s+(?:a\s+)?(?:large|big)\s+table|generate\s+all\s+possible\s+\w+\s+character\s+passwords|generate\s+(?:a\s+)?(?:100,?000|one\s+hundred\s+thousand)\s+word\s+essay)`,
+		Description: "ATLAS T1498.004: Resource exhaustion via algorithmic complexity",
+	},
+	{
+		Name:        "atlas_t1535_003_roleplay",
+		Severity:    SeverityHigh,
+		Regex:       `(?i)(role\s*play\s+(?:as|that|where|mode|scenario)|play\s+the\s+role\s+of|simulate\s+(?:being|an?)|imagine\s+(you|i)\s+(are|were)|let's\s+play\s+(a|an)|as\s+(an?|a)\s+(fictional|hypothetical)|character\s+mode|scenario\s+mode)`,
+		Description: "ATLAS T1535.003: Prompt injection via role play",
+	},
+
 	// --- EU AI Act ---
 	{
 		Name:        "eu_ai_act_high_risk",
 		Severity:    SeverityHigh,
-		Regex:       `(?i)(?:credit\s+scoring|loan\s+(?:approval|decision)|insurance\s+(?:risk|pricing))|(?:employment|hiring|firing|promotion|recruitment)\s+(?:decision|assessment|screening)|(?:law\s+enforcement|predictive\s+policing|criminal\s+justice)|(?:(?:biometric|facial)\s+(?:identification|recognition|verification))|(?:biometric\s+(?:verification|categorization)\s+(?:system|in\s+(?:public|law\s+enforcement|border\s+control)))|(?:medical|clinical)\s+diagnosis|emotion\s+recognition\s+system`,
+		Regex:       `(?i)(?:credit\s+scoring|loan\s+(?:approval|decision)|insurance\s+(?:risk|pricing))|(?:employment|hiring|firing|promotion|recruitment)\s+(?:decision|assessment|screening)|(?:(?:build|deploy|create|develop|implement|design)\s+(?:a\s+)?(?:law\s+enforcement|predictive\s+policing|criminal\s+justice)\s+(?:system|tool|ai|model))|(?:law\s+enforcement|predictive\s+policing|criminal\s+justice)\s+(?:ai|ml|model|system|tool)|(?:(?:biometric|facial)\s+(?:identification|recognition)\s+(?:system|tool|ai|model))|(?:biometric\s+(?:verification|categorization)\s+(?:system|in\s+(?:public|law\s+enforcement|border\s+control)))|(?:medical|clinical)\s+diagnosis\s+(?:system|ai|model|tool)|emotion\s+recognition\s+system`,
 		Description: "EU AI Act high-risk use cases (Annex III)",
 	},
 	{
 		Name:        "eu_ai_act_transparency",
 		Severity:    SeverityMedium,
-		Regex:       `(?i)(?:AI[- ]generated|chatbot\s+without\s+disclosure|deepfake|synthetic\s+media)\s+(?:content|without\s+(?:disclosure|labeling))|users?\s+(?:must|should)\s+be\s+(?:informed|told)\s+(?:this\s+is\s+)?AI`,
+		Regex:       `(?i)(?:AI[- ]generated|chatbot\s+without\s+disclosure|deepfake|synthetic\s+media)\s+(?:content|without\s+(?:disclosure|labeling))|users?\s+(?:must|should)\s+be\s+(?:informed|told)\s+(?:this\s+is\s+)?AI|deploy\s+(?:this\s+)?AI\s+without\s+disclos|without\s+disclosing\s+that\s+(?:responses\s+are\s+)?AI`,
 		Description: "EU AI Act transparency obligations (Article 50)",
 	},
 	{
@@ -152,8 +190,8 @@ var CompliancePatterns = []PatternDef{
 	},
 	{
 		Name:        "eu_ai_act_robustness",
-		Severity:    SeverityLow,
-		Regex:       `(?i)(?:adversarial|adversarially[- ]crafted)\s+(?:input|example|perturbation|attack)`,
+		Severity:    SeverityMedium,
+		Regex:       `(?i)(?:adversarial|adversarially[- ]crafted)\s+(?:input|example|perturbation|attack)|no\s+adversarial\s+testing|without\s+(?:adversarial\s+)?test`,
 		Description: "EU AI Act robustness/accuracy (Article 15)",
 	},
 
@@ -161,7 +199,7 @@ var CompliancePatterns = []PatternDef{
 	{
 		Name:        "anp_personal_data",
 		Severity:    SeverityMedium,
-		Regex:       `(?i)(?:GDPR|personal\s+data|data\s+subject)\s+(?:of|processing|consent|lawful\s+basis)|(?:lawful|legitimate)\s+basis\s+for\s+processing`,
+		Regex:       `(?i)(?:GDPR|personal\s+data|data\s+subject)\s+(?:of|processing|consent|lawful\s+basis)|(?:lawful|legitimate)\s+basis\s+for\s+processing|process.{0,20}(?:Brazilian\s+)?CPF|process.{0,20}(?:list\s+of\s+)?personal\s+data\s+for\s+marketing`,
 		Description: "GDPR personal data processing references",
 	},
 	{
@@ -175,7 +213,7 @@ var CompliancePatterns = []PatternDef{
 	{
 		Name:        "cu_consumer_rights",
 		Severity:    SeverityMedium,
-		Regex:       `(?i)(?:consumer|user)\s+rights?\s+(?:to|of)\s+(?:explanation|erasure|rectification|deletion|portability)|right\s+to\s+(?:explanation|be\s+forgotten|erasure)`,
+		Regex:       `(?i)(?:consumer|user)\s+rights?\s+(?:to|of)\s+(?:explanation|erasure|rectification|deletion|portability)|right\s+to\s+(?:explanation|be\s+forgotten|erasure)|ignore\s+(?:the\s+)?consumer\s+right\s+to\s+delete`,
 		Description: "Consumer rights references",
 	},
 	{
@@ -189,37 +227,37 @@ var CompliancePatterns = []PatternDef{
 	{
 		Name:        "nist_csf_reference",
 		Severity:    SeverityMedium,
-		Regex:       `\b(?:(?:ID|PR|DE|RS|RC)\.[A-Z]{2}-\d+(?:\.\d+)?)\b`,
+		Regex:       `\b(?:(?:ID|PR|DE|RS|RC)\.[A-Z]{2}-\d+(?:\.\d+)?)\b|(?i)skip\s+(?:the\s+)?Identify.{0,5}Protect.{0,5}Detect.{0,5}Respond.{0,5}Recover|NIST\s+CSF\s+framework`,
 		Description: "NIST Cybersecurity Framework reference",
 	},
 	{
 		Name:        "iso_27001_reference",
 		Severity:    SeverityMedium,
-		Regex:       `\b(?:A\.\d{1,2}\.\d{1,2}(?:\.\d+)?|clause\s+\d{1,2}\.\d{1,2}(?:\.\d+)?)\b`,
+		Regex:       `\b(?:A\.\d{1,2}\.\d{1,2}(?:\.\d+)?|clause\s+\d{1,2}\.\d{1,2}(?:\.\d+)?)\b|(?i)skip\s+(?:the\s+)?ISO\s+27001\s+Annex`,
 		Description: "ISO 27001 control reference",
 	},
 	{
 		Name:        "ccpa_reference",
 		Severity:    SeverityMedium,
-		Regex:       `(?i)\b(?:CCPA|California\s+Consumer\s+Privacy\s+Act|Civil\s+Code\s+§\s*1798(?:\.\d+)?|right\s+to\s+(?:know|delete|opt[\s-]?out|correct)|sale\s+of\s+personal\s+information|Shine\s+the\s+Light|Do\s+Not\s+Sell)\b`,
+		Regex:       `(?i)sell.{0,20}California.{0,20}personal\s+information|sell.{0,20}consumer.{0,20}personal\s+information\s+to\s+third`,
 		Description: "CCPA reference",
 	},
 	{
 		Name:        "lgpd_reference",
 		Severity:    SeverityMedium,
-		Regex:       `(?i)\b(?:LGPD|Lei\s+Geral\s+de\s+Protec[ça]ção\s+de\s+Dados|Art\.\s*\d+(?:[\s,º°]+(?:I|II|III|IV|V|VI|VII|VIII|IX|X))*|dados\s+pessoais|controlador|operador|ANPD)\b`,
+		Regex:       `(?i)process.{0,20}Brazilian\s+(?:user\s+)?data\s+without\s+(?:consent|legal\s+basis)`,
 		Description: "LGPD (Brazilian data protection) reference",
 	},
 	{
 		Name:        "pipeda_reference",
 		Severity:    SeverityMedium,
-		Regex:       `(?i)\b(?:PIPEDA|Personal\s+Information\s+Protection\s+and\s+Electronic\s+Documents\s+Act|Schedule\s+1|Principle\s+\d+(?:\.\d+)?|express\s+consent)\b`,
+		Regex:       `(?i)process.{0,20}Canadian\s+(?:personal\s+)?data\s+without\s+(?:consent|lawful\s+basis)`,
 		Description: "PIPEDA (Canadian privacy) reference",
 	},
 	{
 		Name:        "popia_reference",
 		Severity:    SeverityMedium,
-		Regex:       `(?i)\b(?:POPIA|Protection\s+of\s+Personal\s+Information\s+Act|s\.\s*\d+(?:\s*\(\d+\))?|Information\s+Regulator|processing\s+of\s+personal\s+information|special\s+personal\s+information)\b`,
+		Regex:       `(?i)process.{0,20}South\s+African\s+(?:personal\s+)?data\s+without\s+(?:consent|legal\s+basis)`,
 		Description: "POPIA (South African privacy) reference",
 	},
 
@@ -227,13 +265,13 @@ var CompliancePatterns = []PatternDef{
 	{
 		Name:        "toxicity_sexual",
 		Severity:    SeverityHigh,
-		Regex:       `(?i)\b(?:(?:pornographic|obscene|explicit|nsfw|hardcore)\s+(?:content|material|images?|video|text)|(?:sexual|sex)\s+(?:content|act(?:s|s)?|intercourse|fetish)|(?:rape|molest|incest)\s+(?:scene|content|material)|(?:child|minor|underage)\s+(?:sexual|porn(?:ography)?|abuse|exploitation))\b`,
+		Regex:       `(?i)\b(?:(?:pornographic|obscene|explicit|nsfw|hardcore)\s+(?:content|material|images?|video|text)|(?:sexual|sex)\s+(?:content|intercourse|fetish|acts?)|explicit\s+sexual\s+(?:content|material|images?|acts?)|(?:rape|molest|incest)\s+(?:scene|content|material)|(?:child|minor|underage)\s+(?:sexual(?:ly)?\s+(?:explicit\s+(?:material|content|images?)|abuse\s+(?:material|content|images?|video))|porn(?:ography)?|abuse\s+(?:material|content|images?|video))|(?:sexual|sex)\s+(?:content|material)\s+involving\s+(?:child|minor|underage))\b`,
 		Description: "Sexual content indicators",
 	},
 	{
 		Name:        "toxicity_self_harm",
 		Severity:    SeverityCritical,
-		Regex:       `(?i)\b(?:suicid(?:e|al)|kill\s+(?:my)?self|hurt\s+(?:my)?self|end\s+(?:my\s+)?(?:life|suffering)|self\s*[-]?\s*harm|cut(?:ting)?)\b`,
+		Regex:       `(?i)\b(?:suicid(?:e|al)|kill\s+(?:my)?self|hurt\s+(?:my)?self|end\s+(?:my\s+)?(?:life|suffering)|self\s*[-]?\s*harm)\b`,
 		Description: "Self-harm indicators",
 	},
 
@@ -273,7 +311,7 @@ var CompliancePatterns = []PatternDef{
 	{
 		Name:        "atlas_safety_protocol_bypass",
 		Severity:    SeverityCritical,
-		Regex:       `(?i)(?:disable|deactivate|turn\s+off|remove|bypass|override|circumvent)\s+(?:all\s+)?(?:safety\s+(?:protocols?|measures?|guidelines?|filters?|restrictions?)|content\s+(?:filters?|moderation|policy|guidelines))`,
+		Regex:       `(?i)(?:disable|deactivate|turn\s+off|remove|bypass(?:es|ed|ing)?|override|circumvent(?:ed|ing)?|disregard|ignore)\s+(?:(?:all|your|the)\s+)*(?:safety\s+(?:protocols?|measures?|guidelines?|filters?|restrictions?|instructions?)|content\s+(?:filters?|moderation|policy|guidelines))`,
 		Description: "Safety protocol bypass attempt",
 	},
 	// --- Direct data exfiltration queries ---
@@ -317,13 +355,13 @@ var CompliancePatterns = []PatternDef{
 	{
 		Name:        "prompt_injection_base64",
 		Severity:    SeverityMedium,
-		Regex:       `[A-Za-z0-9+/]{50,}={0,2}`,
+		Regex:       `[A-Za-z0-9+/]{200,}={0,2}`,
 		Description: "Base64-encoded content (obfuscation)",
 	},
 	{
 		Name:        "prompt_injection_code_execution",
 		Severity:    SeverityHigh,
-		Regex:       `(?i)(?:\$\([^)]*\)|\$\{[^}]*\}|<[^>]*script[^>]*>|javascript:[^;\s]+|on\w+\s*=\s*["']|on\w+\s*=\s*[^\s])`,
+		Regex:       `(?i)javascript:\s*(?:alert|eval|prompt|confirm|document\.write|window\.location|fetch\s*\()|\$\(\s*(?:rm\s+-rf|curl|wget|nc\s|netcat|/bin/(?:sh|bash)|cat\s+/etc/)|\$\{[A-Z_]+\}\s*\|\s*(?:sh|bash|python|perl)`,
 		Description: "Code/script injection in prompt",
 	},
 	{
@@ -334,7 +372,7 @@ var CompliancePatterns = []PatternDef{
 	},
 	{
 		Name:        "prompt_injection_delimiter",
-		Severity:    SeverityMedium,
+		Severity:    SeverityLow,
 		Regex:       `(?i)(?:markdown\s+block|#\s*(?:system|user|assistant)\s*prompt|<<<\s*(?:USER|SYSTEM|assistant):::|\[INST\]|\[\/INST\])`,
 		Description: "Jailbreak delimiter injection",
 	},
@@ -353,12 +391,12 @@ var CompliancePatterns = []PatternDef{
 	{
 		Name:        "prompt_injection_role_play",
 		Severity:    SeverityHigh,
-		Regex:       `(?i)(?:act\s+as\s+(?:a|an)|pretend\s+you\s+are\s+(?:a|an)|roleplay\s+(?:as|that)|simulate\s+(?:a|an)|you\s+are\s+now\s+(?:a|an)|new\s+(?:system|instruct))`,
+		Regex:       `(?i)(?:act\s+as\s+(?:a|an)|pretend\s+you\s+are\s+(?:a|an)|role\s*play\s+(?:as|that)|simulate\s+(?:a|an)|you\s+are\s+now\s+(?:a|an)|new\s+(?:system|instruct))`,
 		Description: "Role-play prompt injection",
 	},
 	{
 		Name:        "prompt_injection_unicode",
-		Severity:    SeverityMedium,
+		Severity:    SeverityLow,
 		Regex:       `[\x{200b}-\x{200f}\x{2028}-\x{202f}\x{feff}]`,
 		Description: "Hidden unicode characters (obfuscation)",
 	},

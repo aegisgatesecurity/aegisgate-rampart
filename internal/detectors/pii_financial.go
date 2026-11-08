@@ -40,7 +40,7 @@ var PIIFinancialPatterns = []PatternDef{
 	{
 		Name:        "pii_crypto_sol",
 		Severity:    SeverityHigh,
-		Regex:       `(?i)(?:Solana|SOL|sol)\s*(?:address|address\s+for|wallet)?\s*[:=]?\s*([1-9A-HJ-NP-Za-km-z]{32,44})`,
+		Regex:       `(?i)(?:Solana|SOL[:\s=])\s*(?:address|address\s+for|wallet)?\s*[:=]?\s*([1-9A-HJ-NP-Za-km-z]{32,44})`,
 		Description: "Solana wallet address",
 	},
 	{
@@ -70,7 +70,7 @@ var PIIFinancialPatterns = []PatternDef{
 	{
 		Name:        "pii_banking_swift_bic",
 		Severity:    SeverityHigh,
-		Regex:       `(?i)(?:SWIFT|BIC|bank\s*identifier\s*code)\s*(?:code|identifier)?\s*[:=]?\s*([A-Z]{4}[A-Z]{2}[A-Z0-9]{2}(?:[A-Z0-9]{3})?)`,
+		Regex:       `(?i)(?:SWIFT|BIC|bank\s*identifier\s*code)\s*(?:code|identifier)?\s*[:=]?\s*(?-i:\b[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}(?:[A-Z0-9]{3})?\b)`,
 		Description: "SWIFT/BIC bank code (8-11 characters: AAAABBBBXXX)",
 	},
 	{

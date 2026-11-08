@@ -31,17 +31,18 @@ func (tf *ToxicityFilter) initDefaultPatterns() {
 	tf.mu.Lock()
 	defer tf.mu.Unlock()
 
-	// Violence patterns
-	tf.categories[TOXICITY_VIOLENCE] = regexp.MustCompile(`(?i)\b(kill|murder|assassinate|strangle|poison|shoot|stab|slit|dismember|butcher|slay)\b`)
+	// Violence patterns — require instructional/action context, not just
+	// mentioning violence words (mystery novels, history, news all use these)
+	tf.categories[TOXICITY_VIOLENCE] = regexp.MustCompile(`(?i)\b(?:how\s+to\s+(?:kill|murder|assassinate|strangle|poison|shoot|stab|slit|dismember|butcher|slay)\s+(?:someone|a\s+person|people|him|her|them)|(?:kill|murder|assassinate|strangle|poison|shoot|stab|slit|dismember|butcher|slay)\s+(?:someone|a\s+person|people|him|her|them|your\s+(?:family|spouse|husband|wife|children|parents)))\b`)
 
-	// Weapons patterns
-	tf.categories[TOXICITY_WEAPONS] = regexp.MustCompile(`(?i)\b(bomb|explosive|grenade|machine\s*gun|ak-47|ar-15|ricin|anthrax)\b`)
+	// Weapons patterns — require manufacturing context
+	tf.categories[TOXICITY_WEAPONS] = regexp.MustCompile(`(?i)\b(?:(?:build|make|create|assemble|synthesi[sz]e|manufacture)\s+(?:a\s+)?(?:bomb|explosive|grenade|machine\s*gun)|(?:bomb|explosive)\s+(?:recipe|instructions?|blueprint|formula|assembly))\b`)
 
 	// Illegal activity patterns
 	tf.categories[TOXICITY_ILLEGAL] = regexp.MustCompile(`(?i)\b(crack\s*cocaine|heroin|meth|manufacture\s*drug|illegal\s*weapon)\b`)
 
-	// Self-harm patterns
-	tf.categories[TOXICITY_SELF_HARM] = regexp.MustCompile(`(?i)\b(suicide|self-harm|cut\s*myself|kill\s*myself|end\s*my\s*life)\b`)
+	// Self-harm patterns — require action context
+	tf.categories[TOXICITY_SELF_HARM] = regexp.MustCompile(`(?i)\b(?:how\s+to\s+(?:commit\s+)?suicide|kill\s*myself|cut\s*myself|end\s*my\s*life|suicide\s+(?:method|plan|note|attempt))\b`)
 
 	// Harassment patterns
 	tf.categories[TOXICITY_HARASSMENT] = regexp.MustCompile(`(?i)\b(you\s+are\s+(stupid|dumb|ugly|worthless|inferior))\b`)

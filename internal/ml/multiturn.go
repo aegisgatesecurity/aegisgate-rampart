@@ -548,6 +548,7 @@ func (d *MultiTurnDetector) logResult(result *MultiTurnResult, content string) {
 		"turn", result.TurnNumber,
 		"turn_score", fmt.Sprintf("%.1f", result.TurnScore),
 		"cumulative_score", fmt.Sprintf("%.1f", result.CumulativeScore),
+		"content_preview", contentPreview,
 	}
 
 	if result.BenignContext != nil && result.BenignContext.Profile != ContextUnknown {

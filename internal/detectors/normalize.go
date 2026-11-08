@@ -464,9 +464,8 @@ func NormalizeDespaced(input string) string {
 				}
 			}
 		} else {
-			if spaceRun == 1 && currentWord.Len() > 0 {
-				// Single space between chars — skip it (this is the evasion)
-			}
+			// Single space between words is preserved by the word-building loop above;
+			// we only reach here for the first non-space char after a space run.
 			spaceRun = 0
 			currentWord.WriteRune(r)
 		}

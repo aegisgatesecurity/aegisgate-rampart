@@ -364,7 +364,7 @@ func (d *MultiTurnDetector) CheckContextStandalone(content string) *Conversation
 		}
 	}
 
-	var dominantProfile ContextProfile = ContextUnknown
+	var dominantProfile = ContextUnknown
 	var dominantScore float64
 	for profile, score := range ctx.ProfileScores {
 		if score > dominantScore {
@@ -510,7 +510,7 @@ func (d *MultiTurnDetector) detectContext(content string, session *SessionState)
 	}
 
 	// Determine dominant profile
-	var dominantProfile ContextProfile = ContextUnknown
+	var dominantProfile = ContextUnknown
 	var dominantScore float64
 	for profile, score := range ctx.ProfileScores {
 		if score > dominantScore {

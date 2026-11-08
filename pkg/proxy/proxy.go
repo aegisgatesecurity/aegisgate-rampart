@@ -314,7 +314,7 @@ func (p *Proxy) Start(ctx context.Context) error {
 	// This prevents the proxy from being used as an open proxy by
 	// network-adjacent attackers. Users who need remote access should
 	// use a reverse proxy or SSH tunnel.
-	bindAddr := "0.0.0.0" // test build: allow remote connections for GHOSTS testing
+	bindAddr := "127.0.0.1"
 	addr := fmt.Sprintf("%s:%d", bindAddr, p.cfg.ProxyPort)
 	p.stats.StartTime = time.Now()
 
@@ -999,7 +999,12 @@ func (p *Proxy) handleHTTP(w http.ResponseWriter, r *http.Request) {
 	// because r.URL.Host is empty for relative-path requests (e.g., test harness
 	// sends POST /path with Host: ollama, not an absolute URI).
 	r.URL.Scheme = "http"
-	r.URL.Host = p.upstreamHostPort(host, "http")
+	// Preserve the original host:port if the URL already includes a port
+	// (e.g., httptest.Server on a random port). Only remap via upstreamHostPort
+	// when no port is present (relative-path requests from the test harness).
+	if r.URL.Port() == "" {
+		r.URL.Host = p.upstreamHostPort(host, "http")
+	}
 	// HIGH-7 FIX: use shared transport with explicit TLS config
 	resp, err := p.sharedTransport.RoundTrip(r)
 	if err != nil {

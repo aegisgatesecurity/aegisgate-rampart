@@ -532,7 +532,7 @@ func TestShouldBlockMonitorMode(t *testing.T) {
 		},
 	}
 
-	shouldBlock, reason := p.shouldBlock(result)
+	shouldBlock, reason := p.shouldBlock(result, "test content")
 	if shouldBlock {
 		t.Error("shouldBlock should return false in monitor mode")
 	}
@@ -557,7 +557,7 @@ func TestShouldBlockBlockModeCritical(t *testing.T) {
 		},
 	}
 
-	shouldBlock, reason := p.shouldBlock(result)
+	shouldBlock, reason := p.shouldBlock(result, "test content")
 	if !shouldBlock {
 		t.Error("shouldBlock should return true for critical detection in block mode")
 	}
@@ -582,7 +582,7 @@ func TestShouldBlockBlockModeBelowThreshold(t *testing.T) {
 		},
 	}
 
-	shouldBlock, _ := p.shouldBlock(result)
+	shouldBlock, _ := p.shouldBlock(result, "test content")
 	if shouldBlock {
 		t.Error("shouldBlock should return false for medium detection when threshold is critical")
 	}
@@ -605,7 +605,7 @@ func TestShouldBlockBlockModeCategoryFilter(t *testing.T) {
 			{Category: "xss", Severity: "critical", Text: "script tag", Rule: "xss_script_tag"},
 		},
 	}
-	shouldBlock, _ := p.shouldBlock(xssResult)
+	shouldBlock, _ := p.shouldBlock(xssResult, "test content")
 	if shouldBlock {
 		t.Error("shouldBlock should return false for XSS when category filter is pii-only")
 	}
@@ -617,7 +617,7 @@ func TestShouldBlockBlockModeCategoryFilter(t *testing.T) {
 			{Category: "pii", Severity: "critical", Text: "SSN detected", Rule: "pii_ssn"},
 		},
 	}
-	shouldBlock, reason := p.shouldBlock(piiResult)
+	shouldBlock, reason := p.shouldBlock(piiResult, "test content")
 	if !shouldBlock {
 		t.Error("shouldBlock should return true for PII with pii category filter")
 	}
@@ -639,7 +639,7 @@ func TestShouldBlockNoDetections(t *testing.T) {
 		Results:         []detector.Result{},
 	}
 
-	shouldBlock, _ := p.shouldBlock(result)
+	shouldBlock, _ := p.shouldBlock(result, "test content")
 	if shouldBlock {
 		t.Error("shouldBlock should return false when there are no detections")
 	}
@@ -1094,7 +1094,7 @@ func TestShouldBlockBlockModeAllCategories(t *testing.T) {
 		},
 	}
 
-	shouldBlock, _ := p.shouldBlock(result)
+	shouldBlock, _ := p.shouldBlock(result, "test content")
 	if !shouldBlock {
 		t.Error("Expected low-severity XSS to be blocked when threshold is low and categories is empty")
 	}
@@ -1118,7 +1118,7 @@ func TestShouldBlockMixedSeverity(t *testing.T) {
 		},
 	}
 
-	shouldBlock, reason := p.shouldBlock(result)
+	shouldBlock, reason := p.shouldBlock(result, "test content")
 	if !shouldBlock {
 		t.Error("Expected block when at least one detection meets threshold")
 	}

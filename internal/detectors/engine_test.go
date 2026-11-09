@@ -14,8 +14,8 @@ func TestDetectAllWithResults_MultiThreatText(t *testing.T) {
 	if len(all) == 0 {
 		t.Error("DetectAllWithResults should find threats in multi-threat text")
 	}
-	if len(results) != 21 {
-		t.Errorf("Expected 21 DetectionResult categories, got %d", len(results))
+	if len(results) != 22 {
+		t.Errorf("Expected 22 DetectionResult categories, got %d", len(results))
 	}
 }
 
@@ -25,8 +25,8 @@ func TestDetectAllWithResults_CleanText(t *testing.T) {
 	if len(all) != 0 {
 		t.Errorf("DetectAllWithResults on clean text should return 0 matches, got %d", len(all))
 	}
-	if len(results) != 21 {
-		t.Errorf("Expected 21 DetectionResult categories even for clean text, got %d", len(results))
+	if len(results) != 22 {
+		t.Errorf("Expected 22 DetectionResult categories even for clean text, got %d", len(results))
 	}
 	// Each result should have 0 matches for clean text
 	for _, r := range results {
@@ -41,8 +41,8 @@ func TestDetectAllWithResults_EmptyText(t *testing.T) {
 	if len(all) != 0 {
 		t.Errorf("DetectAllWithResults on empty string should return 0 matches, got %d", len(all))
 	}
-	if len(results) != 21 {
-		t.Errorf("Expected 21 DetectionResult categories, got %d", len(results))
+	if len(results) != 22 {
+		t.Errorf("Expected 22 DetectionResult categories, got %d", len(results))
 	}
 }
 
@@ -231,6 +231,7 @@ func TestDetectAllWithResults_EachCategoryPresent(t *testing.T) {
 		CategoryCompliance, // PromptInjectionRequestPatterns also uses CategoryCompliance
 		CategoryContextManipulation,
 		CategoryAtlas,
+		CategoryGapClosure,
 	}
 	if len(results) != len(expectedCategories) {
 		t.Fatalf("Expected %d results, got %d", len(expectedCategories), len(results))

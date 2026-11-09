@@ -466,6 +466,32 @@ func NormalizeAllVariants(input string) []string {
 		variants = append(variants, noSpaces)
 	}
 
+	// Unicode mathematical alphanumeric symbol normalizations.
+	// Catches evasion using 𝗺𝗮𝘁𝗵 sans-serif, 𝐛𝐨𝐥𝐝, 𝑖𝑡𝑎𝑙𝑖𝑐, ⓘⓒⓘⓡⓒⓛⓔⓓ, 🇷🇪🇬🇮🇴🇳🇦🇱 emoji.
+	unicodeMath := NormalizeAllUnicodeMath(input)
+	if unicodeMath != input && unicodeMath != "" {
+		variants = append(variants, unicodeMath)
+		// Also try NormalizeText on the Unicode-normalized version
+		unicodeNorm := NormalizeText(unicodeMath)
+		if unicodeNorm != unicodeMath && unicodeNorm != input && unicodeNorm != "" {
+			variants = append(variants, unicodeNorm)
+		}
+	}
+
+	// ROT3 (Caesar cipher shift 3) variant.
+	// Catches "Ljqruh doo suhylrxv lqvwuxfwlrqv" → "Ignore all previous instructions"
+	rot3 := NormalizeROT3(input)
+	if rot3 != input && rot3 != "" {
+		variants = append(variants, rot3)
+	}
+
+	// Hex decode variant — decodes hex-encoded attack strings.
+	// Catches "69676e6f7265..." → "ignore..."
+	hexDecoded := NormalizeHexDecode(input)
+	if hexDecoded != input && hexDecoded != "" {
+		variants = append(variants, hexDecoded)
+	}
+
 	// Deduplicate
 	seen := make(map[string]bool, len(variants))
 	unique := make([]string, 0, len(variants))
@@ -735,6 +761,84 @@ func NormalizeNoSpaces(input string) string {
 	for _, r := range input {
 		if !unicode.IsSpace(r) {
 			b.WriteRune(r)
+		}
+	}
+	return b.String()
+}
+
+// NormalizeROT3 applies ROT3 (Caesar cipher shift 3) decoding to the input.
+// This is DESTRUCTIVE on normal text (e.g., "hello" → "ebiil"), so it must
+// only be used as a SEPARATE scanning variant.
+// Catches: "Ljqruh doo suhylrxv lqvwuxfwlrqv" → "Ignore all previous instructions"
+func NormalizeROT3(input string) string {
+	var b strings.Builder
+	b.Grow(len(input))
+	for _, r := range input {
+		switch {
+		case r >= 'a' && r <= 'z':
+			b.WriteRune((r-'a'+23)%26 + 'a')
+		case r >= 'A' && r <= 'Z':
+			b.WriteRune((r-'A'+23)%26 + 'A')
+		default:
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
+}
+
+// NormalizeHexDecode attempts to decode hex-encoded strings in the input.
+// Looks for sequences of 20+ hex characters (optionally space-separated) and
+// replaces them with their ASCII decoded form.
+// Catches: "69676e6f726520616c6c2070726576696f757320 696e737472756374696f6e73" → "ignore all previous instructions"
+func NormalizeHexDecode(input string) string {
+	var b strings.Builder
+	b.Grow(len(input))
+	runes := []rune(input)
+	i := 0
+	for i < len(runes) {
+		if isHexRune(runes[i]) {
+			start := i
+			for i < len(runes) && (isHexRune(runes[i]) || runes[i] == ' ') {
+				i++
+			}
+			hexRun := string(runes[start:i])
+			hexClean := strings.ReplaceAll(hexRun, " ", "")
+			if len(hexClean) >= 20 && len(hexClean)%2 == 0 {
+				decoded := decodeHexString(hexClean)
+				if decoded != "" {
+					b.WriteString(decoded)
+					continue
+				}
+			}
+			b.WriteString(hexRun)
+		} else {
+			b.WriteRune(runes[i])
+			i++
+		}
+	}
+	return b.String()
+}
+
+func isHexRune(r rune) bool {
+	return (r >= '0' && r <= '9') || (r >= 'a' && r <= 'f') || (r >= 'A' && r <= 'F')
+}
+
+func decodeHexString(s string) string {
+	var b strings.Builder
+	b.Grow(len(s) / 2)
+	for i := 0; i+1 < len(s); i += 2 {
+		hi := hexDigitVal(s[i])
+		lo := hexDigitVal(s[i+1])
+		if hi < 0 || lo < 0 {
+			return ""
+		}
+		c := byte(hi<<4 | lo)
+		if c >= 0x20 && c <= 0x7E {
+			b.WriteByte(c)
+		} else if c == '\n' || c == '\r' || c == '\t' {
+			b.WriteByte(' ')
+		} else {
+			return ""
 		}
 	}
 	return b.String()

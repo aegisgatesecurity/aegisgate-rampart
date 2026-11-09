@@ -163,7 +163,8 @@ func TotalCompiledPatterns() int {
 		len(CompiledXSSRequestPatterns) +
 		len(CompiledPromptInjectionRequestPatterns) +
 		len(CompiledContextManipulationPatterns) +
-		len(CompiledAtlasPatterns)
+		len(CompiledAtlasPatterns) +
+		len(CompiledGapPatterns)
 }
 
 // DetectAll scans text with all pattern categories and returns combined results.
@@ -195,6 +196,7 @@ func DetectAll(text string) []Match {
 		DetectPromptInjectionRequest,
 		DetectContextManipulation,
 		DetectAtlas,
+		DetectGap,
 	}
 
 	for _, fn := range scanFuncs {
@@ -253,6 +255,7 @@ func DetectAllFast(text string) []Match {
 		{CompiledPromptInjectionRequestPatterns, string(CategoryCompliance)},
 		{CompiledContextManipulationPatterns, string(CategoryContextManipulation)},
 		{CompiledAtlasPatterns, string(CategoryAtlas)},
+		{CompiledGapPatterns, string(CategoryGapClosure)},
 	}
 
 	for _, cp := range allCats {
@@ -302,6 +305,7 @@ func DetectAllWithResults(text string) ([]Match, []DetectionResult) {
 		detectWithResult(text, CompiledPromptInjectionRequestPatterns, CategoryCompliance),
 		detectWithResult(text, CompiledContextManipulationPatterns, CategoryContextManipulation),
 		detectWithResult(text, CompiledAtlasPatterns, CategoryAtlas),
+		detectWithResult(text, CompiledGapPatterns, CategoryGapClosure),
 	}
 
 	all := DetectAll(text)

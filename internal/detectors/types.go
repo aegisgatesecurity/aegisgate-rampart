@@ -43,6 +43,7 @@ const (
 	CategorySocialEngineering   Category = "social-engineering"
 	CategoryContextManipulation Category = "context-manipulation"
 	CategoryAtlas               Category = "atlas"
+	CategoryGapClosure          Category = "gap-closure"
 )
 
 // Match represents a single regex detection match.

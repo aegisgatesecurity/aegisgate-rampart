@@ -315,7 +315,11 @@ func (p *Proxy) Start(ctx context.Context) error {
 	// This prevents the proxy from being used as an open proxy by
 	// network-adjacent attackers. Users who need remote access should
 	// use a reverse proxy or SSH tunnel.
-	bindAddr := "127.0.0.1"
+	// Override via --bind flag or bind_addr in config (e.g., for Docker).
+	bindAddr := p.cfg.BindAddr
+	if bindAddr == "" {
+		bindAddr = "127.0.0.1"
+	}
 	addr := fmt.Sprintf("%s:%d", bindAddr, p.cfg.ProxyPort)
 	p.stats.StartTime = time.Now()
 

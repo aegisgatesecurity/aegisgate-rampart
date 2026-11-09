@@ -21,6 +21,7 @@ var (
 	versionFlag            = "dev"
 	daemonFlag             = flag.Bool("daemon", false, "Run as background daemon with system tray notifications")
 	portFlag               = flag.Int("port", 8080, "Local proxy port")
+	bindFlag               = flag.String("bind", "", "Bind address (default: 127.0.0.1, use 0.0.0.0 for Docker)")
 	configDirFlag          = flag.String("config", "", "Configuration directory path")
 	platformFlag           = flag.String("platform-url", "", "Optional Platform backend URL for telemetry")
 	platformKeyFlag        = flag.String("platform-api-key", "", "API key for Platform authentication")
@@ -139,6 +140,9 @@ func main() {
 
 	if *portFlag != 0 {
 		cfg.ProxyPort = *portFlag
+	}
+	if *bindFlag != "" {
+		cfg.BindAddr = *bindFlag
 	}
 	if *platformFlag != "" {
 		cfg.PlatformURL = *platformFlag

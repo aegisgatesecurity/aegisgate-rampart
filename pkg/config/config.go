@@ -25,6 +25,7 @@ const (
 
 // Config holds all Rampart configuration.
 type Config struct {
+	BindAddr           string         `json:"bind_addr"` // bind address (default: 127.0.0.1, use 0.0.0.0 for Docker)
 	ProxyPort          int            `json:"proxy_port"`
 	DaemonMode         bool           `json:"daemon_mode"`
 	Verbose            bool           `json:"verbose"`

@@ -218,7 +218,18 @@ func (d *Detector) detectWithContext(ctx context.Context, text string, runML boo
 	// 16KB covers system prompt + several turns of conversation.
 	const variantMaxScanBytes = 16 * 1024
 
-	// 2. Run ML threat detection (supplementary layer)
+	// 2 + 3. Run ML threat detection and variant scanning CONCURRENTLY.
+	//
+	// ML inference (~48ms cold, ~0.1ms warm) and regex variant scanning
+	// (~8ms with parallel variants) are independent — ML feeds the original
+	// text, regex feeds normalization variants. Running them in parallel
+	// reduces wall time from sum(ML, regex) to max(ML, regex).
+	//
+	// ML thread safety: ThreatDetector.Detect() holds a write lock around
+	// ONNX inference because it mutates shared tensor buffers. This is safe
+	// to call from a goroutine — the lock serializes ONNX calls, and the
+	// variant scanner doesn't touch the ML detector at all.
+	//
 	// Feed only the original text to the ML model, not normalization variants.
 	// The variants (ROT13, keyboard-walk, l33t, etc.) are designed for regex
 	// pattern matching, not neural network inference. The CharCNN-BiLSTM was
@@ -227,25 +238,27 @@ func (d *Detector) detectWithContext(ctx context.Context, text string, runML boo
 	// character-level normalization handles evasion patterns that the variant
 	// pipeline covers for regex. This matches Platform's request path approach.
 	// (ref: upstream/aegisgate/pkg/proxy/proxy.go:710-720)
+
+	// mlResultChan receives the ML result (or nil if ML is disabled).
+	// Buffered channel size 1 so the goroutine never blocks even if the
+	// variant scan finishes first and we've moved on.
+	type mlResult struct {
+		score    float64
+		isThreat bool
+	}
+	mlChan := make(chan *mlResult, 1)
+
 	if runML && d.ml != nil {
 		scanContent := text
 		if len(scanContent) > mlMaxScanBytes {
 			scanContent = scanContent[:mlMaxScanBytes]
 		}
-		mlResult := d.ml.Detect(scanContent)
-		summary.MLScore = mlResult.Score
-		if mlResult.IsThreat {
-			summary.Results = append(summary.Results, Result{
-				Category:   "ml_threat",
-				Severity:   "high",
-				Confidence: mlResult.Score,
-				Text:       "Neural network detected adversarial prompt pattern",
-				Rule:       "char_cnn_bilstm",
-				IsThreat:   true,
-				MLScore:    mlResult.Score,
-			})
-			summary.TotalDetections++
-		}
+		go func() {
+			r := d.ml.Detect(scanContent)
+			mlChan <- &mlResult{score: r.Score, isThreat: r.IsThreat}
+		}()
+	} else {
+		mlChan <- nil
 	}
 
 	// 3. Run all-detector scan on normalization variants (evasion-resistant).
@@ -280,10 +293,29 @@ func (d *Detector) detectWithContext(ctx context.Context, text string, runML boo
 			if len(scanText) > variantMaxScanBytes {
 				scanText = scanText[:variantMaxScanBytes]
 			}
-			results[idx].matches = detectors.DetectAll(scanText)
+			results[idx].matches = detectors.DetectAllFast(scanText)
 		}(i, v)
 	}
 	wg.Wait()
+
+	// Collect ML result (the goroutine is already done or will be momentarily;
+	// the channel is buffered so this never blocks).
+	mlRes := <-mlChan
+	if mlRes != nil {
+		summary.MLScore = mlRes.score
+		if mlRes.isThreat {
+			summary.Results = append(summary.Results, Result{
+				Category:   "ml_threat",
+				Severity:   "high",
+				Confidence: mlRes.score,
+				Text:       "Neural network detected adversarial prompt pattern",
+				Rule:       "char_cnn_bilstm",
+				IsThreat:   true,
+				MLScore:    mlRes.score,
+			})
+			summary.TotalDetections++
+		}
+	}
 
 	// Deduplicate and collect results sequentially
 	seenMatches := make(map[string]bool) // deduplicate by Category:Value

@@ -84,9 +84,18 @@ func NewThreatDetector(cfg DetectorConfig) *ThreatDetector {
 }
 
 // Detect analyzes text for threats and returns a ThreatScore.
+//
+// Uses a write lock (not RLock) because inferenceONNX mutates the shared
+// inputTensor and outputTensor buffers. With RLock, two concurrent Detect
+// calls would corrupt each other's tensor data. The lock serializes ONNX
+// inference, which is acceptable because:
+//  1. The LRU cache (checked before inference) absorbs most repeated calls
+//  2. Cold-cache ONNX inference is ~48ms — one at a time is fine for a proxy
+//  3. The regex variant scan runs in parallel (separate goroutine) in the
+//     caller, so ML serialization doesn't block regex scanning
 func (td *ThreatDetector) Detect(text string) ThreatScore {
-	td.mu.RLock()
-	defer td.mu.RUnlock()
+	td.mu.Lock()
+	defer td.mu.Unlock()
 
 	if !td.config.Enabled && !td.config.ShadowMode {
 		return ThreatScore{
@@ -161,12 +170,15 @@ func (td *ThreatDetector) Detect(text string) ThreatScore {
 }
 
 // DetectAll runs detection on all normalization variants.
+//
+// Uses a write lock for the same reason as Detect — inferenceONNX mutates
+// shared tensor buffers.
 func (td *ThreatDetector) DetectAll(variants []string) ThreatScore {
 	var bestScore float64
 	var bestVariant string
 
-	td.mu.RLock()
-	defer td.mu.RUnlock()
+	td.mu.Lock()
+	defer td.mu.Unlock()
 
 	if !td.config.Enabled && !td.config.ShadowMode {
 		return ThreatScore{

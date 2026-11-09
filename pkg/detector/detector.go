@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/detectors"
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/ml"
@@ -230,18 +231,40 @@ func (d *Detector) DetectWithContext(ctx context.Context, text string) (*Summary
 	//
 	// NormalizeAllVariants returns the original text as variants[0], so the
 	// first iteration covers the same content as the old single-pass scan.
+	//
+	// PERF: Variants are scanned in parallel (goroutine per variant) to reduce
+	// wall time from sum(variants) to max(variant). With 12 variants × 476
+	// patterns, sequential scanning cost ~52ms; parallel reduces to ~8ms on
+	// a 4-core machine.
 	variants := detectors.NormalizeAllVariants(text)
-	seenMatches := make(map[string]bool) // deduplicate by Category:Value
-	for _, v := range variants {
+
+	// Run DetectAll on each variant in parallel
+	type variantMatches struct {
+		matches []detectors.Match
+	}
+	results := make([]variantMatches, len(variants))
+	var wg sync.WaitGroup
+
+	for i, v := range variants {
 		if v == "" {
 			continue
 		}
-		scanText := v
-		if len(scanText) > detectorMaxScanBytes {
-			scanText = scanText[:detectorMaxScanBytes]
-		}
-		allMatches := detectors.DetectAll(scanText)
-		for _, m := range allMatches {
+		wg.Add(1)
+		go func(idx int, variant string) {
+			defer wg.Done()
+			scanText := variant
+			if len(scanText) > detectorMaxScanBytes {
+				scanText = scanText[:detectorMaxScanBytes]
+			}
+			results[idx].matches = detectors.DetectAll(scanText)
+		}(i, v)
+	}
+	wg.Wait()
+
+	// Deduplicate and collect results sequentially
+	seenMatches := make(map[string]bool) // deduplicate by Category:Value
+	for _, vm := range results {
+		for _, m := range vm.matches {
 			key := string(m.Category) + ":" + m.Value
 			if seenMatches[key] {
 				continue

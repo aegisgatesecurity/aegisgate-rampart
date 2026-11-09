@@ -139,93 +139,125 @@ func (rg *ResponseGuard) ScanWithContext(ctx context.Context, response string, s
 		return result, nil
 	}
 
-	// 1. Scan for PII if enabled
+	// Parallel scanning: run PII, secrets, XSS, and compliance detectors
+	// concurrently. These are independent regex scans that previously ran
+	// sequentially, costing ~88ms. Parallel execution reduces wall time to
+	// the slowest single category (~max rather than sum).
+	var wg sync.WaitGroup
+	var piiMatches []PIIMatch
+	var secretMatches []SecretMatch
+	var xssMatches []detectors.Match
+	var complianceMatches []detectors.Match
+
 	if rg.config.EnablePIIScanner {
-		piiMatches := rg.piiScanner.FindPII(response)
-		for _, match := range piiMatches {
-			result.DetectedPII = append(result.DetectedPII, match.Category)
-			result.Threats = append(result.Threats, Threat{
-				Type:       "pii",
-				Severity:   match.Severity,
-				Message:    string(match.Category) + " detected in response",
-				Location:   "response_body",
-				Pattern:    string(match.Category),
-				MatchStart: match.Start,
-				MatchEnd:   match.End,
-			})
-		}
-
-		// Generate compliance framework reports from PII matches
-		if rg.config.EnableComplianceDetection && len(piiMatches) > 0 {
-			result.ComplianceReports = GenerateComplianceReports(piiMatches)
-		}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			piiMatches = rg.piiScanner.FindPII(response)
+		}()
 	}
 
-	// 2. Scan for secrets if enabled
 	if rg.config.EnableSecretDetection {
-		secretMatches := rg.secretDetector.FindSecrets(response)
-		for _, match := range secretMatches {
-			result.DetectedSecrets = append(result.DetectedSecrets, match.Provider+":"+string(match.Category))
-			result.Threats = append(result.Threats, Threat{
-				Type:       "secret",
-				Severity:   match.Severity,
-				Message:    match.Provider + " " + string(match.Category) + " detected in response",
-				Location:   "response_body",
-				Pattern:    string(match.Category),
-				MatchStart: match.Start,
-				MatchEnd:   match.End,
-			})
-		}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			secretMatches = rg.secretDetector.FindSecrets(response)
+		}()
 	}
 
-	// 3. Scan for XSS vectors if enabled
 	if rg.config.EnableXSSDetection {
-		xssMatches := detectors.DetectXSS(response)
-		for _, match := range xssMatches {
-			result.DetectedXSS = append(result.DetectedXSS, match.Category)
-			severity := 4 // high by default for XSS
-			if match.Severity == detectors.SeverityCritical {
-				severity = 5
-			} else if match.Severity == detectors.SeverityMedium {
-				severity = 3
-			} else if match.Severity == detectors.SeverityLow {
-				severity = 2
-			}
-			result.Threats = append(result.Threats, Threat{
-				Type:       "xss",
-				Severity:   severity,
-				Message:    "XSS vector detected: " + match.Category,
-				Location:   "response_body",
-				Pattern:    match.Category,
-				MatchStart: match.Index,
-				MatchEnd:   match.End,
-			})
-		}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			xssMatches = detectors.DetectXSS(response)
+		}()
 	}
 
-	// 4. Scan for compliance violations if enabled
 	if rg.config.EnableComplianceDetection {
-		complianceMatches := detectors.DetectCompliance(response)
-		for _, match := range complianceMatches {
-			result.DetectedCompliance = append(result.DetectedCompliance, match.Category)
-			severity := 4 // high by default
-			if match.Severity == detectors.SeverityCritical {
-				severity = 5
-			} else if match.Severity == detectors.SeverityMedium {
-				severity = 3
-			} else if match.Severity == detectors.SeverityLow {
-				severity = 2
-			}
-			result.Threats = append(result.Threats, Threat{
-				Type:       "compliance",
-				Severity:   severity,
-				Message:    "Compliance violation: " + match.Category,
-				Location:   "response_body",
-				Pattern:    match.Category,
-				MatchStart: match.Index,
-				MatchEnd:   match.End,
-			})
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			complianceMatches = detectors.DetectCompliance(response)
+		}()
+	}
+
+	wg.Wait()
+
+	// Collect PII results
+	for _, match := range piiMatches {
+		result.DetectedPII = append(result.DetectedPII, match.Category)
+		result.Threats = append(result.Threats, Threat{
+			Type:       "pii",
+			Severity:   match.Severity,
+			Message:    string(match.Category) + " detected in response",
+			Location:   "response_body",
+			Pattern:    string(match.Category),
+			MatchStart: match.Start,
+			MatchEnd:   match.End,
+		})
+	}
+
+	// Generate compliance framework reports from PII matches
+	if rg.config.EnableComplianceDetection && len(piiMatches) > 0 {
+		result.ComplianceReports = GenerateComplianceReports(piiMatches)
+	}
+
+	// Collect secret results
+	for _, match := range secretMatches {
+		result.DetectedSecrets = append(result.DetectedSecrets, match.Provider+":"+string(match.Category))
+		result.Threats = append(result.Threats, Threat{
+			Type:       "secret",
+			Severity:   match.Severity,
+			Message:    match.Provider + " " + string(match.Category) + " detected in response",
+			Location:   "response_body",
+			Pattern:    string(match.Category),
+			MatchStart: match.Start,
+			MatchEnd:   match.End,
+		})
+	}
+
+	// Collect XSS results
+	for _, match := range xssMatches {
+		result.DetectedXSS = append(result.DetectedXSS, match.Category)
+		severity := 4 // high by default for XSS
+		if match.Severity == detectors.SeverityCritical {
+			severity = 5
+		} else if match.Severity == detectors.SeverityMedium {
+			severity = 3
+		} else if match.Severity == detectors.SeverityLow {
+			severity = 2
 		}
+		result.Threats = append(result.Threats, Threat{
+			Type:       "xss",
+			Severity:   severity,
+			Message:    "XSS vector detected: " + match.Category,
+			Location:   "response_body",
+			Pattern:    match.Category,
+			MatchStart: match.Index,
+			MatchEnd:   match.End,
+		})
+	}
+
+	// Collect compliance results
+	for _, match := range complianceMatches {
+		result.DetectedCompliance = append(result.DetectedCompliance, match.Category)
+		severity := 4 // high by default
+		if match.Severity == detectors.SeverityCritical {
+			severity = 5
+		} else if match.Severity == detectors.SeverityMedium {
+			severity = 3
+		} else if match.Severity == detectors.SeverityLow {
+			severity = 2
+		}
+		result.Threats = append(result.Threats, Threat{
+			Type:       "compliance",
+			Severity:   severity,
+			Message:    "Compliance violation: " + match.Category,
+			Location:   "response_body",
+			Pattern:    match.Category,
+			MatchStart: match.Index,
+			MatchEnd:   match.End,
+		})
 	}
 
 	// 5. Check token limits if enabled

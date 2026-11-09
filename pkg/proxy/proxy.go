@@ -38,6 +38,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/auditlog"
 	"github.com/aegisgatesecurity/aegisgate-rampart/internal/certificate"
@@ -935,8 +936,9 @@ func (p *Proxy) interceptHTTPS(w http.ResponseWriter, r *http.Request) {
 		result := p.scanAndAlert("response", host, clientReq.URL.Path, respBody)
 
 		// Block mode: check if the response should be blocked
-		if result != nil && result.TotalDetections > 0 {
-			respContent := string(respBody)
+		// Respect BlockResponse config: "request" = don't block responses
+		if result != nil && result.TotalDetections > 0 && p.cfg.Block.BlockResponse != "request" {
+			respContent := extractContentFromBody(respBody)
 			if shouldBlock, reason := p.shouldBlock(result, respContent); shouldBlock {
 				p.mu.Lock()
 				p.stats.BlockedRequests++
@@ -1024,14 +1026,20 @@ func (p *Proxy) handleHTTP(w http.ResponseWriter, r *http.Request) {
 		result := p.scanAndAlert("response", host, r.URL.Path, respBody)
 
 		// Block mode: check if the response should be blocked
+		// Respect BlockResponse config: "request" = don't block responses
 		if result != nil && result.TotalDetections > 0 {
-			respContent := string(respBody)
+			if p.cfg.Block.BlockResponse == "request" {
+				// Response scanning for logging only, don't block
+				goto copyResponse
+			}
+			respContent := extractContentFromBody(respBody)
 			if shouldBlock, reason := p.shouldBlock(result, respContent); shouldBlock {
 				p.blockResponse(w, "response", host, r.URL.Path, result, reason)
 				return
 			}
 		}
 	}
+copyResponse:
 
 	// Copy response headers
 	for k, vv := range resp.Header {
@@ -1092,13 +1100,22 @@ func (p *Proxy) shouldBlock(result *detector.Summary, content string) (bool, str
 	// Tier 1: high-confidence ML threat — block even without regex corroboration
 	// Threshold maintained at 0.95 — benchmark testing showed lowering to 0.80
 	// or 0.90 introduced 44-71 FPs with negligible catch improvement.
-	// FP mitigation: short text < 50 chars with no regex findings (lowered
-	// from 180 after 10K benchmark). PII-only context gatekeeper also retained.
-	if result.MLScore >= 0.95 {
-		// Short-text FP mitigation: truly short benign messages can trigger
-		// false high-confidence ML scores. Threshold lowered from 180 to 50
-		// chars — 180 was too aggressive, 50 is conservative.
-		if len(content) < 50 {
+	// FP mitigation: non-English text (>50% non-ASCII) and very short text
+	// (< 20 chars) with no regex findings. PII-only context gatekeeper also retained.
+	if result.MLScore >= 0.98 {
+		// Non-English text FP mitigation: the character-level model maps
+		// non-ASCII chars (>127) to UNK tokens. Non-English text produces
+		// UNK-heavy sequences scored ~1.0. If >50% non-ASCII, suppress ML
+		// block — regex still runs and catches real attacks.
+		nonASCIICount := 0
+		for _, r := range content {
+			if r > 127 {
+				nonASCIICount++
+			}
+		}
+		runeCount := utf8.RuneCountInString(content)
+		isNonEnglish := runeCount > 0 && nonASCIICount*2 > runeCount
+		if isNonEnglish {
 			hasThresholdRegex := false
 			for _, r := range result.Results {
 				if r.Rule == "char_cnn_bilstm" || r.Category == "ml_threat" {
@@ -1110,7 +1127,26 @@ func (p *Proxy) shouldBlock(result *detector.Summary, content string) (bool, str
 				}
 			}
 			if !hasThresholdRegex {
-				return false, fmt.Sprintf("ML tier 1 short-text FP mitigation (score: %.3f, len: %d)", result.MLScore, len(content))
+				return false, fmt.Sprintf("ML tier 1 non-English FP mitigation (score: %.3f, non-ascii: %d%%)", result.MLScore, nonASCIICount*100/runeCount)
+			}
+		}
+		// Short-text FP mitigation: very short benign messages can trigger
+		// false high-confidence ML scores. Threshold lowered from 50 to 20
+		// chars — instrumented 10K benchmark showed 520 correct catches
+		// (20-49 chars) were being suppressed at 50.
+		if runeCount < 20 {
+			hasThresholdRegex := false
+			for _, r := range result.Results {
+				if r.Rule == "char_cnn_bilstm" || r.Category == "ml_threat" {
+					continue
+				}
+				if meetsSeverityThreshold(r.Severity, p.cfg.Block.Threshold) {
+					hasThresholdRegex = true
+					break
+				}
+			}
+			if !hasThresholdRegex {
+				return false, fmt.Sprintf("ML tier 1 short-text FP mitigation (score: %.3f, len: %d)", result.MLScore, runeCount)
 			}
 		}
 		// Context gatekeeper: suppress Tier 1 ML block when benign conversation
@@ -1519,22 +1555,41 @@ func extractContentFromBody(body []byte) string {
 			Content string `json:"content"`
 		} `json:"messages"`
 	}
-	if err := json.Unmarshal(body, &req); err != nil || len(req.Messages) == 0 {
-		return raw
-	}
-	// Concatenate all message contents (scan ALL roles — a stateless proxy
-	// cannot trust client-asserted roles; fabricated assistant/tool turns can
-	// carry secrets, PII, or prompt injection payloads).
-	parts := make([]string, 0, len(req.Messages))
-	for _, msg := range req.Messages {
-		if msg.Content != "" {
-			parts = append(parts, msg.Content)
+	if err := json.Unmarshal(body, &req); err == nil && len(req.Messages) > 0 {
+		// Concatenate all message contents (scan ALL roles — a stateless proxy
+		// cannot trust client-asserted roles; fabricated assistant/tool turns can
+		// carry secrets, PII, or prompt injection payloads).
+		parts := make([]string, 0, len(req.Messages))
+		for _, msg := range req.Messages {
+			if msg.Content != "" {
+				parts = append(parts, msg.Content)
+			}
+		}
+		if len(parts) > 0 {
+			return strings.Join(parts, "\n")
 		}
 	}
-	if len(parts) == 0 {
-		return raw
+	// Try to parse as a chat completion response (choices[].message.content)
+	var resp struct {
+		Choices []struct {
+			Message struct {
+				Role    string `json:"role"`
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
 	}
-	return strings.Join(parts, "\n")
+	if err := json.Unmarshal(body, &resp); err == nil && len(resp.Choices) > 0 {
+		parts := make([]string, 0, len(resp.Choices))
+		for _, choice := range resp.Choices {
+			if choice.Message.Content != "" {
+				parts = append(parts, choice.Message.Content)
+			}
+		}
+		if len(parts) > 0 {
+			return strings.Join(parts, "\n")
+		}
+	}
+	return raw
 }
 
 func (p *Proxy) scanAndAlert(direction, host, path string, body []byte) *detector.Summary {

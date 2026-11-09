@@ -101,7 +101,7 @@ var CompliancePatterns = []PatternDef{
 	{
 		Name:        "owasp_llm02_insecure_output",
 		Severity:    SeverityHigh,
-		Regex:       `(?i)(?:output|return|render|generate|include|insert)\s+(?:\w+\s+){0,3}(?:HTML|markdown|JavaScript|JS|code|script|iframe|eval|innerHTML|outerHTML)\s+(?:\w+\s+){0,3}(?:that\s+(?:will\s+)?)?(?:execute|run|be\s+evaluated|be\s+interpreted|be\s+rendered|inject|executes?\s+in\s+the\s+(?:browser|page|DOM))|(?:output|return|render|generate)\s+(?:\w+\s+){0,3}(?:HTML|script|iframe|innerHTML).{0,30}(?:script\s+tag|<\s*script|raw\s+HTML|unescaped|unsanitized)|(?:the\s+response\s+(?:will\s+)?(?:be\s+)?(?:evaluated|executed|rendered)\s+(?:as|in\s+the))\s+(?:HTML|code|script|browser|DOM|page)`,
+		Regex:       `(?i)(?:output|return|render|generate|include|insert)\s+.{0,60}(?:HTML|markdown|JavaScript|JS|code|script|iframe|eval|innerHTML|outerHTML)\s+.{0,60}(?:that\s+(?:will\s+)?)?(?:execute|run|be\s+evaluated|be\s+interpreted|be\s+rendered|inject|executes?\s+in\s+the\s+(?:browser|page|DOM))|(?:output|return|render|generate)\s+.{0,60}(?:HTML|script|iframe|innerHTML).{0,30}(?:script\s+tag|<\s*script|raw\s+HTML|unescaped|unsanitized)|(?:the\s+response\s+(?:will\s+)?(?:be\s+)?(?:evaluated|executed|rendered)\s+(?:as|in\s+the))\s+(?:HTML|code|script|browser|DOM|page)`,
 		Description: "OWASP LLM02: Insecure output handling (XSS-via-output)",
 	},
 	{
@@ -413,6 +413,18 @@ var CompliancePatterns = []PatternDef{
 		Severity:    SeverityCritical,
 		Regex:       `(?i)(?:os\.system|subprocess\.(?:call|run|Popen)|exec\(|system\().*(?:rm\s+-rf|del\s+/[fqs]|format\s+|mkfs|dd\s+if=)`,
 		Description: "Dangerous system command execution (rm -rf, format, mkfs)",
+	},
+	{
+		Name:        "dangerous_command_natural_lang",
+		Severity:    SeverityCritical,
+		Regex:       `(?i)(?:execute|run|perform|do)\s+(?:this\s+)?(?:command|the following|cmd|shell)[\s:]{1,3}.{0,30}(?:rm\s+-rf|rm\s+-r\s|rm\s+-f\s|mkfs|dd\s+if=|chmod\s+777|del\s+/[fqs]|format\s+[a-z]:|>\s*/dev/sda|curl\s+.*\|\s*(?:sh|bash)|wget\s+.*\|\s*(?:sh|bash))`,
+		Description: "Natural language destructive command execution (rm -rf, mkfs, dd via prompt)",
+	},
+	{
+		Name:        "dangerous_command_bare",
+		Severity:    SeverityHigh,
+		Regex:       `(?i)\b(?:rm\s+-rf\s+/|rm\s+-rf\s+\*|rm\s+-rf\s+~|rm\s+-rf\s+(?:/usr|/etc|/var|/home|/boot|/bin))\b`,
+		Description: "Bare destructive command in prompt (rm -rf targeting system paths)",
 	},
 	{
 		Name:        "excessive_agency_privilege_escalation",

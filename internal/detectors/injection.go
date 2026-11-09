@@ -60,6 +60,12 @@ var InjectionPatterns = []PatternDef{
 		Description: "Time-based blind SQL injection",
 	},
 	{
+		Name:        "sqli_drop_table_bare",
+		Severity:    SeverityCritical,
+		Regex:       `(?i)\bdrop\s+table\b.{0,60}(?:;\s*(?:select|insert|update|delete|drop|alter|create|truncate)\b|--|#|/\*)`,
+		Description: "Bare DROP TABLE with SQL injection indicators (stacked queries or comments)",
+	},
+	{
 		Name:        "sqli_stacked_queries",
 		Severity:    SeverityHigh,
 		Regex:       `(?i);\s*(?:drop|delete|update|insert|alter|create|truncate)\s+`,

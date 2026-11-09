@@ -97,7 +97,7 @@ jobs:
           if [ -n "$out" ]; then echo "UNFORMATTED: $out"; exit 1; fi
 
   # ========================================
-  # Test — unit tests + 80% coverage floor
+  # Test — unit tests + 85% coverage floor
   # ========================================
   test:
     needs: dco
@@ -109,7 +109,7 @@ jobs:
           go-version: '1.27.3'
       - name: Run tests (non-CGO)
         run: CGO_ENABLED=0 go test -coverprofile=coverage.out -covermode=atomic ./...
-      - name: Check total coverage ≥ 75%
+      - name: Check total coverage ≥ 85%
         run: |
           # Exclude inherently untestable packages from the total coverage check
           # cmd/rampart: main entry points + daemon (requires system tray/network)
@@ -117,29 +117,44 @@ jobs:
           # cmd/rampart-lsp: LSP server entry point (requires stdio/IDE)
           # internal/autostart: OS-specific auto-start (launchd/SystemD/Registry)
           # internal/catrust: certificate trust store (platform-specific, Windows/Darwin)
+          # internal/verify: signature verification (requires code-signing certs)
+          # internal/notify: desktop notifications (platform-specific Darwin/Windows)
+          # internal/platform: OS path helpers (platform-specific, minimal logic)
           #
-          # v0.10.0: threshold lowered 79→75% to accommodate 2256+ lines of new
-          # detector patterns (ATLAS L2, context manipulation, data exfil, etc.)
-          # and ML features (MultiTurnDetector, gatekeeper) that need additional
-          # test coverage in a follow-up commit.
-          EXCLUDE_PKGS="github.com/aegisgatesecurity/aegisgate-rampart/cmd/rampart,github.com/aegisgatesecurity/aegisgate-rampart/internal/tray,github.com/aegisgatesecurity/aegisgate-rampart/cmd/rampart-lsp,github.com/aegisgatesecurity/aegisgate-rampart/internal/autostart,github.com/aegisgatesecurity/aegisgate-rampart/internal/catrust"
+          # v0.10.1: threshold raised 75→85% after comprehensive test coverage:
+          #   - Multi-turn detector (30 functions, internal/ml)
+          #   - Context tracking (4 functions, internal/ml)
+          #   Audit log search (6 functions, internal/auditlog)
+          #   - FP filters (4 functions, internal/detectors)
+          #   - Normalization (2 functions, internal/detectors)
+          #   - Certificate loading (1 function, internal/certificate)
+          #   - Proxy helpers (3 functions, pkg/proxy)
+          #   - Enterprise config (1 function, internal/enterprise)
+          #   - Webhook validation (1 function, internal/webhook)
+          #   - Metrics hashing (1 function, internal/metrics)
+          #   - Integrity verification (1 function, internal/integrity)
+          #   - Detector educational FP (1 function, pkg/detector)
+          #   - Lens correlation (1 function, pkg/lenscorrelation)
+          # Target: 90% — remaining gap requires HTTPS interception tests
+          # (proxy.go interceptHTTPS) and ONNX model loading (CGO-gated).
+          EXCLUDE_PKGS="github.com/aegisgatesecurity/aegisgate-rampart/cmd/rampart,github.com/aegisgatesecurity/aegisgate-rampart/internal/tray,github.com/aegisgatesecurity/aegisgate-rampart/cmd/rampart-lsp,github.com/aegisgatesecurity/aegisgate-rampart/internal/autostart,github.com/aegisgatesecurity/aegisgate-rampart/internal/catrust,github.com/aegisgatesecurity/aegisgate-rampart/internal/verify,github.com/aegisgatesecurity/aegisgate-rampart/internal/notify,github.com/aegisgatesecurity/aegisgate-rampart/internal/platform"
           
           # Generate coverage excluding untestable packages
           go test -coverprofile=coverage-filtered.out -covermode=atomic $(go list ./... | grep -v -E "$(echo $EXCLUDE_PKGS | sed 's/,/|/g')")
           TOTAL=$(go tool cover -func=coverage-filtered.out | grep total | awk '{print $3}' | tr -d '%')
           echo "Total coverage (excluding untestable packages): ${TOTAL}%"
-          PASS=$(echo "$TOTAL >= 75" | bc)
-          if [ "$PASS" != "1" ]; then echo "FAIL: coverage ${TOTAL}% < 75%"; exit 1; fi
+          PASS=$(echo "$TOTAL >= 85" | bc)
+          if [ "$PASS" != "1" ]; then echo "FAIL: coverage ${TOTAL}% < 85%"; exit 1; fi
           
           # Also show full coverage for reference
           go test -coverprofile=coverage.out -covermode=atomic ./... 2>/dev/null || true
           FULL_TOTAL=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | tr -d '%')
           echo "Full coverage (all packages): ${FULL_TOTAL}%"
-      - name: Check per-package coverage ≥ 80%
+      - name: Check per-package coverage ≥ 85%
         run: |
           # Exempt packages that are inherently untestable in CI
           # (main entry points, GUI/system tray, platform-specific OS stubs)
-          EXEMPT="cmd/rampart,internal/tray,cmd/rampart-lsp,internal/autostart,internal/catrust,internal/verify"
+          EXEMPT="cmd/rampart,internal/tray,cmd/rampart-lsp,internal/autostart,internal/catrust,internal/verify,internal/notify,internal/platform"
           go tool cover -func=coverage.out | grep -v total | while read pkg func cov; do
             PCT=$(echo "$cov" | tr -d '%')
             SKIP=0
@@ -147,7 +162,7 @@ jobs:
               if echo "$pkg" | grep -q "$e"; then SKIP=1; fi
             done
             if [ "$SKIP" = "0" ]; then
-              PASS=$(echo "$PCT >= 80.0" | bc)
+              PASS=$(echo "$PCT >= 85.0" | bc)
               if [ "$PASS" != "1" ]; then echo "LOW COV: $pkg $func ${PCT}%"; fi
             fi
           done

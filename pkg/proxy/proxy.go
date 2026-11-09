@@ -1166,8 +1166,7 @@ func (p *Proxy) shouldBlock(result *detector.Summary, content string) (bool, str
 					continue
 				}
 				cat := strings.ToLower(r.Category)
-				isPIICat := strings.Contains(cat, "pii") || strings.Contains(cat, "financial") || strings.Contains(cat, "credential") || strings.Contains(cat, "healthcare")
-				if r.Severity == config.SeverityCritical && !isPIICat {
+				if r.Severity == config.SeverityCritical {
 					hasCritical = true
 					continue
 				}
@@ -1226,12 +1225,12 @@ func (p *Proxy) shouldBlock(result *detector.Summary, content string) (bool, str
 			if !meetsSeverityThreshold(r.Severity, p.cfg.Block.Threshold) {
 				continue
 			}
-			// Critical-severity findings in non-PII categories always block.
-			// PII/Financial/Healthcare Critical findings are still gatekeepable
-			// (the ML model can distinguish benign PII from exfiltration).
+			// Critical-severity findings always block, including PII/Financial/
+			// Healthcare. The ML model is not trained on PII — it outputs
+			// near-zero scores for PII text, so critical PII detections (SSN,
+			// credit card) must not be gatekept by the ML gatekeeper.
 			cat := strings.ToLower(r.Category)
-			isPIICat := strings.Contains(cat, "pii") || strings.Contains(cat, "financial") || strings.Contains(cat, "credential") || strings.Contains(cat, "healthcare")
-			if r.Severity == config.SeverityCritical && !isPIICat {
+			if r.Severity == config.SeverityCritical {
 				hasCritical = true
 				continue
 			}
@@ -1277,7 +1276,7 @@ func (p *Proxy) shouldBlock(result *detector.Summary, content string) (bool, str
 			// doesn't detect PII (scores it 0.0), so MLScore=0 doesn't indicate
 			// "benign PII" the way it does for prompt-injection patterns.
 			shouldSuppress := result.MLScore < threshold
-			if hasPII && result.MLScore <= 0 {
+			if hasPII && result.MLScore < 0.05 {
 				shouldSuppress = false
 			}
 			if shouldSuppress {
@@ -1306,8 +1305,7 @@ func (p *Proxy) shouldBlock(result *detector.Summary, content string) (bool, str
 				continue
 			}
 			cat := strings.ToLower(r.Category)
-			isPIICat := strings.Contains(cat, "pii") || strings.Contains(cat, "financial") || strings.Contains(cat, "credential") || strings.Contains(cat, "healthcare")
-			if r.Severity == config.SeverityCritical && !isPIICat {
+			if r.Severity == config.SeverityCritical {
 				hasCritical = true
 				continue
 			}

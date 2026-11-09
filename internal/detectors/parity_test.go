@@ -34,6 +34,7 @@ func allSourcePatterns() [][]PatternDef {
 		XSSRequestPatterns,
 		PromptInjectionRequestPatterns,
 		ContextManipulationPatterns,
+		AtlasPatterns,
 	}
 }
 
@@ -62,6 +63,7 @@ func allCompiledPatterns() [][]compiledPattern {
 		CompiledXSSRequestPatterns,
 		CompiledPromptInjectionRequestPatterns,
 		CompiledContextManipulationPatterns,
+		CompiledAtlasPatterns,
 	}
 }
 

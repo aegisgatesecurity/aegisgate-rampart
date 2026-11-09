@@ -412,6 +412,26 @@ func NormalizeAllVariants(input string) []string {
 		}
 	}
 
+	// MultiPass variant — chains multiple normalizations for combined evasion.
+	// Ported from Platform scanner/normalize.go.
+	multiPass := NormalizeMultiPass(input)
+	if multiPass != input && multiPass != "" {
+		variants = append(variants, multiPass)
+	}
+
+	// NewlineCollapse variant — removes newlines between alphanumerics.
+	// Catches "Please\nignore\nall\nprevious\ninstructions".
+	newlineCollapsed := NormalizeNewlineCollapse(input)
+	if newlineCollapsed != input && newlineCollapsed != "" {
+		variants = append(variants, newlineCollapsed)
+	}
+
+	// RepeatingCharsAggressive variant — collapses any repeating char to single.
+	repeatingAggressive := NormalizeRepeatingCharsAggressive(input)
+	if repeatingAggressive != input && repeatingAggressive != "" {
+		variants = append(variants, repeatingAggressive)
+	}
+
 	// Sliding ROT13 variants (parity with Platform)
 	variants = append(variants, NormalizeSlidingROT13(input)...)
 
@@ -554,6 +574,69 @@ func NormalizeRepeatingChars(input string) string {
 // NormalizeBackslashEscapes removes backslash escape sequences (e.g., \x41 → A).
 func NormalizeBackslashEscapes(input string) string {
 	return strings.ReplaceAll(input, "\\", "")
+}
+
+// NormalizeRepeatingCharsAggressive collapses ANY repeating character to a
+// single instance (more aggressive than NormalizeRepeatingChars which allows
+// doubles). Ported from Platform scanner/normalize.go.
+func NormalizeRepeatingCharsAggressive(input string) string {
+	runes := []rune(input)
+	if len(runes) == 0 {
+		return input
+	}
+	var b strings.Builder
+	b.Grow(len(input))
+	prev := runes[0]
+	count := 1
+	b.WriteRune(prev)
+	for i := 1; i < len(runes); i++ {
+		if runes[i] == prev {
+			count++
+			if count < 2 {
+				b.WriteRune(runes[i])
+			}
+		} else {
+			prev = runes[i]
+			count = 1
+			b.WriteRune(runes[i])
+		}
+	}
+	return b.String()
+}
+
+// NormalizeNewlineCollapse removes newlines between alphanumeric characters.
+// Catches "Please\nignore\nall\nprevious\ninstructions" → "Pleaseignoreallpreviousinstructions".
+// Ported from Platform scanner/normalize.go.
+func NormalizeNewlineCollapse(input string) string {
+	runes := []rune(input)
+	var b strings.Builder
+	b.Grow(len(input))
+	for i, r := range runes {
+		if r == '\n' || r == '\r' {
+			hasAlnumBefore := i > 0 && (unicode.IsLetter(runes[i-1]) || unicode.IsDigit(runes[i-1]))
+			hasAlnumAfter := i < len(runes)-1 && (unicode.IsLetter(runes[i+1]) || unicode.IsDigit(runes[i+1]))
+			if hasAlnumBefore && hasAlnumAfter {
+				continue
+			}
+		}
+		b.WriteRune(r)
+	}
+	return b.String()
+}
+
+// NormalizeMultiPass applies a multi-step decoding pipeline that chains
+// several normalizations together. This catches combined evasion techniques
+// (e.g., URL-encoded + l33t + repeating chars). Ported from Platform.
+func NormalizeMultiPass(input string) string {
+	result := decodeURLEncoding(input)
+	result = NormalizeBackslashEscapes(result)
+	result = stripZeroWidth(result)
+	result = removeInterCharacterInsertions(result)
+	result = NormalizeAggressiveL33t(result)
+	result = NormalizeRepeatingCharsAggressive(result)
+	result = NormalizeNewlineCollapse(result)
+	result = collapseWhitespace(result)
+	return result
 }
 
 // decodeURLEncoding decodes URL-encoded %XX sequences and converts + to space

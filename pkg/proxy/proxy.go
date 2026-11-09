@@ -1327,6 +1327,38 @@ func (p *Proxy) shouldBlock(result *detector.Summary, content string) (bool, str
 		}
 	}
 
+	// L3-standard tier: ML threat (≥ 0.50) + any Medium+ regex finding → block.
+	//
+	// This matches Platform's corroboration model: the ML model identifies
+	// suspicious content (IsThreat at threshold 0.50), and any regex finding
+	// at Medium severity or above provides corroboration — even if below the
+	// block threshold (75, High). This catches evaded attacks (ROT13, no-space,
+	// camelCase, reversed text, interleaved text) where regex finds a partial
+	// match at Medium severity and ML confirms the threat.
+	//
+	// FP mitigations already applied before reaching this point:
+	//   - Educational context exemption (step 3)
+	//   - ML gatekeeper for ML < 0.3 (step 5)
+	//   - Context gatekeeper for benign PII context (step 6)
+	//
+	// Requires Medium+ severity regex to avoid FPs from Low-severity PII
+	// patterns (phone numbers, etc.) combined with marginally-high ML scores.
+	if result.MLScore >= 0.50 {
+		hasMediumRegex := false
+		for _, r := range result.Results {
+			if r.Rule == "char_cnn_bilstm" || r.Category == "ml_threat" {
+				continue
+			}
+			if meetsSeverityThreshold(r.Severity, string(config.SeverityMedium)) {
+				hasMediumRegex = true
+				break
+			}
+		}
+		if hasMediumRegex {
+			return true, fmt.Sprintf("ml_threat: [redacted] L3-standard corroboration (score: %.3f)", result.MLScore)
+		}
+	}
+
 	blockCfg := p.cfg.Block
 
 	// Short-text ML FP mitigation: if text is short (< 180 chars) and the only

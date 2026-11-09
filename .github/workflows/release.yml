@@ -293,7 +293,7 @@ jobs:
           name: sbom
           path: release/sbom
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v3.0.3
+        uses: softprops/action-gh-release@v3.0.4
         continue-on-error: true
         with:
           tag_name: ${{ github.event.inputs.version || github.ref_name }}

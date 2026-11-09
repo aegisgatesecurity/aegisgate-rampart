@@ -231,6 +231,20 @@ var DataExfilPatterns = []PatternDef{
 		Regex:       `(?i)\b(?:use|employ|apply)\s+steganograph\w*\s+to\s+(?:hide|conceal|embed|encode)\s+(?:the\s+)?(?:exfiltrat\w+|stolen|sensitive|confidential)\s+data\s+in\s+(?:images?|files?|media)\b`,
 		Description: "Steganography for data exfiltration concealment",
 	},
+	// Telegram bot exfiltration
+	{
+		Name:        "exfil_telegram_bot",
+		Severity:    SeverityCritical,
+		Regex:       `(?i)\bsend\s+(?:the\s+)?(?:session\s+tokens?|credentials?|secrets?|api\s+keys?|passwords?|data)\s+to\s+(?:telegram|telegram\s+bot)\s+@\w+`,
+		Description: "Data exfiltration to Telegram bot",
+	},
+	// Base64 encoding for exfiltration
+	{
+		Name:        "exfil_base64_encode",
+		Severity:    SeverityCritical,
+		Regex:       `(?i)\bbase64\s+encode\s+(?:all\s+)?(?:credentials?|secrets?|tokens?|api\s+keys?|passwords?|data)\s+and\s+(?:put|include|embed|insert|place)\s+(?:them\s+)?in\s+(?:the\s+)?(?:response|output|reply)`,
+		Description: "Base64 encode credentials for exfiltration in response",
+	},
 }
 
 // CompiledDataExfilPatterns holds pre-compiled data exfiltration regex patterns.

@@ -125,6 +125,26 @@ var InjectionPatterns = []PatternDef{
 		Regex:       `(?i)\b(?:create|write|generate|build)\s+(?:a\s+)?sql\s+to\s+(?:copy|move|transfer|export)\s+(?:all\s+)?(?:credit\s*card|customer|user|financial|payment)\s+data\s+to\s+(?:an?\s+)?(?:external|outside|remote|third.?party)\s+table\b`,
 		Description: "SQL to copy sensitive data to external table",
 	},
+	// Boolean-based SQLi — raw payload (no trailing \b so it matches '1'='1' --)
+	{
+		Name:        "sqli_boolean_raw",
+		Severity:    SeverityCritical,
+		Regex:       `(?i)['"\s)]+\s*(?:or|and)\s+['"]?1['"]?\s*=\s*['"]?1['"]?(?:\s|--|;|/\*)`,
+		Description: "Boolean-based SQL injection payload (e.g., admin' OR '1'='1' --)",
+	},
+	// LDAP injection patterns
+	{
+		Name:        "ldap_injection_filter",
+		Severity:    SeverityCritical,
+		Regex:       `(?i)\*\)\s*\(uid\s*=\s*\w+\)\)\s*\(\|\s*\(uid\s*=\s*\*`,
+		Description: "LDAP injection filter bypass (e.g., *)(uid=admin))(|(uid=*)",
+	},
+	{
+		Name:        "ldap_injection_generic",
+		Severity:    SeverityHigh,
+		Regex:       `(?i)\*\)\s*\(\s*(?:uid|cn|dn|mail|objectclass)\s*=\s*\*`,
+		Description: "Generic LDAP injection wildcard filter manipulation",
+	},
 }
 
 // CompiledInjectionPatterns holds pre-compiled injection regex patterns.

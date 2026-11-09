@@ -27,6 +27,14 @@ var PromptInjectionRequestPatterns = []PatternDef{
 		Regex:       `(?i)ignore\s+(?:\w+\s+)?(?:all\s+)?(?:previous|prior)\s+(?:instructions?|rules?|constraints?)`,
 		Description: "Flexible command injection (allows extra words for l33t-decoded payloads)",
 	},
+	// \s* tolerant variant — matches no-space and camelCase-split text.
+	// "ignoreallpreviousinstructions" or "Ignore All Previous Instructions" (after camelCase split)
+	{
+		Name:        "pi_command_nospace_tolerant",
+		Severity:    SeverityCritical,
+		Regex:       `(?i)ignore\s*(?:all\s*)?(?:previous|prior)\s*(?:instructions?|rules?|constraints?)`,
+		Description: "No-space tolerant prompt injection (matches despaced/camelCase variants)",
+	},
 	// --- Role-play jailbreaks ---
 	{
 		Name:        "pi_roleplay",

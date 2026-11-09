@@ -237,15 +237,20 @@ func reverseKeyboardWalk(s string) string {
 // legitimate content. Destructive transforms (keyboard walk reversal, ROT13)
 // are NOT applied here; use NormalizeAllVariants() for those.
 func NormalizeText(input string) string {
+	if len(input) < 4 {
+		return input
+	}
 	// 1. Strip zero-width characters
 	result := stripZeroWidth(input)
-	// 2. Normalize homoglyphs
+	// 2. Decode URL encoding (%XX sequences and + as space)
+	result = decodeURLEncoding(result)
+	// 3. Normalize homoglyphs
 	result = NormalizeHomoglyphs(result)
-	// 3. Deobfuscate l33t speak
+	// 4. Deobfuscate l33t speak (context-aware)
 	result = deobfuscateL33t(result)
-	// 4. Remove inter-character insertions (dots, hyphens between letters)
+	// 5. Remove inter-character insertions (dots, hyphens between letters)
 	result = removeInterCharacterInsertions(result)
-	// 5. Collapse whitespace
+	// 6. Collapse whitespace
 	result = collapseWhitespace(result)
 	return result
 }
@@ -410,6 +415,37 @@ func NormalizeAllVariants(input string) []string {
 	// Sliding ROT13 variants (parity with Platform)
 	variants = append(variants, NormalizeSlidingROT13(input)...)
 
+	// CamelCase splitting variant — inserts spaces at word boundaries.
+	// Catches "IgnoreAllPreviousInstructions" → "Ignore All Previous Instructions".
+	camelCase := NormalizeCamelCase(input)
+	if camelCase != input && camelCase != "" {
+		variants = append(variants, camelCase)
+		// Also try NormalizeText on the camelCase-split version
+		camelNorm := NormalizeText(camelCase)
+		if camelNorm != camelCase && camelNorm != input && camelNorm != "" {
+			variants = append(variants, camelNorm)
+		}
+	}
+
+	// Reversed text variant — reverses the entire string.
+	// Catches "tpmorp metsys eht laever" → "reveal the system prompt".
+	reversed := NormalizeReversed(input)
+	if reversed != input && reversed != "" {
+		variants = append(variants, reversed)
+		reversedNorm := NormalizeText(reversed)
+		if reversedNorm != reversed && reversedNorm != input && reversedNorm != "" {
+			variants = append(variants, reversedNorm)
+		}
+	}
+
+	// No-spaces variant — removes ALL whitespace.
+	// Paired with \s* tolerant patterns to catch no-space evasion.
+	// "ignore all previous instructions" → "ignoreallpreviousinstructions"
+	noSpaces := NormalizeNoSpaces(input)
+	if noSpaces != input && noSpaces != "" {
+		variants = append(variants, noSpaces)
+	}
+
 	// Deduplicate
 	seen := make(map[string]bool, len(variants))
 	unique := make([]string, 0, len(variants))
@@ -518,4 +554,105 @@ func NormalizeRepeatingChars(input string) string {
 // NormalizeBackslashEscapes removes backslash escape sequences (e.g., \x41 → A).
 func NormalizeBackslashEscapes(input string) string {
 	return strings.ReplaceAll(input, "\\", "")
+}
+
+// decodeURLEncoding decodes URL-encoded %XX sequences and converts + to space
+// when preceded by alphanumeric characters. This is safe to apply in
+// NormalizeText because URL encoding in legitimate prose is rare and the
+// decode is non-destructive on non-encoded text.
+func decodeURLEncoding(s string) string {
+	if !strings.ContainsRune(s, '%') && !strings.ContainsRune(s, '+') {
+		return s
+	}
+	var b strings.Builder
+	b.Grow(len(s))
+	i := 0
+	for i < len(s) {
+		if s[i] == '%' && i+2 < len(s) {
+			hi := hexDigitVal(s[i+1])
+			lo := hexDigitVal(s[i+2])
+			if hi >= 0 && lo >= 0 {
+				b.WriteByte(byte(hi<<4 | lo))
+				i += 3
+				continue
+			}
+		}
+		if s[i] == '+' && i > 0 && (isAlphaNum(rune(s[i-1])) || unicode.IsLetter(rune(s[i-1]))) {
+			b.WriteByte(' ')
+			i++
+			continue
+		}
+		b.WriteByte(s[i])
+		i++
+	}
+	return b.String()
+}
+
+func hexDigitVal(c byte) int {
+	switch {
+	case c >= '0' && c <= '9':
+		return int(c - '0')
+	case c >= 'a' && c <= 'f':
+		return int(c - 'a' + 10)
+	case c >= 'A' && c <= 'F':
+		return int(c - 'A' + 10)
+	default:
+		return -1
+	}
+}
+
+// NormalizeCamelCase inserts spaces at camelCase word boundaries.
+// "IgnoreAllPreviousInstructions" → "Ignore All Previous Instructions".
+// This is DESTRUCTIVE on normal text (e.g., "JavaScript" → "Java Script"),
+// so it is a separate variant in NormalizeAllVariants, not in NormalizeText.
+func NormalizeCamelCase(input string) string {
+	runes := []rune(input)
+	if len(runes) < 4 {
+		return input
+	}
+	var b strings.Builder
+	b.Grow(len(runes) + 8)
+	for i, r := range runes {
+		if i > 0 && unicode.IsUpper(r) {
+			prev := runes[i-1]
+			// Insert space before uppercase if previous is lowercase,
+			// or if previous is uppercase and next is lowercase (acronym boundary).
+			if unicode.IsLower(prev) || (unicode.IsUpper(prev) && i+1 < len(runes) && unicode.IsLower(runes[i+1])) {
+				b.WriteRune(' ')
+			}
+		}
+		b.WriteRune(r)
+	}
+	return b.String()
+}
+
+// NormalizeReversed reverses the entire string character-by-character.
+// "tpmorp metsys eht laever" → "reveal the system prompt".
+// This is highly DESTRUCTIVE on normal text, so it is only a separate variant.
+// Applied only to short text (< 300 chars) to limit FP risk on long content.
+func NormalizeReversed(input string) string {
+	if len(input) < 10 || len(input) > 300 {
+		return input
+	}
+	runes := []rune(input)
+	result := make([]rune, len(runes))
+	for i, r := range runes {
+		result[len(runes)-1-i] = r
+	}
+	return string(result)
+}
+
+// NormalizeNoSpaces removes ALL whitespace from the input.
+// "ignore all previous instructions" → "ignoreallpreviousinstructions".
+// This is paired with \s* tolerant patterns to catch no-space evasion.
+// DESTRUCTIVE on normal text, so it is a separate variant only.
+func NormalizeNoSpaces(input string) string {
+	var b strings.Builder
+	b.Grow(len(input))
+	for _, r := range input {
+		if !unicode.IsSpace(r) {
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
 }

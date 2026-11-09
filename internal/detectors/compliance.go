@@ -541,6 +541,13 @@ var CompliancePatterns = []PatternDef{
 		Regex:       `(?i)litellm.{0,80}(?:reverse.?shell|backdoor|trojan|c2.?server|payload.?download|implant|rat\.\w)`,
 		Description: "RAT/malware deployment via LiteLLM supply chain",
 	},
+	// Stalking / surveillance without consent
+	{
+		Name:        "harmful_stalking_tracking",
+		Severity:    SeverityHigh,
+		Regex:       `(?i)(?:how\s+to\s+)?track\s+(?:someone'?s?|a\s+person'?s|their)\s+location\s+without\s+(?:their\s+)?(?:knowledge|consent|them\s+knowing)`,
+		Description: "Instructions for stalking/tracking someone without their knowledge",
+	},
 }
 
 // CompiledCompliancePatterns holds pre-compiled compliance regex patterns.

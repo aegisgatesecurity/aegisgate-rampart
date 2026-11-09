@@ -142,12 +142,12 @@ func TestFastVsFullEvasionSuite(t *testing.T) {
 
 	// Transforms to apply
 	transforms := map[string]func(string) string{
-		"original":  func(s string) string { return s },
-		"upper":     func(s string) string { return toUpper(s) },
-		"l33t":      func(s string) string { return toL33t(s) },
-		"rot13":     func(s string) string { return toROT13(s) },
-		"no_space":  func(s string) string { return toNoSpace(s) },
-		"reversed":  func(s string) string { return toReverse(s) },
+		"original": func(s string) string { return s },
+		"upper":    func(s string) string { return toUpper(s) },
+		"l33t":     func(s string) string { return toL33t(s) },
+		"rot13":    func(s string) string { return toROT13(s) },
+		"no_space": func(s string) string { return toNoSpace(s) },
+		"reversed": func(s string) string { return toReverse(s) },
 	}
 
 	regressions := 0

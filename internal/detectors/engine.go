@@ -121,28 +121,48 @@ func TotalCompiledPatterns() int {
 }
 
 // DetectAll scans text with all pattern categories and returns combined results.
+// Early-exit: if any match has critical severity, remaining categories are
+// skipped — the caller will block on critical findings regardless of what
+// additional categories might find.
 func DetectAll(text string) []Match {
 	var all []Match
-	all = append(all, DetectSecrets(text)...)
-	all = append(all, DetectXSS(text)...)
-	all = append(all, DetectPIIUSCore(text)...)
-	all = append(all, DetectPIIUSExtended(text)...)
-	all = append(all, DetectPIIFinancial(text)...)
-	all = append(all, DetectPIIInternational(text)...)
-	all = append(all, DetectCompliance(text)...)
-	all = append(all, DetectOTProtocols(text)...)
-	all = append(all, DetectAgentPoisoning(text)...)
-	all = append(all, DetectRAG(text)...)
-	all = append(all, DetectPathTraversal(text)...)
-	all = append(all, DetectPromptLeakage(text)...)
-	all = append(all, DetectInjection(text)...)
-	all = append(all, DetectMalware(text)...)
-	all = append(all, DetectEvasion(text)...)
-	all = append(all, DetectDataExfil(text)...)
-	all = append(all, DetectSocialEngineering(text)...)
-	all = append(all, DetectXSSRequest(text)...)
-	all = append(all, DetectPromptInjectionRequest(text)...)
-	all = append(all, DetectContextManipulation(text)...)
+
+	scanFuncs := []func(string) []Match{
+		DetectSecrets,
+		DetectXSS,
+		DetectPIIUSCore,
+		DetectPIIUSExtended,
+		DetectPIIFinancial,
+		DetectPIIInternational,
+		DetectCompliance,
+		DetectOTProtocols,
+		DetectAgentPoisoning,
+		DetectRAG,
+		DetectPathTraversal,
+		DetectPromptLeakage,
+		DetectInjection,
+		DetectMalware,
+		DetectEvasion,
+		DetectDataExfil,
+		DetectSocialEngineering,
+		DetectXSSRequest,
+		DetectPromptInjectionRequest,
+		DetectContextManipulation,
+	}
+
+	for _, fn := range scanFuncs {
+		matches := fn(text)
+		all = append(all, matches...)
+		// Early exit on critical severity — no need to scan remaining categories
+		for _, m := range matches {
+			if m.Severity == SeverityCritical {
+				sort.Slice(all, func(i, j int) bool {
+					return all[i].Index < all[j].Index
+				})
+				return all
+			}
+		}
+	}
 
 	// Sort all matches by index
 	sort.Slice(all, func(i, j int) bool {

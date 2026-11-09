@@ -1601,7 +1601,13 @@ func (p *Proxy) scanAndAlert(direction, host, path string, body []byte) *detecto
 	// causes it to score the JSON syntax as benign, producing false negatives
 	// that bypass both Tier 1 blocking and the gatekeeper's PII suppression.
 	scanText := extractContentFromBody(body)
-	result, err := p.detector.Detect(scanText)
+	var result *detector.Summary
+	var err error
+	if direction == "response" {
+		result, err = p.detector.DetectResponse(scanText)
+	} else {
+		result, err = p.detector.Detect(scanText)
+	}
 	if err != nil {
 		log.Printf("rampart: detection error: %v", err)
 		return result

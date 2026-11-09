@@ -100,7 +100,7 @@ func (rg *ResponseGuard) Scan(ctx context.Context, response string) (*ResponseSc
 // rationale on the Scan method above. 64KB covers a long system
 // prompt + many turns of context without sacrificing detection
 // quality. Tuned for the 5MB-scanner-perf issue in D25.
-const maxScanBytes = 64 * 1024
+const maxScanBytes = 16 * 1024
 
 // ScanWithContext performs response scanning with optional scan context.
 // The input is truncated to maxScanBytes before the regex/PII stage

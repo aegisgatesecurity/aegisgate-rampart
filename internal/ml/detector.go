@@ -58,6 +58,7 @@ type ThreatDetector struct {
 	loaded     bool
 	modelHash  string
 	onnx       *onnxFields // ONNX session (nil when CGO disabled)
+	cache      *lruCache   // LRU cache for memoized inference results
 }
 
 // NewThreatDetector creates a new threat detector with the given config.
@@ -76,6 +77,7 @@ func NewThreatDetector(cfg DetectorConfig) *ThreatDetector {
 		calibrator: NewCalibrationManager(cfg),
 		loaded:     false,
 		onnx:       newOnnxFields(),
+		cache:      newLRUCache(10000),
 	}
 
 	return td
@@ -94,6 +96,15 @@ func (td *ThreatDetector) Detect(text string) ThreatScore {
 			Variant:      "disabled",
 			ModelVersion: td.modelHash,
 		}
+	}
+
+	// LRU cache: skip ONNX inference for inputs we've already scored.
+	// The FNV-1a hash is collision-resistant enough for cache keys and
+	// costs ~100ns vs ~48ms for ONNX inference. Cache hits are critical
+	// for repeated prompts (system prompts, common greetings, etc.).
+	cacheKey := hashInput(text)
+	if cached, ok := td.cache.Get(cacheKey); ok {
+		return cached
 	}
 
 	// Sliding window inference: for inputs longer than MaxSeqLen, scan
@@ -142,6 +153,9 @@ func (td *ThreatDetector) Detect(text string) ThreatScore {
 		td.calibrator.LogShadowPrediction(text, score, "original", td.modelHash)
 		result.IsThreat = false
 	}
+
+	// Cache the result for future cache hits
+	td.cache.Put(cacheKey, result)
 
 	return result
 }

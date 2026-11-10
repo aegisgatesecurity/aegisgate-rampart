@@ -1,5 +1,7 @@
+%define debug_package %{nil}
+
 Name:           aegisgate-rampart
-Version:        %{?version_override}%{!?version_override:0.6.1}
+Version:        %{?version_override}%{!?version_override:0.11.0}
 Release:        1%{?dist}
 Summary:        Local AI security proxy for intercepting and detecting threats
 License:        Apache-2.0
@@ -14,7 +16,7 @@ endpoints, runs real-time detection for PII, secrets, XSS, and compliance
 violations, and can actively block threats before they reach the AI service.
 
 Features:
-- 153 regex patterns + Char CNN-BiLSTM neural network
+- 571 regex patterns + Char CNN-BiLSTM neural network
 - Monitor mode (log only) or Block mode (active blocking)
 - System tray notifications (daemon mode)
 - Auto-start on boot
@@ -53,5 +55,8 @@ echo "  Run 'rampart --trust' to install the CA certificate"
 /usr/share/doc/aegisgate-rampart/LICENSE
 
 %changelog
+* Mon Nov 10 2026 AegisGate Security <security@aegisgatesecurity.io> - 0.11.0-1
+- v0.11.0 release — 571 patterns, performance optimizations, gosec fixes
+
 * Sat Aug 08 2026 AegisGate Security <security@aegisgate.dev> - 0.6.0-1
 - v0.6.0 release

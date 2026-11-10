@@ -817,7 +817,8 @@ func (p *Proxy) interceptHTTPS(w http.ResponseWriter, r *http.Request) {
 	// Hijack the connection
 	hijacker, ok := w.(http.Hijacker)
 	if !ok {
-		log.Printf("rampart: hijacking not supported, falling back to tunnel for %s", host)
+		// #nosec G706 -- %q escapes control chars, preventing log injection
+		log.Printf("rampart: hijacking not supported, falling back to tunnel for %q", host)
 		p.tunnel(w, r) // Fall back to pass-through
 		return
 	}
@@ -863,7 +864,8 @@ func (p *Proxy) interceptHTTPS(w http.ResponseWriter, r *http.Request) {
 
 	tlsConn := tls.Server(hijackedConn, tlsConfig)
 	if err := tlsConn.Handshake(); err != nil {
-		log.Printf("rampart: TLS handshake failed for %s: %v", host, err)
+		// #nosec G706 -- %q escapes control chars, preventing log injection
+		log.Printf("rampart: TLS handshake failed for %q: %v", host, err)
 		_ = hijackedConn.Close()
 		return
 	}
@@ -1781,7 +1783,8 @@ func boolColor(b bool) string {
 func (p *Proxy) notifyDesktop(direction, host string, result *detector.Summary) {
 	if p.notifier == nil {
 		// No notifier configured — log to stderr
-		log.Printf("rampart: [%s] %s — %d detections", direction, host, result.TotalDetections)
+		// #nosec G706 -- %q escapes control chars, preventing log injection
+		log.Printf("rampart: [%s] %q — %d detections", direction, host, result.TotalDetections)
 		return
 	}
 
@@ -1794,7 +1797,8 @@ func (p *Proxy) notifyDesktop(direction, host string, result *detector.Summary) 
 	// Send the notification (best-effort, don't block on failures)
 	if err := p.notifier.SendDetection(host, result.TotalDetections, categories); err != nil {
 		// Notification failed — log as fallback, don't disrupt proxy flow
-		log.Printf("rampart: [%s] %s — %d detections (notification failed: %v)",
+		// #nosec G706 -- %q escapes control chars, preventing log injection
+		log.Printf("rampart: [%s] %q — %d detections (notification failed: %v)",
 			direction, host, result.TotalDetections, err)
 	}
 }

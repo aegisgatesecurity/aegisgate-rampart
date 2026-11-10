@@ -10,6 +10,7 @@
 internal/certinit/certinit_comprehensive_test.go
 internal/certinit/certinit_coverage_test.go
 internal/detectors/detectors_test.go
+internal/detectors/evasion_norm_test.go
 internal/response/response_comprehensive_test.go
 internal/response/response_coverage_test.go
 internal/scanner/batch_test.go

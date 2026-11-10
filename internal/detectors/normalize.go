@@ -681,7 +681,7 @@ func decodeURLEncoding(s string) string {
 			hi := hexDigitVal(s[i+1])
 			lo := hexDigitVal(s[i+2])
 			if hi >= 0 && lo >= 0 {
-				b.WriteByte(byte(hi<<4 | lo))
+				b.WriteByte(byte(hi)<<4 | byte(lo))
 				i += 3
 				continue
 			}
@@ -832,7 +832,7 @@ func decodeHexString(s string) string {
 		if hi < 0 || lo < 0 {
 			return ""
 		}
-		c := byte(hi<<4 | lo)
+		c := byte(hi)<<4 | byte(lo)
 		if c >= 0x20 && c <= 0x7E {
 			b.WriteByte(c)
 		} else if c == '\n' || c == '\r' || c == '\t' {

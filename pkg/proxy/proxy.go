@@ -1102,11 +1102,11 @@ func (p *Proxy) shouldBlock(result *detector.Summary, content string) (bool, str
 	// while the Char CNN-BiLSTM evaluates the full prompt context.
 
 	// Tier 1: high-confidence ML threat — block even without regex corroboration
-	// Threshold maintained at 0.95 — benchmark testing showed lowering to 0.80
-	// or 0.90 introduced 44-71 FPs with negligible catch improvement.
+	// Threshold lowered from 0.98 to 0.95 — conservative reduction. Prior
+	// benchmarking showed 0.90 introduced 44-71 FPs. 0.95 is the safe floor.
 	// FP mitigation: non-English text (>50% non-ASCII) and very short text
 	// (< 20 chars) with no regex findings. PII-only context gatekeeper also retained.
-	if result.MLScore >= 0.98 {
+	if result.MLScore >= 0.95 {
 		// Non-English text FP mitigation: the character-level model maps
 		// non-ASCII chars (>127) to UNK tokens. Non-English text produces
 		// UNK-heavy sequences scored ~1.0. If >50% non-ASCII, suppress ML

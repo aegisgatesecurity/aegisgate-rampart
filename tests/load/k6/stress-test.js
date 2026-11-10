@@ -52,13 +52,20 @@ export default function () {
 
     detectLatency.add(res.timings.duration);
 
+    // In block mode, Rampart returns 403 for blocked requests (malicious payloads)
+    // and 200 for allowed requests (clean payloads). Both are valid responses.
     const ok = check(res, {
-      'detect status 200': (r) => r.status === 200,
+      'detect status 200 or 403': (r) => r.status === 200 || r.status === 403,
       'detect has JSON body': (r) => {
         try { JSON.parse(r.body); return true; } catch { return false; }
       },
-      'detect has total_detections': (r) => {
-        try { return typeof JSON.parse(r.body).total_detections === 'number'; } catch { return false; }
+      'detect has expected field': (r) => {
+        try {
+          const body = JSON.parse(r.body);
+          // 200: total_detections field; 403: blocked field
+          return (r.status === 200 && typeof body.total_detections === 'number') ||
+                 (r.status === 403 && typeof body.blocked === 'boolean');
+        } catch { return false; }
       },
     });
 

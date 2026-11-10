@@ -14,10 +14,11 @@ import (
 // This exercises the full detection pipeline through the proxy's HTTP handler.
 func BenchmarkProxy(b *testing.B) {
 	cfg := &config.Config{
-		ProxyPort:   0, // Not actually listening
-		DaemonMode:  false,
-		Verbose:     false,
-		PlatformURL: "",
+		ProxyPort:    0,      // Not actually listening
+		RateLimitRPS: 100000, // disable rate limiting for benchmarks
+		DaemonMode:   false,
+		Verbose:      false,
+		PlatformURL:  "",
 		Targets: []config.TargetConfig{
 			{Domain: "api.openai.com", Paths: []string{"/v1/chat/completions"}, Description: "OpenAI API"},
 		},
@@ -62,10 +63,11 @@ func BenchmarkProxy(b *testing.B) {
 // BenchmarkProxyClean benchmarks /detect with clean (non-malicious) text.
 func BenchmarkProxyClean(b *testing.B) {
 	cfg := &config.Config{
-		ProxyPort:   0,
-		DaemonMode:  false,
-		Verbose:     false,
-		PlatformURL: "",
+		ProxyPort:    0,
+		RateLimitRPS: 100000, // disable rate limiting for benchmarks
+		DaemonMode:   false,
+		Verbose:      false,
+		PlatformURL:  "",
 		Targets: []config.TargetConfig{
 			{Domain: "api.openai.com", Paths: []string{"/v1/chat/completions"}, Description: "OpenAI API"},
 		},
@@ -109,9 +111,10 @@ func BenchmarkProxyClean(b *testing.B) {
 // BenchmarkProxyStats benchmarks the /stats API endpoint.
 func BenchmarkProxyStats(b *testing.B) {
 	cfg := &config.Config{
-		ProxyPort:  0,
-		DaemonMode: false,
-		Targets:    []config.TargetConfig{},
+		ProxyPort:    0,
+		RateLimitRPS: 100000, // disable rate limiting for benchmarks
+		DaemonMode:   false,
+		Targets:      []config.TargetConfig{},
 		Models: config.ModelConfig{
 			Path:      "",
 			Threshold: 0.7,
@@ -141,8 +144,9 @@ func BenchmarkProxyStats(b *testing.B) {
 // BenchmarkProxyDetectLarge benchmarks /detect with a large input payload.
 func BenchmarkProxyDetectLarge(b *testing.B) {
 	cfg := &config.Config{
-		ProxyPort:  0,
-		DaemonMode: false,
+		ProxyPort:    0,
+		RateLimitRPS: 100000, // disable rate limiting for benchmarks
+		DaemonMode:   false,
 		Targets: []config.TargetConfig{
 			{Domain: "api.openai.com", Paths: []string{"/v1/chat/completions"}, Description: "OpenAI API"},
 		},

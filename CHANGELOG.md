@@ -1,3 +1,29 @@
+## [0.11.0] - 2026-11-10 — Pattern Expansion, Performance Optimizations, gosec Fixes
+
+> **v0.11.0** expands Rampart's detection coverage from 302 to 571 regex patterns, adds performance optimizations (parallelized regex scanning, LRU cache, early exit in DetectAll), and resolves all gosec and Gitleaks code scanning alerts.
+
+### Pattern Expansion (302 → 571)
+- 269 new regex patterns synced with Platform v5.2.0
+- New categories: data exfiltration (38), context manipulation (6), social engineering (16), malware (12), injection (22), prompt injection request (26), gap patterns (20), XSS request (10)
+- Existing categories expanded: secrets (80), compliance (84), PII US core (40), PII US extended (19), path traversal (21), RAG patterns (20)
+
+### Performance Optimizations
+- Parallelized regex variant scanning with goroutine worker pool (#82)
+- LRU cache for memoized detection results (#83)
+- Early exit in `DetectAll` when blocking threshold reached (#83)
+- Skipped ML on response path for reduced latency (#83)
+- PII detection parity gap with Platform fixed (#80)
+
+### Security Fixes
+- gosec G115: Changed `hexDigitVal` return type from `int` to `uint8` with sentinel value (255) — eliminates all int→byte overflow conversions
+- Gitleaks: Added `evasion_norm_test.go` to `.gitleaksignore` (test fixture with fake Azure key)
+
+### Other Changes
+- Configurable bind address (`--bind-addr` flag)
+- `priv_esc` regex fix for privilege escalation detection
+- macOS CI timeout increased from 1200s to 1800s
+- Dependency bumps: softprops/action-gh-release, docker/login-action, sigstore/cosign-installer, trufflesecurity/trufflehog
+
 ## [0.10.0] - 2026-11-07 — Model v22b, NFKC Normalization, ATLAS L2 Patterns, MaxSeqLen 512
 
 > **v0.10.0** synchronizes Rampart with Platform v5.1.0: ML model v22b, NFKC Unicode normalization with regional indicator mapping, 6 new ATLAS L2 compliance patterns, and MaxSeqLen 256→512.

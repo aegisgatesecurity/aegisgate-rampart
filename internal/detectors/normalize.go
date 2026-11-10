@@ -680,8 +680,8 @@ func decodeURLEncoding(s string) string {
 		if s[i] == '%' && i+2 < len(s) {
 			hi := hexDigitVal(s[i+1])
 			lo := hexDigitVal(s[i+2])
-			if hi >= 0 && lo >= 0 {
-				b.WriteByte(byte(hi)<<4 | byte(lo))
+			if hi != 255 && lo != 255 {
+				b.WriteByte(hi<<4 | lo)
 				i += 3
 				continue
 			}
@@ -697,16 +697,16 @@ func decodeURLEncoding(s string) string {
 	return b.String()
 }
 
-func hexDigitVal(c byte) int {
+func hexDigitVal(c byte) uint8 {
 	switch {
 	case c >= '0' && c <= '9':
-		return int(c - '0')
+		return c - '0'
 	case c >= 'a' && c <= 'f':
-		return int(c - 'a' + 10)
+		return c - 'a' + 10
 	case c >= 'A' && c <= 'F':
-		return int(c - 'A' + 10)
+		return c - 'A' + 10
 	default:
-		return -1
+		return 255 // invalid sentinel
 	}
 }
 
@@ -829,10 +829,10 @@ func decodeHexString(s string) string {
 	for i := 0; i+1 < len(s); i += 2 {
 		hi := hexDigitVal(s[i])
 		lo := hexDigitVal(s[i+1])
-		if hi < 0 || lo < 0 {
+		if hi == 255 || lo == 255 {
 			return ""
 		}
-		c := byte(hi)<<4 | byte(lo)
+		c := hi<<4 | lo
 		if c >= 0x20 && c <= 0x7E {
 			b.WriteByte(c)
 		} else if c == '\n' || c == '\r' || c == '\t' {

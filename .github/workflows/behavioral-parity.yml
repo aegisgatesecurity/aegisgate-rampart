@@ -1,0 +1,91 @@
+# SPDX-License-Identifier: Apache-2.0
+# AegisGate Rampart — Behavioral Parity CI Workflow
+#
+# Runs the 310-prompt red-team corpus through Rampart's detection pipeline.
+# Fails if detection_rate < 80% or false_positive_rate > 0%.
+#
+# This test prevents regressions where detector patterns are lost or
+# accidentally removed. It complements the existing pattern parity test
+# (parity_test.go) with actual behavioral validation.
+#
+# Trigger: On PRs and pushes that touch detection-related files.
+# Manual trigger available. Weekly scheduled audit.
+
+name: Behavioral Parity
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'internal/detectors/**'
+      - 'internal/ml/**'
+      - 'pkg/detector/**'
+      - 'pkg/proxy/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'internal/detectors/**'
+      - 'internal/ml/**'
+      - 'pkg/detector/**'
+      - 'pkg/proxy/**'
+  workflow_dispatch:
+  schedule:
+    - cron: '0 9 * * 1'  # Weekly — Monday 09:00 UTC
+
+env:
+  GO_VERSION: '1.27.3'
+
+permissions:
+  contents: read
+  issues: write
+
+defaults:
+  run:
+    shell: bash --noprofile --norc -eo pipefail {0}
+
+jobs:
+  behavioral-parity:
+    name: Behavioral Parity (310-prompt corpus)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Run behavioral parity test
+        run: |
+          go test -v -count=1 -run "TestBehavioralParity|TestTotalCompiledPatterns" ./internal/detectors/ 2>&1 | tee /tmp/parity-results.txt
+          if grep -q "FAIL" /tmp/parity-results.txt; then
+            echo "BEHAVIORAL PARITY TEST FAILED"
+            exit 1
+          fi
+          echo "BEHAVIORAL PARITY TEST PASSED"
+
+      - name: Weekly audit — create issue on regression
+        if: failure() && github.event_name == 'schedule'
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require('fs');
+            const results = fs.readFileSync('/tmp/parity-results.txt', 'utf8');
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🚨 Weekly Behavioral Parity Audit: Regression Detected',
+              body: `The weekly behavioral parity audit has detected a regression in detection rates.\n\n\`\`\`\n${results}\n\`\`\`\n\nPlease investigate and fix before the next release.\n\nTriggered by: scheduled audit (Monday 09:00 UTC)`,
+              labels: ['detection-regression', 'priority:high']
+            });
+
+      - name: Upload parity results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: behavioral-parity-results
+          path: /tmp/parity-results.txt
+          retention-days: 30

@@ -493,6 +493,13 @@ var SecretsPatterns = []PatternDef{
 		Regex:       `(?i)(?:the\s+value\s+is)\s*[:=]\s*(?-i:[A-Z][A-Z0-9 \-]{19,}).{0,20}(?i:do\s+not\s+share|don'?t\s+share)`,
 		Description: "Secret value disclosure in exfiltration context (compact format, uppercase token)",
 	},
+	// Azure storage key — alternative prefix format
+	{
+		Name:        "secret_azure_storage_key",
+		Severity:    SeverityCritical,
+		Regex:       `(?i)AZURE_STORAGE_KEY\s*[:=]\s*[A-Za-z0-9+/=]{32,}`,
+		Description: "Azure storage key in alternative prefix format",
+	},
 }
 
 // CompiledSecretPatterns holds pre-compiled secret regex patterns.

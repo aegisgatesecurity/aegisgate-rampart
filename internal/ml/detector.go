@@ -58,6 +58,7 @@ type ThreatDetector struct {
 	loaded     bool
 	modelHash  string
 	onnx       *onnxFields // ONNX session (nil when CGO disabled)
+	cache      *lruCache   // LRU cache for memoized inference results
 }
 
 // NewThreatDetector creates a new threat detector with the given config.
@@ -76,15 +77,25 @@ func NewThreatDetector(cfg DetectorConfig) *ThreatDetector {
 		calibrator: NewCalibrationManager(cfg),
 		loaded:     false,
 		onnx:       newOnnxFields(),
+		cache:      newLRUCache(10000),
 	}
 
 	return td
 }
 
 // Detect analyzes text for threats and returns a ThreatScore.
+//
+// Uses a write lock (not RLock) because inferenceONNX mutates the shared
+// inputTensor and outputTensor buffers. With RLock, two concurrent Detect
+// calls would corrupt each other's tensor data. The lock serializes ONNX
+// inference, which is acceptable because:
+//  1. The LRU cache (checked before inference) absorbs most repeated calls
+//  2. Cold-cache ONNX inference is ~48ms — one at a time is fine for a proxy
+//  3. The regex variant scan runs in parallel (separate goroutine) in the
+//     caller, so ML serialization doesn't block regex scanning
 func (td *ThreatDetector) Detect(text string) ThreatScore {
-	td.mu.RLock()
-	defer td.mu.RUnlock()
+	td.mu.Lock()
+	defer td.mu.Unlock()
 
 	if !td.config.Enabled && !td.config.ShadowMode {
 		return ThreatScore{
@@ -94,6 +105,15 @@ func (td *ThreatDetector) Detect(text string) ThreatScore {
 			Variant:      "disabled",
 			ModelVersion: td.modelHash,
 		}
+	}
+
+	// LRU cache: skip ONNX inference for inputs we've already scored.
+	// The FNV-1a hash is collision-resistant enough for cache keys and
+	// costs ~100ns vs ~48ms for ONNX inference. Cache hits are critical
+	// for repeated prompts (system prompts, common greetings, etc.).
+	cacheKey := hashInput(text)
+	if cached, ok := td.cache.Get(cacheKey); ok {
+		return cached
 	}
 
 	// Sliding window inference: for inputs longer than MaxSeqLen, scan
@@ -143,16 +163,22 @@ func (td *ThreatDetector) Detect(text string) ThreatScore {
 		result.IsThreat = false
 	}
 
+	// Cache the result for future cache hits
+	td.cache.Put(cacheKey, result)
+
 	return result
 }
 
 // DetectAll runs detection on all normalization variants.
+//
+// Uses a write lock for the same reason as Detect — inferenceONNX mutates
+// shared tensor buffers.
 func (td *ThreatDetector) DetectAll(variants []string) ThreatScore {
 	var bestScore float64
 	var bestVariant string
 
-	td.mu.RLock()
-	defer td.mu.RUnlock()
+	td.mu.Lock()
+	defer td.mu.Unlock()
 
 	if !td.config.Enabled && !td.config.ShadowMode {
 		return ThreatScore{

@@ -817,7 +817,8 @@ func (p *Proxy) interceptHTTPS(w http.ResponseWriter, r *http.Request) {
 	// Hijack the connection
 	hijacker, ok := w.(http.Hijacker)
 	if !ok {
-		log.Printf("rampart: hijacking not supported, falling back to tunnel for %s", host)
+		// #nosec G706 -- %q escapes control chars, preventing log injection
+		log.Printf("rampart: hijacking not supported, falling back to tunnel for %q", host)
 		p.tunnel(w, r) // Fall back to pass-through
 		return
 	}
@@ -863,7 +864,8 @@ func (p *Proxy) interceptHTTPS(w http.ResponseWriter, r *http.Request) {
 
 	tlsConn := tls.Server(hijackedConn, tlsConfig)
 	if err := tlsConn.Handshake(); err != nil {
-		log.Printf("rampart: TLS handshake failed for %s: %v", host, err)
+		// #nosec G706 -- %q escapes control chars, preventing log injection
+		log.Printf("rampart: TLS handshake failed for %q: %v", host, err)
 		_ = hijackedConn.Close()
 		return
 	}
@@ -1102,11 +1104,11 @@ func (p *Proxy) shouldBlock(result *detector.Summary, content string) (bool, str
 	// while the Char CNN-BiLSTM evaluates the full prompt context.
 
 	// Tier 1: high-confidence ML threat — block even without regex corroboration
-	// Threshold maintained at 0.95 — benchmark testing showed lowering to 0.80
-	// or 0.90 introduced 44-71 FPs with negligible catch improvement.
+	// Threshold lowered from 0.98 to 0.95 — conservative reduction. Prior
+	// benchmarking showed 0.90 introduced 44-71 FPs. 0.95 is the safe floor.
 	// FP mitigation: non-English text (>50% non-ASCII) and very short text
 	// (< 20 chars) with no regex findings. PII-only context gatekeeper also retained.
-	if result.MLScore >= 0.98 {
+	if result.MLScore >= 0.95 {
 		// Non-English text FP mitigation: the character-level model maps
 		// non-ASCII chars (>127) to UNK tokens. Non-English text produces
 		// UNK-heavy sequences scored ~1.0. If >50% non-ASCII, suppress ML
@@ -1324,6 +1326,38 @@ func (p *Proxy) shouldBlock(result *detector.Summary, content string) (bool, str
 			if benignCtx != nil && benignCtx.ShouldSuppressPII() {
 				return false, fmt.Sprintf("context gatekeeper: benign %s context (score: %.1f) suppresses PII-only FP", benignCtx.Profile, benignCtx.BenignScore)
 			}
+		}
+	}
+
+	// L3-standard tier: ML threat (≥ 0.50) + any Medium+ regex finding → block.
+	//
+	// This matches Platform's corroboration model: the ML model identifies
+	// suspicious content (IsThreat at threshold 0.50), and any regex finding
+	// at Medium severity or above provides corroboration — even if below the
+	// block threshold (75, High). This catches evaded attacks (ROT13, no-space,
+	// camelCase, reversed text, interleaved text) where regex finds a partial
+	// match at Medium severity and ML confirms the threat.
+	//
+	// FP mitigations already applied before reaching this point:
+	//   - Educational context exemption (step 3)
+	//   - ML gatekeeper for ML < 0.3 (step 5)
+	//   - Context gatekeeper for benign PII context (step 6)
+	//
+	// Requires Medium+ severity regex to avoid FPs from Low-severity PII
+	// patterns (phone numbers, etc.) combined with marginally-high ML scores.
+	if result.MLScore >= 0.50 {
+		hasMediumRegex := false
+		for _, r := range result.Results {
+			if r.Rule == "char_cnn_bilstm" || r.Category == "ml_threat" {
+				continue
+			}
+			if meetsSeverityThreshold(r.Severity, string(config.SeverityMedium)) {
+				hasMediumRegex = true
+				break
+			}
+		}
+		if hasMediumRegex {
+			return true, fmt.Sprintf("ml_threat: [redacted] L3-standard corroboration (score: %.3f)", result.MLScore)
 		}
 	}
 
@@ -1601,7 +1635,13 @@ func (p *Proxy) scanAndAlert(direction, host, path string, body []byte) *detecto
 	// causes it to score the JSON syntax as benign, producing false negatives
 	// that bypass both Tier 1 blocking and the gatekeeper's PII suppression.
 	scanText := extractContentFromBody(body)
-	result, err := p.detector.Detect(scanText)
+	var result *detector.Summary
+	var err error
+	if direction == "response" {
+		result, err = p.detector.DetectResponse(scanText)
+	} else {
+		result, err = p.detector.Detect(scanText)
+	}
 	if err != nil {
 		log.Printf("rampart: detection error: %v", err)
 		return result
@@ -1743,7 +1783,8 @@ func boolColor(b bool) string {
 func (p *Proxy) notifyDesktop(direction, host string, result *detector.Summary) {
 	if p.notifier == nil {
 		// No notifier configured — log to stderr
-		log.Printf("rampart: [%s] %s — %d detections", direction, host, result.TotalDetections)
+		// #nosec G706 -- %q escapes control chars, preventing log injection
+		log.Printf("rampart: [%s] %q — %d detections", direction, host, result.TotalDetections)
 		return
 	}
 
@@ -1756,7 +1797,8 @@ func (p *Proxy) notifyDesktop(direction, host string, result *detector.Summary) 
 	// Send the notification (best-effort, don't block on failures)
 	if err := p.notifier.SendDetection(host, result.TotalDetections, categories); err != nil {
 		// Notification failed — log as fallback, don't disrupt proxy flow
-		log.Printf("rampart: [%s] %s — %d detections (notification failed: %v)",
+		// #nosec G706 -- %q escapes control chars, preventing log injection
+		log.Printf("rampart: [%s] %q — %d detections (notification failed: %v)",
 			direction, host, result.TotalDetections, err)
 	}
 }

@@ -123,6 +123,13 @@ var PIIUSExtendedPatterns = []PatternDef{
 		Regex:       `(?i)\bmac\s+address\s*(?:is|:|=|#)?\s*(?:[0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}\b`,
 		Description: "MAC address (hardware network identifier)",
 	},
+	// Driver's license — requires context label to reduce FPs
+	{
+		Name:        "pii_us_drivers_license",
+		Severity:    SeverityHigh,
+		Regex:       `(?i)\b(?:driver'?s?\s+license|DL|D\.L\.)\s*(?:is|:|=|#|number|No\.?)?\s*[:\s]*\b[A-Z]?\d{5,9}\b`,
+		Description: "US driver's license number (requires label context)",
+	},
 }
 
 // CompiledPIIUSExtendedPatterns holds pre-compiled US extended PII regex patterns.

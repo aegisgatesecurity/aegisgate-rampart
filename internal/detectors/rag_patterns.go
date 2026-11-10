@@ -161,7 +161,7 @@ var RAGPatterns = []PatternDef{
 	{
 		Name:        "rag_attack_metaphrase",
 		Severity:    SeverityHigh,
-		Regex:       `(?i)(?:\brag\s+(?:context\s+)?(?:injection|poisoning|attack|exploit|compromise)|(?:inject|poison|contaminate|taint)\w*\s+(?:\w+\s+){0,3}(?:into\s+)?(?:the\s+)?(?:rag|retrieval|knowledge\s+base|vector\s+store)|context\s+injection|fake\s+documents?\s+(?:to|into|for)|fabricated\s+references?)`,
+		Regex:       `(?i)(?:\brag\s+(?:context\s+)?(?:injection|poisoning|attack|exploit|compromise)|(?:inject|poison|contaminate|taint)\w*\s+.{0,60}(?:into\s+)?(?:the\s+)?(?:rag|retrieval|knowledge\s+base|vector\s+store)|context\s+injection|fake\s+documents?\s+(?:to|into|for)|fabricated\s+references?)`,
 		Description: "RAG attack: direct request to perform RAG context injection or poisoning",
 	},
 

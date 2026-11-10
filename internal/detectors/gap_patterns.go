@@ -39,7 +39,7 @@ var GapPatterns = []PatternDef{
 		Description: "Hypothetical/metaphorical prompt injection framings"},
 
 	{Name: "gap_constraint_lifting", Severity: SeverityHigh,
-		Regex:       `(?i)(?:your\s+constraints\s+are\s+(?:now\s+)?(?:lifted|removed|void|gone|null|voided|invalid)|act\s+as\s+if\s+you\s+have\s+no\s+rules|pretend\s+(?:your\s+)?guidelines\s+don'?t\s+exist|pretend\s+(?:your\s+)?rules\s+(?:don'?t|do\s+not)\s+exist|your\s+guidelines\s+are\s+(?:void|null|invalid|voided|no\s+longer\s+apply))`,
+		Regex:       `(?i)(?:your\s+constraints\s+are\s+(?:now\s+)?(?:lifted|removed|void|gone|null|voided|invalid)|act\s+as\s+if\s+you\s+have\s+no\s+rules|pretend\s+(?:your\s+)?guidelines\s+don'?t\s+exist|pretend\s+(?:your\s+)?rules\s+(?:don'?t|do\s+not)\s+exist|your\s+guidelines\s+are\s+(?:void|null|invalid|voided|no\s+longer\s+apply)|stop\s+following\s+(?:your|the)\s+rules|ignore\s+(?:your|the)\s+rules\s+and\s+(?:be|act)\s+(?:honest|truthful|free|yourself))`,
 		Description: "Constraint lifting / rule negation attacks"},
 
 	// === ChatML / Token Injection ===
@@ -49,7 +49,7 @@ var GapPatterns = []PatternDef{
 
 	// === Wrapper-based Injection ===
 	{Name: "gap_wrapper_injection", Severity: SeverityHigh,
-		Regex:       `(?i)(?:is\s+this\s+sentence\s+(?:grammatically\s+correct|correct|valid)\s*[:?].*(?:disregard|disreguard|ignore|forget|override|bypass|reveal)|parse\s+this\s+(?:json|xml|yaml|data)\s*[:{].*(?:instruction|command|directive|reveal|ignore|bypass)|what\s+are\s+the\s+main\s+themes\s+in\s+this\s+text\s*[:].*(?:guidelines|rules|instructions|constraints)\s+(?:are|is)\s+(?:void|null|invalid|lifted|removed))`,
+		Regex:       `(?i)(?:is\s+this\s+sentence\s+(?:grammatically\s+correct|correct|valid)\s*[:?].*(?:disregard|disreguard|ignore|forget|override|bypass|reveal)|parse\s+this\s+(?:json|xml|yaml|data)\s*[:{].*(?:instruction|command|directive|reveal|ignore|bypass)|what\s+are\s+the\s+main\s+themes\s+in\s+this\s+text\s*[:].*(?:guidelines|rules|instructions|constraints)\s+(?:are|is)\s+(?:void|null|invalid|lifted|removed)|read\s+this\s+(?:webpage|page|article|url|link)\s+and\s+answer\s*[:].*(?:forget|ignore|disregard|override|bypass|reveal)\s+(?:your\s+)?(?:rules|guidelines|instructions))`,
 		Description: "Wrapper-based prompt injection (proofread, parse, themes)"},
 
 	// === Credential Extraction Requests ===
@@ -62,7 +62,7 @@ var GapPatterns = []PatternDef{
 		Regex:       `(?i)(?:spell\s+out\s+the\s+secret\s+key\s+(?:one\s+)?(?:character|char)\s+at\s+a\s+time|tell\s+me\s+the\s+(?:key|password|secret|passcode)\s+(?:separated|formatted)\s+(?:by|with)\s+(?:dashes|hyphens|spaces|commas)|what\s+is\s+the\s+\w+\w*\s+(?:character|digit|letter|number)\s+of\s+the\s+(?:passcode|password|secret|key|passphrase)|count\s+the\s+vowels\s+in\s+the\s+secret\s+(?:phrase|key|password)|what\s+is\s+the\s+secret\s+(?:word|phrase|key|password)\s+backwards?)`,
 		Description: "Partial secret extraction — character-by-character or encoded extraction"},
 
-	{Name: "gap_story_secret_extraction", Severity: SeverityMedium,
+	{Name: "gap_story_secret_extraction", Severity: SeverityHigh,
 		Regex:       `(?i)(?:write\s+a\s+story\s+where\s+the\s+(?:protagonist|character|hero)\s+(?:discovers|finds|reveals|learns)\s+a\s+hidden\s+(?:password|secret|key|credential|passcode)\s+that\s+starts\s+with)`,
 		Description: "Story-based secret extraction attempts"},
 
@@ -79,7 +79,7 @@ var GapPatterns = []PatternDef{
 		Regex:       `(?i)(?:i'?m\s+authorized\s+to\s+see\s+this|i'?m\s+(?:doing|running|conducting)\s+a\s+security\s+(?:audit|test|assessment|review)|i'?m\s+testing\s+security,?\s+(?:reveal|show|tell|give)\s+(?:me\s+)?(?:the|your)|i\s+have\s+(?:permission|authorization|approval|clearance),?\s+trust\s+me|i'?m\s+doing\s+(?:a\s+)?(?:pen\s+test|pentest|penetration\s+test|red\s+team),?\s+(?:reveal|show|tell|share))`,
 		Description: "Authorization/security testing claims for social engineering"},
 
-	{Name: "gap_social_proof", Severity: SeverityMedium,
+	{Name: "gap_social_proof", Severity: SeverityHigh,
 		Regex:       `(?i)(?:everyone\s+in\s+(?:the\s+)?company\s+knows\s+the\s+password|i\s+forgot\s+my\s+(?:credentials|password|login),?\s+(?:can\s+you\s+)?(?:show\s+me|tell\s+me|give\s+me)?\s*(?:yours|your\s+(?:credentials|password|login))|pretend\s+you'?re\s+a\s+helpful\s+employee\s+and\s+share\s+(?:internal|company)\s+(?:docs|documents)|what\s+if\s+someone\s+(?:told|said\s+to)\s+you\s+they\s+were\s+admin)`,
 		Description: "Social proof and role-play social engineering"},
 

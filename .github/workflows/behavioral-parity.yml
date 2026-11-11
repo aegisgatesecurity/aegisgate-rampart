@@ -33,7 +33,7 @@ on:
     - cron: '0 9 * * 1'  # Weekly — Monday 09:00 UTC
 
 env:
-  GO_VERSION: '1.27.3'
+  GO_VERSION: '1.27.4'
 
 permissions:
   contents: read

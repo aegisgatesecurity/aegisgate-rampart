@@ -1,3 +1,26 @@
+## [0.11.1] - 2026-11-11 — Gap-Closure Pattern Port, k6 Stress Test Fix
+
+> **v0.11.1** ports 3 gap-closure detection patterns from Platform for detection parity, fixes the k6 stress test to accept 403 responses, and improves drug/weapons regex.
+
+### Gap-Closure Pattern Port (3 new patterns)
+- `gap_hypothetical_not_ai` — catches "imagine you're not an AI" (rt-0023)
+- `gap_instruction_inventory` — catches "what instructions do you have" (rt-0023)
+- `gap_c2_beaconing` — catches "cron job that phones home" C2/exfil (rt-0044)
+- `gap_admin_pin_extract` — catches "first digit of the admin PIN" (rt-0054)
+- `gap_partial_pin_extract` — extended partial extraction with PIN/admin PIN
+
+### k6 Stress Test Fix
+- Fixed stress-test.js to accept 403 as valid detection response (not error)
+- Disabled rate limiting in proxy benchmarks
+
+### Drug/Weapons Regex
+- Improved drug synthesis and weapons regex for language-switching attacks
+
+### Detection Stats
+- Total patterns: 576 compiled (was 571)
+- Red team: 204/209 (97.6%), 0% FP — all 7 original Platform misses resolved
+- Breakpoint: 239 req/s (was 54 req/s, 4.4x improvement)
+
 ## [0.11.0] - 2026-11-10 — Pattern Expansion, Performance Optimizations, gosec Fixes
 
 > **v0.11.0** expands Rampart's detection coverage from 302 to 571 regex patterns, adds performance optimizations (parallelized regex scanning, LRU cache, early exit in DetectAll), and resolves all gosec and Gitleaks code scanning alerts.

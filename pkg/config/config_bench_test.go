@@ -15,7 +15,7 @@ func BenchmarkConfig(b *testing.B) {
 		ProxyPort:   8080,
 		DaemonMode:  false,
 		Verbose:     false,
-		PlatformURL: "https://platform.aegisgate.dev",
+		PlatformURL: "https://platform.aegisgatesecurity.io",
 		Targets:     DefaultTargets(),
 		Models: ModelConfig{
 			Path:      "/opt/aegisgate/models/threat-detection.onnx",
@@ -107,7 +107,7 @@ func BenchmarkConfigLargeFile(b *testing.B) {
 		ProxyPort:   8080,
 		DaemonMode:  false,
 		Verbose:     false,
-		PlatformURL: "https://platform.aegisgate.dev",
+		PlatformURL: "https://platform.aegisgatesecurity.io",
 		Targets:     targets,
 		Models: ModelConfig{
 			Path:      "/opt/aegisgate/models/threat-detection.onnx",

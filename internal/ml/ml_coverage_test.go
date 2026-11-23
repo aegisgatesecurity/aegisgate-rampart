@@ -214,9 +214,10 @@ func TestGetCalibrator_Method(t *testing.T) {
 
 // TestIsEnabled_Method tests IsEnabled method
 func TestIsEnabled_Method(t *testing.T) {
+	// WITHDRAWN 2026-11-23: enabled is forced false.
 	td := NewThreatDetector(DetectorConfig{Enabled: true, Threshold: 0.7})
-	if !td.IsEnabled() {
-		t.Error("Default config should have detector enabled")
+	if td.IsEnabled() {
+		t.Error("Withdrawn detector must report IsEnabled=false")
 	}
 }
 

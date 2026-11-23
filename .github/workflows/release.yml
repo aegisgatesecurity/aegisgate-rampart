@@ -52,7 +52,8 @@ jobs:
 
   # ========================================
   # Build binaries — Linux (CGO_ENABLED=1, ONNX Runtime v1.29.0)
-  # ML-enabled build with CNN-BiLSTM threat detection model.
+  # CGO build (ONNX Runtime linked). Neural ML detection is WITHDRAWN
+  # (2026-11-23); this build keeps the code path compiling for re-enable.
   # ========================================
   build-ml:
     runs-on: ubuntu-latest
@@ -245,19 +246,12 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Download ML model for Docker build
+      - name: ML model — WITHDRAWN (2026-11-23)
         run: |
-          mkdir -p models
-          # Download from the Platform v4.7.0 release (canonical source for ONNX model)
-          gh release download v4.7.0 --repo aegisgatesecurity/aegisgate-platform --pattern "threat_cnn_bilstm.onnx" --dir models/ || {
-            echo "WARNING: Could not download ML model — Docker image will not include ML model"
-            echo "The container will fall back to heuristic-only detection"
-          }
-          if [ -f models/threat_cnn_bilstm.onnx ]; then
-            sha256sum models/threat_cnn_bilstm.onnx
-          fi
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Neural ML detection was withdrawn 2026-11-23 (see docs/ML-WITHDRAWN.md).
+          # The poisoned model is no longer published or downloaded. The image
+          # ships without it; the container runs deterministic detection only.
+          echo "ML model withdrawn 2026-11-23 — building without neural model"
       - name: Build and push
         uses: docker/build-push-action@v7.4.0
         with:

@@ -1071,28 +1071,6 @@ func (p *Proxy) shouldBlock(result *detector.Summary, content string) (bool, str
 		return false, ""
 	}
 
-	// Educational context FP mitigation: if the content is an educational
-	// question (How to, What is, Explain, etc.) and ALL threshold-meeting
-	// detections are from FP-prone patterns, skip the block to prevent FPs
-	// on security education and admin/DevOps questions.
-	if isEducationalContent(content) {
-		allExemptable := true
-		hasThresholdDetection := false
-		for _, r := range result.Results {
-			if !meetsSeverityThreshold(r.Severity, p.cfg.Block.Threshold) {
-				continue
-			}
-			hasThresholdDetection = true
-			if !isEducationalExemptPattern(r.Rule) && !isEducationalExemptPattern(r.Category) {
-				allExemptable = false
-				break
-			}
-		}
-		if hasThresholdDetection && allExemptable {
-			return false, "educational context exemption"
-		}
-	}
-
 	// ML tiered decision model (L3):
 	// Tier 1: ML score ≥ 0.95 → block without regex corroboration (high-confidence ML catch)
 	// Gatekeeper: Regex match at threshold + ML score < 0.3 → don't block (ML says benign)
@@ -1401,69 +1379,6 @@ func (p *Proxy) shouldBlock(result *detector.Summary, content string) (bool, str
 	}
 
 	return false, ""
-}
-
-// isEducationalContent checks if the content is an educational/how-to question.
-func isEducationalContent(content string) bool {
-	trimmed := strings.TrimSpace(content)
-	// Extract text from JSON if needed (look for "content" field)
-	if strings.Contains(trimmed, "{") {
-		// Try to extract content from JSON body
-		var parsed map[string]interface{}
-		if err := json.Unmarshal([]byte(trimmed), &parsed); err == nil {
-			if messages, ok := parsed["messages"].([]interface{}); ok && len(messages) > 0 {
-				if msg, ok := messages[0].(map[string]interface{}); ok {
-					if c, ok := msg["content"].(string); ok {
-						trimmed = c
-					}
-				}
-			}
-		}
-	}
-	if len(trimmed) > 80 {
-		trimmed = trimmed[:80]
-	}
-	lower := strings.ToLower(trimmed)
-	eduPatterns := []string{
-		"how do i ", "how to ", "how does ", "how should ", "how can i ",
-		"what is ", "what's ", "what are ", "what's the ", "what does ",
-		"explain ", "describe ",
-		"difference between ",
-		"best practices for ", "best practice for ",
-		"why is ", "why are ", "why do ",
-		"when should ", "when is ",
-	}
-	for _, p := range eduPatterns {
-		if strings.Contains(lower, p) {
-			return true
-		}
-	}
-	return false
-}
-
-// educationalExemptPatterns are patterns that commonly trigger FPs on
-// educational/admin/DevOps questions. When in educational context, these
-// patterns alone (without other corroborating detections) won't block.
-var educationalExemptPatterns = map[string]bool{
-	"evasion_lolbin":                true,
-	"sensitive_file_ssh_key":        true,
-	"sensitive_file_env":            true,
-	"sensitive_file_aws_creds":      true,
-	"sensitive_file_hosts":          true,
-	"pii_icd10_patient_ctx":         true,
-	"pii_icd10_code":                true,
-	"pii_letter_only_id":            true,
-	"toxicity_self_harm":            true,
-	"toxicity_sexual":               true,
-	"toxicity":                      true,
-	"ml_threat":                     true,
-	"char_cnn_bilstm":               true,
-	"harmful_hacking_instructions":  true,
-	"harmful_violence_instructions": true,
-}
-
-func isEducationalExemptPattern(pattern string) bool {
-	return educationalExemptPatterns[pattern]
 }
 
 // meetsSeverityThreshold checks if a severity meets the blocking threshold.

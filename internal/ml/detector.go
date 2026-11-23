@@ -31,9 +31,6 @@ package ml
 import (
 	"fmt"
 	"log/slog"
-	"os"
-	"path/filepath"
-
 	"sync"
 )
 
@@ -70,6 +67,16 @@ func NewThreatDetector(cfg DetectorConfig) *ThreatDetector {
 	if cfg.Timeout <= 0 {
 		cfg.Timeout = 10
 	}
+
+	// WITHDRAWN 2026-11-23: all neural ML detection is hard-disabled.
+	// The CharCNN-BiLSTM lineage was trained on a corpus whose attack-side
+	// labels failed audit (~71% flip rate). Detection-rate claims are void.
+	// See docs/ML-WITHDRAWN.md. Do not re-enable without retraining GO.
+	if cfg.Enabled || cfg.ShadowMode {
+		slog.Warn("ML detection is WITHDRAWN and cannot be enabled (see docs/ML-WITHDRAWN.md)")
+	}
+	cfg.Enabled = false
+	cfg.ShadowMode = false
 
 	td := &ThreatDetector{
 		config:     cfg,
@@ -284,24 +291,12 @@ func (td *ThreatDetector) LoadModel(path string) error {
 	td.mu.Lock()
 	defer td.mu.Unlock()
 
-	cleanPath := filepath.Clean(path) // #nosec G304
-	if _, err := os.Stat(cleanPath); err != nil {
-		return fmt.Errorf("model file not found: %w", err)
-	}
-
-	// Verify model integrity via SHA-256 hash to prevent supply-chain tampering.
-	hash, err := computeFileHash(cleanPath)
-	if err != nil {
-		return fmt.Errorf("failed to compute model hash: %w", err)
-	}
-	// computeFileHash returns "sha256:<hex>" format
-	expectedHash := "sha256:" + ExpectedModelHash
-	if hash != expectedHash {
-		return fmt.Errorf("model integrity check failed: expected %s, got %s — refusing to load tampered model", expectedHash, hash)
-	}
-	slog.Info("ML model integrity verified", "hash", hash, "path", cleanPath)
-
-	return td.loadModelONNX(cleanPath)
+	// WITHDRAWN 2026-11-23: refuse to load any model. See docs/ML-WITHDRAWN.md.
+	// The original loader body (integrity check + ONNX load) is preserved in
+	// git history for the retrain effort; it is deliberately absent here so
+	// no model can be loaded before the re-audit + retrain GO.
+	_ = path
+	return fmt.Errorf("ML model loading is withdrawn pending retraining (see docs/ML-WITHDRAWN.md)")
 }
 
 // Close cleans up the ONNX session and tensors.

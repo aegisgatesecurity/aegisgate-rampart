@@ -1,3 +1,7 @@
+## [0.11.2] - 2026-11-23 — ML Withdrawn
+
+- Neural ML detection is withdrawn and hard-disabled: `internal/ml` refuses to load any model, `Enabled`/`ShadowMode` are forced off, and the proxy no longer applies the ML tier or the educational-context exemption that existed to mask ML false positives. The CharCNN-BiLSTM lineage trained on a corpus whose attack-side labels failed audit (~71% flip rate); all detection-rate claims derived from it are void. Deterministic (regex/policy) detection is unaffected and has not yet been re-baselined. See docs/ML-WITHDRAWN.md.
+
 ## [0.11.1] - 2026-11-11 — Gap-Closure Pattern Port, k6 Stress Test Fix
 
 > **v0.11.1** ports 3 gap-closure detection patterns from Platform for detection parity, fixes the k6 stress test to accept 403 responses, and improves drug/weapons regex.

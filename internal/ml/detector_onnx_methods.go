@@ -3,6 +3,12 @@
 //go:build cgo
 // +build cgo
 
+//lint:file-ignore U1000 Neural ML hard-disabled 2026-11-23 (docs/ML-WITHDRAWN.md).
+// The ONNX path below is deliberately retained — not dead code — so it can be
+// reinstated after the retrain GO. Do not remove; do not "fix" by deleting.
+//
+//nolint:unused // retained for post-retrain reinstatement; ML hard-disabled 2026-11-23
+
 package ml
 
 import (

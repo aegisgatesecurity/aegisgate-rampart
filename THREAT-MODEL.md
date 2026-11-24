@@ -1,3 +1,5 @@
+> **⚠ 2026-11-23 — ML WITHDRAWN.** Neural (Char CNN-BiLSTM) ML detection referenced in this document is withdrawn; see docs/ML-WITHDRAWN.md. Deterministic regex detection is unaffected.
+
 # AegisGate Rampart — Threat Model
 
 ## Overview

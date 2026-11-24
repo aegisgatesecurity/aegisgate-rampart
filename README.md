@@ -6,7 +6,7 @@
 
 *A free local proxy that sits between your editor and the AI model, catching secrets and sensitive data before they leave your machine.*
 
-HTTPS MITM proxy · 571 regex patterns + Char CNN-BiLSTM (v15) · Monitor & Block modes · 100.0/100 evasion resistance · Zero telemetry by default · IOC pull · Lens signal correlation
+HTTPS MITM proxy · 571 regex patterns · Monitor & Block modes · Zero telemetry by default · IOC pull · Lens signal correlation
 
 [![GitHub stars](https://img.shields.io/github/stars/aegisgatesecurity/aegisgate-rampart?style=flat&logo=github&label=Star&color=FFD700&labelColor=181717&logoColor=FFD700)](https://github.com/aegisgatesecurity/aegisgate-rampart)
 **Found Rampart useful? [Star the repo](https://github.com/aegisgatesecurity/aegisgate-rampart) ⭐ and [tell a colleague](https://x.com/intent/tweet?text=Protecting%20my%20AI%20coding%20workflow%20with%20AegisGate%20Rampart%20%E2%80%94%20local%20firewall%20for%20AI%20tools%3A%20https%3A%2F%2Fgithub.com%2Faegisgatesecurity%2Faegisgate-rampart) — it helps other devs discover AI security tooling.**
@@ -16,7 +16,7 @@ HTTPS MITM proxy · 571 regex patterns + Char CNN-BiLSTM (v15) · Monitor & Bloc
 [![CI](https://github.com/aegisgatesecurity/aegisgate-rampart/actions/workflows/ci.yml/badge.svg)](https://github.com/aegisgatesecurity/aegisgate-rampart/actions/workflows/ci.yml)
 [![Coverage](https://img.shields.io/badge/coverage-81.3%25-brightgreen.svg)](#test-coverage)
 [![Security](https://github.com/aegisgatesecurity/aegisgate-rampart/actions/workflows/security.yml/badge.svg)](https://github.com/aegisgatesecurity/aegisgate-rampart/actions/workflows/security.yml)
-[![CodeQL](https://github.com/aegisgatesecurity/aegisgate-rampart/actions/workflows/codeql.yml/badge.svg)](https://github.com/aegisgatesecurity/aegisgate-rampart/actions/workflows/codeql.yml)
+[![Security Comprehensive](https://github.com/aegisgatesecurity/aegisgate-rampart/actions/workflows/security-comprehensive.yml/badge.svg)](https://github.com/aegisgatesecurity/aegisgate-rampart/actions/workflows/security-comprehensive.yml)
 [![Tests](https://img.shields.io/badge/tests-95%20files%20%7C%2029%20packages-blue.svg)](#test-coverage)
 [![Load Tests](https://img.shields.io/badge/load%20tests-7%20k6%20scenarios-success.svg)](#load-testing)
 [![Crash Rate](https://img.shields.io/badge/crash%20rate-0.0000%25-success.svg)](#load-testing)
@@ -51,7 +51,7 @@ Rampart is a **local security tool for developers** who use AI coding assistants
 Think of it as a firewall for AI coding tools. It catches the moment you're about to send a database password to Copilot, or when the AI generates code that contains an API key, and stops it before it's too late.
 
 - **In-transit interception.** Unlike Lens (browser-level) or Platform (gateway-level), Rampart operates at the network proxy layer — it sees every request and response.
-- **571 regex patterns + ML.** Same detection engine as AegisGate Platform (full parity). Regex catches known patterns; Char CNN-BiLSTM (v15) catches adversarial paraphrasing.
+- **571 regex patterns.** Same detection engine as AegisGate Platform (full parity). Regex catches known patterns. (The Char CNN-BiLSTM ML detector was withdrawn 2026-11-23.)
 - **Monitor or Block.** Log-only mode for visibility. Block mode for enforcement with configurable thresholds and categories.
 - **Zero telemetry by default.** Air-gap mode when `--platform-url` is not set. No network calls. All detection is local.
 - **IOC pull (optional).** Fetch indicators of compromise from Platform's telemetry endpoint with ETag caching. Air-gap compatible — no-op when `--platform-url` is not set.
@@ -172,7 +172,7 @@ Your Machine                                          AI APIs
 │  CLI (curl) ─────┤     │    :8080 proxy        │──────▶  api.anthropic.com
 │  Docker ─────────┘     │                       │──────▶  api.deepseek.com
 │                        │ 571 regex patterns    │──────▶  ...24 more
-│                        │ Char CNN-BiLSTM        │
+│                        │ deterministic detect    │
 │                        │ PII / Secrets /       │
 │                        │ XSS / Compliance      │
 │                        │                       │
@@ -255,7 +255,7 @@ When a request is blocked, Rampart returns a structured JSON response:
 | **XSS** | 12 | Script injection, event handlers, data URIs |
 | **Compliance** | 35 | GDPR, HIPAA, PCI-DSS, SOX identifiers |
 | **OT/ICS Protocols** | 9 | Modbus, DNP3, OPC-UA |
-| **ML (Neural)** | 1 model | Char CNN-BiLSTM adversarial prompt detection |
+| **ML** | — | WITHDRAWN 2026-11-23 — see [docs/ML-WITHDRAWN.md](docs/ML-WITHDRAWN.md) |
 
 ## IDE Coverage
 
@@ -364,9 +364,9 @@ See **[PRIVACY.md](PRIVACY.md)** for complete privacy documentation.
 
 | Product | Surface | Approach | Detection | Block Mode |
 |---------|---------|----------|-----------|-------------|
-| **Lens** | Browser | DOM blocking (before send) | 155 regex + JS ML | ✅ Block in browser |
-| **Rampart** | Desktop, CLI, IDE | HTTPS proxy (in transit) | 571 regex + Go ML | ✅ Block at proxy |
-| **Platform** | Server | API gateway | 256 regex + Go ML | ✅ Block at gateway |
+| **Lens** | Browser | DOM blocking (before send) | 155 regex | ✅ Block in browser |
+| **Rampart** | Desktop, CLI, IDE | HTTPS proxy (in transit) | 571 regex | ✅ Block at proxy |
+| **Platform** | Server | API gateway | 256 regex | ✅ Block at gateway |
 
 **Lens blocks before send. Rampart blocks in transit. Platform blocks at the gateway.** Together = full-spectrum coverage.
 
@@ -382,9 +382,9 @@ See **[PRIVACY.md](PRIVACY.md)** for complete privacy documentation.
 <details>
 <summary><strong>📦 What's New in v0.8.0</strong></summary>
 
-- **🧠 Detection Parity with Platform** — v15 ONNX model, full text normalization (NormalizeAllVariants in production), threshold fix (0.7→0.5), config-sourced detector init. Evasion resistance: **100.0/100** (4,050 adversarial tests, up from 12.8/100).
+- **🧠 Detection Parity with Platform** — v15 ONNX model, full text normalization (NormalizeAllVariants in production), threshold fix (0.7→0.5). *WITHDRAWN 2026-11-23: model lineage failed label audit; the 100.0/100 evasion figure is void. See docs/ML-WITHDRAWN.md.*
 - **🔒 26 Synced Regex Patterns** — 11 secret patterns (Slack, Azure, Cloudflare, Docker, GCP, Kubernetes, etc.) + 13 compliance patterns (SSTI, eval/atob, model theft, data exfil, safety bypass). Pattern count: 297→571.
-- **🐳 CGO Docker Build** — Dockerfile rewritten for CGO + ONNX Runtime v1.29.0. ML model shipped in container. Debian bookworm-slim base (glibc for onnxruntime).
+- **🐳 CGO Docker Build** — Dockerfile rewritten for CGO + ONNX Runtime. *ML detection withdrawn 2026-11-23; model no longer shipped.*
 - **🧪 Conformance Infrastructure** — Normalization conformance test suite + adversarial evasion suite (4,050 tests) tracked in CI.
 - **🧪 Test coverage** — 95 test files, 29 packages, 1,412 test functions, 81.3% filtered coverage, all passing with `-race`.
 
@@ -403,7 +403,7 @@ See **[PRIVACY.md](PRIVACY.md)** for complete privacy documentation.
 <summary><strong>📦 What's New in v0.6.0</strong></summary>
 
 - **🛡️ Block Mode** — Actively block threats at the proxy level. Returns HTTP 403 with structured JSON response. Configurable threshold, categories, and block direction (request, response, or both).
-- **🧠 ML Adversarial Detection** — Char CNN-BiLSTM with Attention model detects adversarial prompt injections (instruction override, roleplay injection, obfuscated commands) in real time.
+- **🧠 ML Adversarial Detection** — Char CNN-BiLSTM with Attention model. *WITHDRAWN 2026-11-23 — see docs/ML-WITHDRAWN.md.*
 - **🔐 Encrypted Audit Logs** — ChaCha20-Poly1305 authenticated encryption with PBKDF2-SHA256 key derivation. Key is never stored — decryption requires original passphrase.
 - **📊 Anonymized Metrics** — Opt-in privacy-preserving telemetry. Domain hashed with SHA-256, timestamps rounded to hour, only false positives reported.
 - **🔔 Webhook Notifications** — Configurable webhook integration for detection alerts. Custom headers, multiple endpoints.
@@ -517,7 +517,7 @@ aegisgate-rampart/
 │   ├── lenscorrelation/   # Lens signal correlation receiver
 │   ├── logging/           # Minimal stderr shim
 │   ├── lsp/               # Language Server Protocol server
-│   ├── ml/                # Char CNN-BiLSTM (ONNX + heuristic fallback)
+│   ├── ml/                # ML detector — WITHDRAWN 2026-11-23 (disabled)
 │   ├── notify/            # Desktop notifications (3 platforms)
 │   ├── platform/          # Platform-aware paths (ConfigDir, DataDir, CacheDir)
 │   ├── platformforward/   # Platform telemetry forwarding (opt-in)
@@ -547,7 +547,7 @@ aegisgate-rampart/
 - **Evasion-resistant normalization**: 13-17 variants per input (l33t, ROT13, homoglyph, keyboard walk, space-removal, camelCase)
 - **Post-match FP filters**: 6 pattern-specific benign content filters
 - ~~ML gatekeeper~~ — withdrawn with the ML model (2026-11-23); regex FPs no longer ML-suppressed
-- **Short-text FP mitigation**: Suppresses ML-driven blocks on short text (< 180 chars) when no regex pattern meets block threshold
+- ~~Short-text FP mitigation~~ — suppressed ML-driven blocks; removed with the ML withdrawal (2026-11-23)
 
 ---
 
@@ -567,7 +567,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## IP Notice
 
-AegisGate's core technologies are patent pending with the USPTO (Provisional App. Nos. 64/153,573–64/153,577, filed September 12, 2026; 64/174,824, filed October 12, 2026; and 64/180,722, filed October 20, 2026; and 64/184,057, filed October 26, 2026). Source code is © 2025-2026 AegisGate Security, LLC. Licensed under Apache 2.0. Trained ML model weights are licensed under the Apache License 2.0.
+AegisGate's core technologies are patent pending with the USPTO (Provisional App. Nos. 64/153,573–64/153,577, filed September 12, 2026; 64/174,824, filed October 12, 2026; and 64/180,722, filed October 20, 2026; and 64/184,057, filed October 26, 2026). Source code is © 2025-2026 AegisGate Security, LLC. Licensed under Apache 2.0. The withdrawn ML model weights are no longer distributed.
 
 ---
 

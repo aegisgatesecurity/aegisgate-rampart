@@ -51,9 +51,11 @@ jobs:
           path: rampart${{ matrix.suffix }}
 
   # ========================================
-  # Build binaries — Linux (CGO_ENABLED=1, ONNX Runtime v1.29.0)
-  # CGO build (ONNX Runtime linked). Neural ML detection is WITHDRAWN
-  # (2026-11-23); this build keeps the code path compiling for re-enable.
+  # Build binaries — Linux (CGO_ENABLED=0, pure Go)
+  # ORT EXCISED 2026-11-26 (user-approved): the dead ONNX Runtime download
+  # is removed; the build is pure Go. Neural ML detection is WITHDRAWN
+  # (2026-11-23); job name/artifact kept so the release pipeline and
+  # branch protection are unchanged.
   # ========================================
   build-ml:
     runs-on: ubuntu-latest
@@ -67,26 +69,17 @@ jobs:
       - uses: actions/setup-go@v7.0.0
         with:
           go-version: '1.27.4'
-      - name: Install ONNX Runtime v1.29.0
-        run: |
-          wget -q https://github.com/microsoft/onnxruntime/releases/download/v1.29.0/onnxruntime-linux-x64-1.29.0.tgz
-          tar -xzf onnxruntime-linux-x64-1.29.0.tgz
-          sudo cp onnxruntime-linux-x64-1.29.0/lib/*.so /usr/lib/
-          sudo cp -r onnxruntime-linux-x64-1.29.0/include/* /usr/include/
-          rm -rf onnxruntime-linux-x64-1.29.0.tgz onnxruntime-linux-x64-1.29.0
       - name: Build
         env:
           GOOS: linux
           GOARCH: ${{ matrix.goarch }}
-          CGO_ENABLED: 1
-          CGO_CFLAGS: "-I/usr/include"
-          CGO_LDFLAGS: "-L/usr/lib -lonnxruntime"
+          CGO_ENABLED: 0
         run: |
           VERSION=${{ github.event.inputs.version || github.ref_name }}
           go build -ldflags "-s -w -X main.versionFlag=$VERSION" \
             -o rampart${{ matrix.suffix }} ./cmd/rampart/
       - name: Upload binary
-        uses: actions/upload-artifact@v7.0.2
+        uses: actions/upload-artifact@7.0.2
         with:
           name: rampart-linux-${{ matrix.goarch }}
           path: rampart${{ matrix.suffix }}

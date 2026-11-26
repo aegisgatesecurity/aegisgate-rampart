@@ -5,62 +5,53 @@
 # Run:    docker run -p 8080:8080 aegisgate-rampart:latest
 #
 # ML detection is WITHDRAWN (2026-11-23): the neural model is withheld from
-# this image. CGO/ONNX build kept so the code path compiles; LoadModel is
-# hard-disabled and the container runs deterministic detection only.
-# See docs/ML-WITHDRAWN.md.
+# this image; LoadModel is hard-disabled and the container runs deterministic
+# detection only. See docs/ML-WITHDRAWN.md.
+# ORT EXCISED 2026-11-26 (user-approved): ONNX Runtime removed from the build
+# entirely — CGO_ENABLED=0 pure-Go build, no ORT download (upstream release
+# URLs are dead, gotcha #280). Future ML (if any) must be Go-native per the
+# Phase 4b constraint (no CGO, no vendored native libs).
 #
-# Uses Debian bookworm-slim base (not Alpine) because onnxruntime prebuilt
-# Linux shared libraries require glibc (ld-linux-x86-64.so.2). Alpine's musl
-# libc cannot load them. The ~67MB size increase over Alpine is acceptable
+# Uses Debian bookworm-slim base (not Alpine) for production-stage tooling
+# compatibility. The ~67MB size increase over Alpine is acceptable
 # for a production security tool.
 #
 # Hardening:
 #   - Production stage runs as non-root via USER appuser.
-#   - Only ca-certificates and libstdc++6 added (minimal attack surface).
+#   - Only ca-certificates added (minimal attack surface).
 # =========================================================================
 
-# Builder stage: Go 1.27 on Debian bookworm with ONNX Runtime v1.29.0.
+# Builder stage: Go on Debian bookworm (pure Go, no CGO).
 FROM golang:1.27.4-bookworm AS builder
 
-# Install build tools + download ONNX Runtime v1.29.0
+# Install build tools (git for VCS stamping; no gcc needed — CGO disabled).
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        git ca-certificates gcc wget && \
-    rm -rf /var/lib/apt/lists/* && \
-    wget -q https://github.com/microsoft/onnxruntime/releases/download/v1.29.0/onnxruntime-linux-x64-1.29.0.tgz && \
-    tar -xzf onnxruntime-linux-x64-1.29.0.tgz && \
-    cp onnxruntime-linux-x64-1.29.0/lib/*.so /usr/lib/ && \
-    cp -r onnxruntime-linux-x64-1.29.0/include/* /usr/include/ && \
-    rm -rf onnxruntime-linux-x64-1.29.0.tgz onnxruntime-linux-x64-1.29.0
+        git ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /build
 
 # Copy the Rampart source
 COPY . ./rampart/
 
-# Build with CGO enabled for ONNX Runtime support
+# Pure-Go build (CGO disabled — ORT excised 2026-11-26, ML withdrawn)
 WORKDIR /build/rampart
-ENV CGO_ENABLED=1
-ENV CGO_CFLAGS="-I/usr/include"
-ENV CGO_LDFLAGS="-L/usr/lib -lonnxruntime"
+ENV CGO_ENABLED=0
 RUN go build \
     -ldflags="-s -w" \
     -o /rampart ./cmd/rampart
 
-# Production stage: minimal Debian bookworm-slim with ONNX Runtime.
+# Production stage: minimal Debian bookworm-slim.
 FROM debian:bookworm-slim
 
-# Install runtime dependencies: ca-certificates (TLS), libstdc++6 (for ONNX).
+# Install runtime dependencies: ca-certificates (TLS).
 RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
-        ca-certificates libstdc++6 && \
+        ca-certificates && \
     rm -rf /var/lib/apt/lists/* && \
     useradd -m -s /usr/sbin/nologin appuser
 
 # Copy binary
 COPY --from=builder /rampart /usr/local/bin/rampart
-
-# Copy ONNX Runtime library
-COPY --from=builder /usr/lib/libonnxruntime.so* /usr/lib/
-RUN ln -sf /usr/lib/libonnxruntime.so /usr/lib/onnxruntime.so
 
 # NOTE: No ML model is shipped. Neural ML detection was withdrawn 2026-11-23
 # (see docs/ML-WITHDRAWN.md). The container runs deterministic detection only.

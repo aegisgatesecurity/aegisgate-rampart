@@ -253,32 +253,27 @@ jobs:
         run: .\rampart.exe version
 
   # ========================================
-  # Build — verify binary compiles (both CGO and non-CGO)
+  # Build — verify binary compiles (pure Go, no CGO)
+  # ORT EXCISED 2026-11-26 (user-approved): the CGO=1 matrix leg and the
+  # dead ONNX Runtime download are removed. Neural ML is WITHDRAWN
+  # (2026-11-23); if a future retrained model needs native inference it
+  # must be Go-native per the Phase 4b constraint (no CGO, no vendored
+  # native libs), which this matrix leg would not exercise anyway.
   # ========================================
   build:
     needs: [lint, test]
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        cgo: [0, 1]
+        cgo: [0]
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: actions/setup-go@v7.0.0
         with:
           go-version: '1.27.4'
-      - name: Install ONNX Runtime v1.29.0 (CGO builds only)
-        if: matrix.cgo == 1
-        run: |
-          wget -q https://github.com/microsoft/onnxruntime/releases/download/v1.29.0/onnxruntime-linux-x64-1.29.0.tgz
-          tar -xzf onnxruntime-linux-x64-1.29.0.tgz
-          sudo cp onnxruntime-linux-x64-1.29.0/lib/*.so /usr/lib/
-          sudo cp -r onnxruntime-linux-x64-1.29.0/include/* /usr/include/
-          rm -rf onnxruntime-linux-x64-1.29.0.tgz onnxruntime-linux-x64-1.29.0
       - name: Build binary
         env:
           CGO_ENABLED: ${{ matrix.cgo }}
-          CGO_CFLAGS: ${{ matrix.cgo == 1 && '-I/usr/include' || '' }}
-          CGO_LDFLAGS: ${{ matrix.cgo == 1 && '-L/usr/lib -lonnxruntime' || '' }}
         run: |
           go build -ldflags "-s -w -X main.versionFlag=$(cat VERSION)" -o rampart ./cmd/rampart/
           ls -lh rampart

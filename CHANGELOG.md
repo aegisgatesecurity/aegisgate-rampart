@@ -1,3 +1,7 @@
+## [0.11.3] - 2026-11-27 — ONNX Runtime Excise
+
+- **ORT removed from all build paths** (Dockerfile, CI, release workflows): `internal/ml` is dead since the v0.11.2 withdrawal and ONNX Runtime was a vendored dependency serving nothing. CGO_ENABLED=0 binaries verified on `debian:bookworm-slim`. No detection behavior changes — deterministic detection is unaffected.
+
 ## [0.11.2] - 2026-11-23 — ML Withdrawn
 
 - Neural ML detection is withdrawn and hard-disabled: `internal/ml` refuses to load any model, `Enabled`/`ShadowMode` are forced off, and the proxy no longer applies the ML tier or the educational-context exemption that existed to mask ML false positives. The CharCNN-BiLSTM lineage trained on a corpus whose attack-side labels failed audit (~71% flip rate); all detection-rate claims derived from it are void. Deterministic (regex/policy) detection is unaffected and has not yet been re-baselined. See docs/ML-WITHDRAWN.md.
